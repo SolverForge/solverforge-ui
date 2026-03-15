@@ -1,0 +1,10 @@
+[package]
+name = "solverforge-ui"
+version = "0.1.0"
+edition = "2021"
+description = "Frontend component library for SolverForge constraint-optimization applications"
+license = "Apache-2.0"
+
+[dependencies]
+axum = "0.8"
+include_dir = "0.7"

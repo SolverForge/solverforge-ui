@@ -1,0 +1,247 @@
+/* ============================================================================
+   SolverForge UI — Gantt: Layout
+   Split panes, gutter, container, grid table, grid rows.
+   ============================================================================ */
+
+/* ── Split Layout ── */
+.sf-gantt-split {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.sf-gantt-pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--sf-color-surface);
+  border: 1px solid var(--sf-gray-200);
+}
+
+.sf-gantt-pane-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sf-row-padding-y) var(--sf-row-padding-x);
+  background: var(--sf-gray-50);
+  border-bottom: 1px solid var(--sf-gray-200);
+  min-height: var(--sf-row-height);
+  flex-shrink: 0;
+}
+
+.sf-gantt-pane-header h3 {
+  margin: 0;
+  font-size: var(--sf-text-sm);
+  font-weight: var(--sf-font-semibold);
+  color: var(--sf-gray-700);
+}
+
+.sf-gantt-pane-controls {
+  display: flex;
+  gap: var(--sf-space-1);
+}
+
+.sf-gantt-pane-content {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+.sf-gantt-container {
+  height: 100%;
+  overflow: hidden;
+}
+
+.sf-gantt-container .gantt-container {
+  cursor: grab;
+  overflow: auto;
+  height: 100%;
+}
+
+.sf-gantt-container .gantt-container:active {
+  cursor: grabbing;
+}
+
+/* ── Split.js Gutter ── */
+.sf-gantt-split > .gutter {
+  background: var(--sf-gray-200);
+  position: relative;
+  transition: background var(--sf-duration-base);
+}
+
+.sf-gantt-split > .gutter:hover {
+  background: var(--sf-emerald-400);
+}
+
+.sf-gantt-split > .gutter.gutter-horizontal {
+  cursor: ns-resize;
+  height: 8px;
+  margin: -1px 0;
+  z-index: 10;
+}
+
+.sf-gantt-split > .gutter.gutter-horizontal::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 30px;
+  height: 3px;
+  background: currentColor;
+  opacity: 0.3;
+  border-radius: var(--sf-radius-sm);
+}
+
+/* ── Maximized Pane ── */
+.sf-gantt-pane.maximized {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 50;
+  height: 100% !important;
+  width: 100% !important;
+}
+
+/* ── Grid Table ── */
+.sf-gantt-grid {
+  height: 100%;
+  overflow: auto;
+  background: linear-gradient(180deg, var(--sf-gray-50) 0%, var(--sf-gray-100) 100%);
+  position: relative;
+}
+
+.sf-gantt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--sf-text-sm);
+}
+
+.sf-gantt-table th {
+  position: sticky;
+  top: 0;
+  background: var(--sf-gray-50);
+  color: var(--sf-gray-700);
+  font-size: var(--sf-text-sm);
+  font-weight: var(--sf-font-semibold);
+  text-align: left;
+  padding: var(--sf-row-padding-y) var(--sf-row-padding-x);
+  border-bottom: 2px solid var(--sf-gray-200);
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.sf-gantt-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--sf-duration-base), color var(--sf-duration-base);
+}
+
+.sf-gantt-table th.sortable:hover {
+  background: var(--sf-gray-100);
+  color: var(--sf-emerald-700);
+}
+
+.sf-gantt-table th.sortable.active {
+  color: var(--sf-emerald-700);
+  font-weight: var(--sf-font-bold);
+}
+
+.sf-gantt-table th .sort-icon {
+  margin-left: 4px;
+  font-size: 10px;
+  opacity: 0.45;
+  transition: opacity var(--sf-duration-base);
+}
+
+.sf-gantt-table th.sortable:hover .sort-icon,
+.sf-gantt-table th.sortable.active .sort-icon {
+  opacity: 1;
+}
+
+.sf-gantt-table td {
+  padding: var(--sf-row-padding-y) var(--sf-row-padding-x);
+  border-bottom: 1px solid var(--sf-gray-200);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--sf-text-sm);
+  color: var(--sf-gray-700);
+}
+
+/* ── Grid Rows ── */
+.sf-gantt-row {
+  transition: background var(--sf-duration-fast), transform var(--sf-duration-fast),
+              box-shadow var(--sf-duration-fast);
+  cursor: pointer;
+  position: relative;
+  border-left: 4px solid transparent;
+}
+
+.sf-gantt-row:hover {
+  background: var(--sf-gray-50);
+  transform: translateX(2px);
+  box-shadow: var(--sf-shadow-sm);
+}
+
+.sf-gantt-row.selected {
+  background: var(--sf-emerald-50);
+  box-shadow: var(--sf-shadow-base);
+}
+
+/* Project color accents on left border */
+.sf-gantt-row.sf-project-0 { border-left-color: var(--sf-project-0); }
+.sf-gantt-row.sf-project-1 { border-left-color: var(--sf-project-1); }
+.sf-gantt-row.sf-project-2 { border-left-color: var(--sf-project-2); }
+.sf-gantt-row.sf-project-3 { border-left-color: var(--sf-project-3); }
+.sf-gantt-row.sf-project-4 { border-left-color: var(--sf-project-4); }
+.sf-gantt-row.sf-project-5 { border-left-color: var(--sf-project-5); }
+.sf-gantt-row.sf-project-6 { border-left-color: var(--sf-project-6); }
+.sf-gantt-row.sf-project-7 { border-left-color: var(--sf-project-7); }
+
+/* Task name sweep underline */
+.sf-gantt-table .sf-task-name {
+  font-weight: var(--sf-font-medium);
+  color: var(--sf-gray-900);
+  max-width: 300px;
+  position: relative;
+}
+
+.sf-gantt-table .sf-task-name::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  height: 2px;
+  background: var(--sf-emerald-500);
+  transition: width var(--sf-duration-slow) var(--sf-ease-out);
+}
+
+.sf-gantt-row:hover .sf-task-name::before {
+  width: 100%;
+}
+
+/* ── View Mode Selector ── */
+.sf-gantt-view-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--sf-space-2);
+}
+
+.sf-gantt-view-select {
+  font-family: var(--sf-font-body);
+  font-size: var(--sf-text-xs);
+  padding: 3px 8px;
+  border: 1px solid var(--sf-gray-300);
+  border-radius: var(--sf-radius-base);
+  background: var(--sf-color-surface);
+  color: var(--sf-gray-700);
+  cursor: pointer;
+}
+
+.sf-gantt-view-select:focus {
+  outline: none;
+  border-color: var(--sf-emerald-500);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}

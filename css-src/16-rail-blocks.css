@@ -1,0 +1,170 @@
+/* ============================================================================
+   SolverForge UI — Timeline Rail: Blocks
+   Rail container, day grid, task blocks, changeover, heatmap, unassigned.
+   ============================================================================ */
+
+/* ── The Rail (where blocks live) ── */
+.sf-rail-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.sf-rail {
+  position: relative;
+  height: 100%;
+  min-height: 56px;
+  background: var(--sf-gray-50);
+}
+
+/* Day column dividers */
+.sf-day-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  pointer-events: none;
+}
+
+.sf-day-col {
+  border-right: 1px solid var(--sf-gray-200);
+}
+
+.sf-day-col:nth-child(odd) {
+  background: rgba(0, 0, 0, 0.01);
+}
+
+.sf-day-col:last-child {
+  border-right: none;
+}
+
+/* Hour marks */
+.sf-hour-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(0, 0, 0, 0.04);
+  pointer-events: none;
+}
+
+/* ── Work Order / Task Blocks ── */
+.sf-block {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  border-radius: 3px;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: filter 0.2s, transform 0.15s;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2px 5px;
+  overflow: hidden;
+  min-width: 20px;
+  animation: sf-slide-in 0.35s var(--sf-ease-out) both;
+}
+
+.sf-block:hover {
+  filter: brightness(1.25);
+  transform: translateY(-1px) scaleY(1.05);
+  z-index: 10;
+}
+
+.sf-block.moved {
+  animation: sf-block-moved 0.6s ease-out;
+}
+
+@keyframes sf-block-moved {
+  0%   { filter: brightness(2) saturate(2); transform: scaleY(1.15); }
+  100% { filter: brightness(1) saturate(1); transform: scaleY(1); }
+}
+
+.sf-block.late {
+  animation: sf-slide-in 0.35s var(--sf-ease-out) both, sf-late-glow 1.5s ease-in-out infinite;
+}
+
+.sf-block-label {
+  font-size: 9px;
+  font-family: var(--sf-font-mono);
+  font-weight: var(--sf-font-semibold);
+  color: rgba(0, 0, 0, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+}
+
+.sf-block-meta {
+  font-size: 8px;
+  font-family: var(--sf-font-mono);
+  color: rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+/* Changeover / gap region */
+.sf-changeover {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(251, 191, 36, 0.08) 0px,
+    rgba(251, 191, 36, 0.08) 3px,
+    transparent 3px,
+    transparent 9px
+  );
+  border-left: 1px dashed rgba(251, 191, 36, 0.3);
+  border-right: 1px dashed rgba(251, 191, 36, 0.3);
+  pointer-events: none;
+}
+
+/* ── Heatmap strip ── */
+.sf-heatmap {
+  display: grid;
+  height: 10px;
+  border-top: 1px solid var(--sf-gray-300);
+}
+
+.sf-heatmap-label {
+  background: var(--sf-gray-100);
+  border-right: 1px solid var(--sf-gray-300);
+}
+
+.sf-heatmap-track {
+  position: relative;
+  background: var(--sf-gray-100);
+  overflow: hidden;
+}
+
+.sf-heatmap-segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  transition: background 0.5s ease;
+}
+
+/* ── Unassigned row ── */
+.sf-unassigned-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 8px;
+  border-top: 1px solid var(--sf-gray-300);
+  background: var(--sf-gray-50);
+  min-height: 28px;
+}
+
+.sf-unassigned-pill {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--sf-red-400);
+  font-size: 9px;
+  font-family: var(--sf-font-mono);
+  padding: 2px 6px;
+  border-radius: 2px;
+  white-space: nowrap;
+}

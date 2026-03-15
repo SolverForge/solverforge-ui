@@ -1,0 +1,72 @@
+/* ============================================================================
+   SolverForge UI — Badges
+   ============================================================================ */
+
+.sf-badge {
+  display: inline-block;
+  padding: var(--sf-badge-padding-y) var(--sf-badge-padding-x);
+  border-radius: var(--sf-badge-radius);
+  font-size: var(--sf-badge-font-size);
+  font-weight: var(--sf-badge-font-weight);
+  white-space: nowrap;
+}
+
+/* Skill badge (emerald) */
+.sf-badge--skill {
+  background: var(--sf-emerald-50);
+  color: var(--sf-emerald-700);
+  border: 1px solid var(--sf-emerald-200);
+}
+
+/* Priority badges */
+.sf-badge--high {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.sf-badge--medium {
+  background: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fde68a;
+}
+
+.sf-badge--low {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+/* Type badges (hard/soft constraint) */
+.sf-badge--hard {
+  font-family: var(--sf-font-mono);
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+.sf-badge--soft {
+  font-family: var(--sf-font-mono);
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fcd34d;
+}
+
+/* Process badge (colored by process) */
+.sf-badge--process {
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid;
+  font-size: 11px;
+  font-weight: var(--sf-font-semibold);
+}

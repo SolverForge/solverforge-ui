@@ -1,0 +1,201 @@
+/* ============================================================================
+   SolverForge UI — Timeline Rail: Resources
+   Header, resource cards, gauges, stats.
+   ============================================================================ */
+
+/* ── Timeline Header (day columns) ── */
+.sf-timeline-header {
+  background: white;
+  border: 1px solid var(--sf-gray-300);
+  border-radius: var(--sf-radius-base) var(--sf-radius-base) 0 0;
+  display: grid;
+  height: 28px;
+  overflow: hidden;
+  margin-bottom: -1px;
+}
+
+.sf-timeline-label-spacer {
+  border-right: 1px solid var(--sf-gray-300);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--sf-gray-600);
+  font-family: var(--sf-font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.sf-timeline-days {
+  display: grid;
+}
+
+.sf-timeline-day-col {
+  border-right: 1px solid var(--sf-gray-300);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-family: var(--sf-font-mono);
+  font-weight: var(--sf-font-semibold);
+  color: var(--sf-gray-700);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  gap: 6px;
+}
+
+.sf-timeline-day-col:last-child {
+  border-right: none;
+}
+
+/* ── Resource Card ── */
+.sf-resource-card {
+  background: white;
+  border: 1px solid var(--sf-gray-300);
+  border-radius: var(--sf-radius-base);
+  overflow: hidden;
+  transition: box-shadow 0.4s ease;
+  position: relative;
+  box-shadow: var(--sf-shadow-sm);
+}
+
+.sf-resource-card.solving {
+  animation: sf-breathe 2s ease-in-out infinite;
+}
+
+/* ── Resource Header ── */
+.sf-resource-header {
+  display: grid;
+  border-bottom: 1px solid var(--sf-gray-300);
+  background: var(--sf-gray-100);
+}
+
+.sf-resource-identity {
+  padding: 8px 12px;
+  border-right: 1px solid var(--sf-gray-300);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sf-resource-name {
+  font-size: 11px;
+  font-weight: var(--sf-font-semibold);
+  color: var(--sf-gray-900);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+
+.sf-resource-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.sf-resource-type-badge {
+  font-size: 9px;
+  font-family: var(--sf-font-mono);
+  font-weight: var(--sf-font-semibold);
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+/* ── Gauge bars (temp, load, capacity) ── */
+.sf-gauges {
+  padding: 6px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+}
+
+.sf-gauge-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sf-gauge-label {
+  font-size: 9px;
+  font-family: var(--sf-font-mono);
+  color: var(--sf-gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  width: 28px;
+  flex-shrink: 0;
+}
+
+.sf-gauge-track {
+  flex: 1;
+  height: 6px;
+  background: var(--sf-gray-300);
+  border-radius: 3px;
+  overflow: hidden;
+  max-width: 120px;
+}
+
+.sf-gauge-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s var(--sf-ease-out);
+}
+
+.sf-gauge-fill--heat {
+  background: linear-gradient(90deg, #3b82f6 0%, #fbbf24 50%, #f97316 80%, #ef4444 100%);
+}
+
+.sf-gauge-fill--load {
+  background: linear-gradient(90deg, var(--sf-emerald-500) 0%, #fbbf24 70%, var(--sf-red-500) 100%);
+}
+
+.sf-gauge-fill--emerald {
+  background: var(--sf-emerald-500);
+}
+
+.sf-gauge-value {
+  font-size: 10px;
+  font-family: var(--sf-font-mono);
+  font-weight: var(--sf-font-semibold);
+  color: var(--sf-gray-700);
+  min-width: 52px;
+}
+
+/* ── Resource Body (stats) ── */
+.sf-resource-body {
+  display: grid;
+  min-height: 56px;
+}
+
+.sf-resource-stats {
+  padding: 6px 12px;
+  border-right: 1px solid var(--sf-gray-300);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  justify-content: center;
+}
+
+.sf-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sf-stat-label {
+  font-size: 9px;
+  font-family: var(--sf-font-mono);
+  color: var(--sf-gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sf-stat-value {
+  font-size: 11px;
+  font-family: var(--sf-font-mono);
+  font-weight: var(--sf-font-semibold);
+  color: var(--sf-gray-700);
+}

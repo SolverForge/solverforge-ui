@@ -1,0 +1,28 @@
+/* ============================================================================
+   SolverForge UI — Typography
+   Self-hosted variable-weight fonts: Space Grotesk + JetBrains Mono
+   ============================================================================ */
+
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('/sf/fonts/space-grotesk.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/sf/fonts/jetbrains-mono.woff2') format('woff2');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  font-family: var(--sf-font-body);
+  color: var(--sf-color-text);
+  line-height: var(--sf-line-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

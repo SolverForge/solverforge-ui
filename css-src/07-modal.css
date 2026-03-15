@@ -1,0 +1,81 @@
+/* ============================================================================
+   SolverForge UI — Modal
+   ============================================================================ */
+
+.sf-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--sf-modal-overlay-bg);
+  backdrop-filter: blur(2px);
+  z-index: var(--sf-z-modal-backdrop);
+  align-items: center;
+  justify-content: center;
+}
+
+.sf-modal-overlay.open {
+  display: flex;
+}
+
+.sf-modal {
+  background: white;
+  border: 1px solid var(--sf-gray-200);
+  border-radius: var(--sf-modal-radius);
+  max-width: 680px;
+  width: 95%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--sf-modal-shadow);
+  animation: sf-dialog-slide-in 0.18s var(--sf-ease-out);
+  position: relative;
+  z-index: var(--sf-z-modal);
+}
+
+.sf-modal-header {
+  background: var(--sf-modal-header-bg);
+  padding: 12px 20px;
+  border-radius: var(--sf-modal-radius) var(--sf-modal-radius) 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sf-modal-title {
+  color: white;
+  font-size: var(--sf-text-base);
+  font-weight: var(--sf-font-semibold);
+}
+
+.sf-modal-close {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: white;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--sf-radius-base);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.sf-modal-close:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.sf-modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.sf-modal-footer {
+  padding: 12px 24px;
+  border-top: 1px solid var(--sf-gray-200);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sf-space-2);
+}

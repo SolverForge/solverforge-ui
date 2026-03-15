@@ -1,0 +1,30 @@
+/* ============================================================================
+   SolverForge UI — Footer
+   ============================================================================ */
+
+.sf-footer {
+  background: var(--sf-gray-50);
+  border-top: 1px solid var(--sf-gray-200);
+  padding: 10px var(--sf-header-padding-x);
+  display: flex;
+  align-items: center;
+  gap: var(--sf-space-4);
+  font-size: 11px;
+  color: var(--sf-gray-400);
+  flex-shrink: 0;
+}
+
+.sf-footer a {
+  color: var(--sf-gray-500);
+  text-decoration: none;
+}
+
+.sf-footer a:hover {
+  color: var(--sf-emerald-600);
+}
+
+.sf-footer .sf-vr {
+  width: 1px;
+  height: 12px;
+  background: var(--sf-gray-200);
+}

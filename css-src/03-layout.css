@@ -1,0 +1,24 @@
+/* ============================================================================
+   SolverForge UI — Layout
+   ============================================================================ */
+
+.sf-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--sf-color-background);
+}
+
+.sf-main {
+  flex: 1;
+  padding: var(--sf-space-4) var(--sf-space-6);
+  overflow-y: auto;
+}
+
+.sf-tab-panel {
+  display: none;
+}
+
+.sf-tab-panel.active {
+  display: block;
+}

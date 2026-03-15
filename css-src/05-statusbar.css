@@ -1,0 +1,57 @@
+/* ============================================================================
+   SolverForge UI — Status Bar
+   ============================================================================ */
+
+.sf-statusbar {
+  background: var(--sf-gray-50);
+  border-bottom: 1px solid var(--sf-gray-200);
+  padding: 6px var(--sf-header-padding-x);
+  display: flex;
+  align-items: center;
+  gap: var(--sf-space-6);
+  font-family: var(--sf-font-mono);
+  font-size: 12px;
+  color: var(--sf-gray-400);
+  flex-shrink: 0;
+}
+
+.sf-statusbar-score {
+  font-weight: var(--sf-font-semibold);
+}
+
+.sf-statusbar-score.score-green { color: var(--sf-emerald-600); }
+.sf-statusbar-score.score-red   { color: #e53e3e; }
+.sf-statusbar-score.score-yellow { color: var(--sf-amber-400); }
+
+.sf-statusbar-score.improved {
+  animation: sf-score-flash 0.4s ease-out;
+}
+
+.sf-statusbar-constraints {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.sf-constraint-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sf-emerald-500);
+  transition: background 0.3s;
+  cursor: pointer;
+}
+
+.sf-constraint-dot.violated {
+  background: var(--sf-red-500);
+  animation: sf-dot-pulse 1s ease-in-out infinite;
+}
+
+.sf-constraint-dot.violated-soft {
+  background: var(--sf-amber-400);
+  animation: sf-dot-pulse 1s ease-in-out infinite;
+}
+
+.sf-statusbar-sep {
+  color: var(--sf-gray-300);
+}

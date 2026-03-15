@@ -1,0 +1,21 @@
+/* ============================================================================
+   SolverForge UI — Custom Scrollbars
+   ============================================================================ */
+
+.sf-app ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.sf-app ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sf-app ::-webkit-scrollbar-thumb {
+  background: var(--sf-gray-300);
+  border-radius: 4px;
+}
+
+.sf-app ::-webkit-scrollbar-thumb:hover {
+  background: var(--sf-emerald-400);
+}

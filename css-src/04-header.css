@@ -1,0 +1,92 @@
+/* ============================================================================
+   SolverForge UI — Header
+   ============================================================================ */
+
+.sf-header {
+  background: var(--sf-header-bg);
+  height: var(--sf-header-height);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--sf-header-padding-x);
+  gap: var(--sf-space-6);
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.4);
+  position: sticky;
+  top: 0;
+  z-index: var(--sf-z-sticky);
+  flex-shrink: 0;
+}
+
+.sf-header-logo {
+  height: 44px;
+  width: 44px;
+  filter: brightness(0) invert(1);
+}
+
+.sf-header-brand {
+  display: flex;
+  flex-direction: column;
+}
+
+.sf-header-title {
+  color: white;
+  font-size: var(--sf-text-lg);
+  font-weight: var(--sf-font-semibold);
+  letter-spacing: -0.01em;
+  line-height: var(--sf-line-tight);
+}
+
+.sf-header-subtitle {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: var(--sf-text-xs);
+  font-family: var(--sf-font-mono);
+}
+
+.sf-header-nav {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.sf-nav-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 5px 14px;
+  border-radius: var(--sf-radius-base);
+  font-size: var(--sf-text-sm);
+  font-family: var(--sf-font-body);
+  font-weight: var(--sf-font-medium);
+  cursor: pointer;
+  transition: var(--sf-transition-colors);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sf-nav-btn:hover,
+.sf-nav-btn.active {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.sf-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sf-space-2);
+  margin-left: var(--sf-space-4);
+}
+
+/* Solving spinner */
+.sf-solving-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: sf-spin 0.7s linear infinite;
+  display: none;
+}
+
+.sf-solving-spinner.active {
+  display: inline-block;
+}

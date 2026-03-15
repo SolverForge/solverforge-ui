@@ -1,0 +1,290 @@
+/* ============================================================================
+   SolverForge UI — Design System Tokens
+   Single source of truth for the emerald theme.
+   ============================================================================ */
+
+:root {
+  /* ========================================================================
+     Core Color Palette
+     ======================================================================== */
+
+  /* Emerald (Primary Brand Colors) */
+  --sf-emerald-50: #ecfdf5;
+  --sf-emerald-100: #d1fae5;
+  --sf-emerald-200: #a7f3d0;
+  --sf-emerald-300: #6ee7b7;
+  --sf-emerald-400: #34d399;
+  --sf-emerald-500: #10b981;
+  --sf-emerald-600: #059669;
+  --sf-emerald-700: #047857;
+  --sf-emerald-800: #065f46;
+  --sf-emerald-900: #064e3b;
+
+  /* Grays */
+  --sf-gray-50: #f9fafb;
+  --sf-gray-100: #f3f4f6;
+  --sf-gray-200: #e5e7eb;
+  --sf-gray-300: #d1d5db;
+  --sf-gray-400: #9ca3af;
+  --sf-gray-500: #6b7280;
+  --sf-gray-600: #4b5563;
+  --sf-gray-700: #374151;
+  --sf-gray-800: #1f2937;
+  --sf-gray-900: #111827;
+
+  /* Red (Error/Danger) */
+  --sf-red-50: #fef2f2;
+  --sf-red-100: #fee2e2;
+  --sf-red-200: #fecaca;
+  --sf-red-300: #fca5a5;
+  --sf-red-400: #f87171;
+  --sf-red-500: #ef4444;
+  --sf-red-600: #dc2626;
+  --sf-red-700: #b91c1c;
+  --sf-red-800: #991b1b;
+  --sf-red-900: #7f1d1d;
+
+  /* Amber (Warning) */
+  --sf-amber-50: #fffbeb;
+  --sf-amber-100: #fef3c7;
+  --sf-amber-200: #fde68a;
+  --sf-amber-300: #fcd34d;
+  --sf-amber-400: #fbbf24;
+  --sf-amber-500: #f59e0b;
+  --sf-amber-600: #d97706;
+  --sf-amber-700: #b45309;
+  --sf-amber-800: #92400e;
+  --sf-amber-900: #78350f;
+
+  /* Blue (Info) */
+  --sf-blue-50: #eff6ff;
+  --sf-blue-100: #dbeafe;
+  --sf-blue-200: #bfdbfe;
+  --sf-blue-300: #93c5fd;
+  --sf-blue-400: #60a5fa;
+  --sf-blue-500: #3b82f6;
+  --sf-blue-600: #2563eb;
+  --sf-blue-700: #1d4ed8;
+  --sf-blue-800: #1e40af;
+  --sf-blue-900: #1e3a8a;
+
+  /* ── Project Colors (8 distinct) ── */
+  --sf-project-0: var(--sf-emerald-500);
+  --sf-project-0-dark: var(--sf-emerald-700);
+  --sf-project-0-light: rgba(16, 185, 129, 0.15);
+
+  --sf-project-1: #3b82f6;
+  --sf-project-1-dark: #1d4ed8;
+  --sf-project-1-light: rgba(59, 130, 246, 0.15);
+
+  --sf-project-2: #8b5cf6;
+  --sf-project-2-dark: #6d28d9;
+  --sf-project-2-light: rgba(139, 92, 246, 0.15);
+
+  --sf-project-3: var(--sf-amber-500);
+  --sf-project-3-dark: var(--sf-amber-700);
+  --sf-project-3-light: rgba(245, 158, 11, 0.15);
+
+  --sf-project-4: #ec4899;
+  --sf-project-4-dark: #be185d;
+  --sf-project-4-light: rgba(236, 72, 153, 0.15);
+
+  --sf-project-5: #06b6d4;
+  --sf-project-5-dark: #0e7490;
+  --sf-project-5-light: rgba(6, 182, 212, 0.15);
+
+  --sf-project-6: #f43f5e;
+  --sf-project-6-dark: #be123c;
+  --sf-project-6-light: rgba(244, 63, 94, 0.15);
+
+  --sf-project-7: #84cc16;
+  --sf-project-7-dark: #4d7c0f;
+  --sf-project-7-light: rgba(132, 204, 22, 0.15);
+
+  /* ── Priority Colors ── */
+  --sf-priority-high: var(--sf-red-500);
+  --sf-priority-high-bg: var(--sf-red-100);
+  --sf-priority-medium: var(--sf-amber-500);
+  --sf-priority-medium-bg: var(--sf-amber-100);
+  --sf-priority-low: #22c55e;
+  --sf-priority-low-bg: #dcfce7;
+
+  /* ── Semantic Colors ── */
+  --sf-color-primary: var(--sf-emerald-500);
+  --sf-color-primary-dark: var(--sf-emerald-600);
+  --sf-color-primary-darker: var(--sf-emerald-700);
+  --sf-color-primary-light: var(--sf-emerald-400);
+  --sf-color-primary-lighter: var(--sf-emerald-300);
+
+  --sf-color-background: #f8f9fa;
+  --sf-color-surface: white;
+  --sf-color-text: var(--sf-gray-900);
+  --sf-color-text-secondary: var(--sf-gray-600);
+  --sf-color-text-tertiary: var(--sf-gray-500);
+  --sf-color-text-inverse: white;
+
+  --sf-color-border: var(--sf-gray-200);
+  --sf-color-border-light: var(--sf-gray-100);
+  --sf-color-border-dark: var(--sf-gray-300);
+
+  /* ========================================================================
+     Spacing & Sizing
+     ======================================================================== */
+  --sf-space-0: 0;
+  --sf-space-1: 0.25rem;
+  --sf-space-2: 0.5rem;
+  --sf-space-3: 0.75rem;
+  --sf-space-4: 1rem;
+  --sf-space-5: 1.25rem;
+  --sf-space-6: 1.5rem;
+  --sf-space-8: 2rem;
+  --sf-space-10: 2.5rem;
+  --sf-space-12: 3rem;
+  --sf-space-16: 4rem;
+
+  /* ── Fonts ── */
+  --sf-font-body: 'Space Grotesk', sans-serif;
+  --sf-font-mono: 'JetBrains Mono', monospace;
+
+  --sf-text-xs: 0.75rem;
+  --sf-text-sm: 0.875rem;
+  --sf-text-base: 1rem;
+  --sf-text-lg: 1.125rem;
+  --sf-text-xl: 1.25rem;
+  --sf-text-2xl: 1.5rem;
+  --sf-text-3xl: 1.875rem;
+  --sf-text-4xl: 2.25rem;
+
+  --sf-font-normal: 400;
+  --sf-font-medium: 500;
+  --sf-font-semibold: 600;
+  --sf-font-bold: 700;
+
+  --sf-line-none: 1;
+  --sf-line-tight: 1.25;
+  --sf-line-snug: 1.375;
+  --sf-line-normal: 1.5;
+  --sf-line-relaxed: 1.625;
+
+  /* ========================================================================
+     Borders & Radii
+     ======================================================================== */
+  --sf-border-1: 1px;
+  --sf-border-2: 2px;
+
+  --sf-radius-none: 0;
+  --sf-radius-sm: 0.125rem;
+  --sf-radius-base: 0.25rem;
+  --sf-radius-md: 0.375rem;
+  --sf-radius-lg: 0.5rem;
+  --sf-radius-xl: 0.75rem;
+  --sf-radius-2xl: 1rem;
+  --sf-radius-full: 9999px;
+
+  /* ========================================================================
+     Shadows
+     ======================================================================== */
+  --sf-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --sf-shadow-base: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --sf-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --sf-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --sf-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --sf-shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --sf-shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+  --sf-shadow-emerald: 0 4px 12px rgba(16, 185, 129, 0.3);
+  --sf-shadow-red: 0 4px 12px rgba(239, 68, 68, 0.3);
+
+  /* ========================================================================
+     Transitions
+     ======================================================================== */
+  --sf-duration-fast: 150ms;
+  --sf-duration-base: 200ms;
+  --sf-duration-slow: 300ms;
+  --sf-duration-slower: 500ms;
+
+  --sf-ease-linear: linear;
+  --sf-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --sf-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --sf-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --sf-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --sf-transition-all: all var(--sf-duration-base) var(--sf-ease-in-out);
+  --sf-transition-colors: color var(--sf-duration-base) var(--sf-ease-in-out),
+                           background-color var(--sf-duration-base) var(--sf-ease-in-out),
+                           border-color var(--sf-duration-base) var(--sf-ease-in-out);
+  --sf-transition-transform: transform var(--sf-duration-base) var(--sf-ease-in-out);
+  --sf-transition-shadow: box-shadow var(--sf-duration-base) var(--sf-ease-in-out);
+
+  /* ========================================================================
+     Z-Index Scale
+     ======================================================================== */
+  --sf-z-0: 0;
+  --sf-z-10: 10;
+  --sf-z-20: 20;
+  --sf-z-30: 30;
+  --sf-z-40: 40;
+  --sf-z-50: 50;
+  --sf-z-dropdown: 1000;
+  --sf-z-sticky: 1020;
+  --sf-z-fixed: 1030;
+  --sf-z-modal-backdrop: 1040;
+  --sf-z-modal: 1050;
+  --sf-z-popover: 1060;
+  --sf-z-tooltip: 1070;
+
+  /* ========================================================================
+     Gradients
+     ======================================================================== */
+  --sf-gradient-primary: linear-gradient(135deg, var(--sf-emerald-500) 0%, var(--sf-emerald-600) 100%);
+  --sf-gradient-primary-reverse: linear-gradient(135deg, var(--sf-emerald-600) 0%, var(--sf-emerald-700) 100%);
+  --sf-gradient-header: var(--sf-gradient-primary);
+  --sf-gradient-danger: linear-gradient(135deg, var(--sf-red-500) 0%, var(--sf-red-600) 100%);
+  --sf-gradient-warning: linear-gradient(135deg, var(--sf-amber-500) 0%, var(--sf-amber-600) 100%);
+  --sf-gradient-surface: linear-gradient(180deg, white 0%, var(--sf-gray-50) 100%);
+
+  /* ========================================================================
+     Component Variables
+     ======================================================================== */
+
+  /* Header */
+  --sf-header-bg: var(--sf-gradient-header);
+  --sf-header-height: 60px;
+  --sf-header-padding-x: var(--sf-space-8);
+
+  /* Buttons */
+  --sf-btn-padding-x: var(--sf-space-4);
+  --sf-btn-padding-y: var(--sf-space-2);
+  --sf-btn-radius: var(--sf-radius-md);
+  --sf-btn-font-weight: var(--sf-font-medium);
+
+  /* Forms */
+  --sf-input-border-color: var(--sf-emerald-500);
+  --sf-input-radius: var(--sf-radius-base);
+
+  /* Cards */
+  --sf-card-radius: var(--sf-radius-lg);
+  --sf-card-padding: var(--sf-space-4);
+  --sf-card-shadow: var(--sf-shadow-base);
+
+  /* Modals */
+  --sf-modal-radius: var(--sf-radius-xl);
+  --sf-modal-shadow: var(--sf-shadow-2xl);
+  --sf-modal-overlay-bg: rgba(0, 0, 0, 0.6);
+  --sf-modal-header-bg: var(--sf-gradient-primary);
+
+  /* Tables */
+  --sf-table-header-bg: var(--sf-gray-100);
+  --sf-table-row-hover: var(--sf-gray-50);
+
+  /* Rows */
+  --sf-row-height: 36px;
+  --sf-row-padding-x: var(--sf-space-3);
+  --sf-row-padding-y: var(--sf-space-2);
+
+  /* Badges */
+  --sf-badge-font-size: var(--sf-text-xs);
+  --sf-badge-font-weight: var(--sf-font-semibold);
+  --sf-badge-padding-x: var(--sf-space-2);
+  --sf-badge-padding-y: 2px;
+  --sf-badge-radius: var(--sf-radius-md);
+}

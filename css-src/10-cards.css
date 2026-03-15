@@ -1,0 +1,89 @@
+/* ============================================================================
+   SolverForge UI — Cards & Panels
+   ============================================================================ */
+
+.sf-card {
+  background: var(--sf-color-surface);
+  border: 1px solid var(--sf-gray-200);
+  border-radius: var(--sf-card-radius);
+  padding: var(--sf-card-padding);
+  box-shadow: var(--sf-card-shadow);
+}
+
+/* Summary panel */
+.sf-summary-panel {
+  background: white;
+  border: 1px solid var(--sf-gray-200);
+  border-radius: var(--sf-radius-base);
+  padding: var(--sf-space-4);
+}
+
+.sf-summary-title {
+  font-size: 10px;
+  font-family: var(--sf-font-mono);
+  font-weight: var(--sf-font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sf-gray-400);
+  margin-bottom: var(--sf-space-3);
+}
+
+/* KPI cards */
+.sf-kpi-row {
+  display: flex;
+  gap: var(--sf-space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--sf-space-3);
+}
+
+.sf-kpi-card {
+  background: var(--sf-gray-50);
+  border: 1px solid var(--sf-gray-200);
+  border-radius: var(--sf-radius-base);
+  padding: 8px 16px;
+  min-width: 100px;
+  text-align: center;
+}
+
+.sf-kpi-value {
+  font-size: var(--sf-text-2xl);
+  font-family: var(--sf-font-mono);
+  font-weight: var(--sf-font-bold);
+  color: var(--sf-gray-900);
+  line-height: 1;
+}
+
+.sf-kpi-value.danger { color: var(--sf-red-400); }
+.sf-kpi-value.warn   { color: var(--sf-amber-400); }
+.sf-kpi-value.ok     { color: var(--sf-emerald-400); }
+
+.sf-kpi-label {
+  font-size: 9px;
+  font-family: var(--sf-font-mono);
+  color: var(--sf-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 3px;
+}
+
+/* Chip */
+.sf-chip {
+  background: var(--sf-gray-100);
+  color: var(--sf-gray-700);
+  font-size: 10px;
+  font-family: var(--sf-font-mono);
+  padding: 2px 8px;
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sf-chip-count {
+  background: var(--sf-gray-300);
+  color: var(--sf-gray-800);
+  font-size: 9px;
+  padding: 0 4px;
+  border-radius: 2px;
+  font-weight: var(--sf-font-semibold);
+}

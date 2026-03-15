@@ -1,0 +1,2057 @@
+/* ============================================================================
+   SolverForge UI — Design System Tokens
+   Single source of truth for the emerald theme.
+   ============================================================================ */
+
+:root {
+  /* ========================================================================
+     Core Color Palette
+     ======================================================================== */
+
+  /* Emerald (Primary Brand Colors) */
+  --sf-emerald-50: #ecfdf5;
+  --sf-emerald-100: #d1fae5;
+  --sf-emerald-200: #a7f3d0;
+  --sf-emerald-300: #6ee7b7;
+  --sf-emerald-400: #34d399;
+  --sf-emerald-500: #10b981;
+  --sf-emerald-600: #059669;
+  --sf-emerald-700: #047857;
+  --sf-emerald-800: #065f46;
+  --sf-emerald-900: #064e3b;
+
+  /* Grays */
+  --sf-gray-50: #f9fafb;
+  --sf-gray-100: #f3f4f6;
+  --sf-gray-200: #e5e7eb;
+  --sf-gray-300: #d1d5db;
+  --sf-gray-400: #9ca3af;
+  --sf-gray-500: #6b7280;
+  --sf-gray-600: #4b5563;
+  --sf-gray-700: #374151;
+  --sf-gray-800: #1f2937;
+  --sf-gray-900: #111827;
+
+  /* Red (Error/Danger) */
+  --sf-red-50: #fef2f2;
+  --sf-red-100: #fee2e2;
+  --sf-red-200: #fecaca;
+  --sf-red-300: #fca5a5;
+  --sf-red-400: #f87171;
+  --sf-red-500: #ef4444;
+  --sf-red-600: #dc2626;
+  --sf-red-700: #b91c1c;
+  --sf-red-800: #991b1b;
+  --sf-red-900: #7f1d1d;
+
+  /* Amber (Warning) */
+  --sf-amber-50: #fffbeb;
+  --sf-amber-100: #fef3c7;
+  --sf-amber-200: #fde68a;
+  --sf-amber-300: #fcd34d;
+  --sf-amber-400: #fbbf24;
+  --sf-amber-500: #f59e0b;
+  --sf-amber-600: #d97706;
+  --sf-amber-700: #b45309;
+  --sf-amber-800: #92400e;
+  --sf-amber-900: #78350f;
+
+  /* Blue (Info) */
+  --sf-blue-50: #eff6ff;
+  --sf-blue-100: #dbeafe;
+  --sf-blue-200: #bfdbfe;
+  --sf-blue-300: #93c5fd;
+  --sf-blue-400: #60a5fa;
+  --sf-blue-500: #3b82f6;
+  --sf-blue-600: #2563eb;
+  --sf-blue-700: #1d4ed8;
+  --sf-blue-800: #1e40af;
+  --sf-blue-900: #1e3a8a;
+
+  /* ── Project Colors (8 distinct) ── */
+  --sf-project-0: var(--sf-emerald-500);
+  --sf-project-0-dark: var(--sf-emerald-700);
+  --sf-project-0-light: rgba(16, 185, 129, 0.15);
+
+  --sf-project-1: #3b82f6;
+  --sf-project-1-dark: #1d4ed8;
+  --sf-project-1-light: rgba(59, 130, 246, 0.15);
+
+  --sf-project-2: #8b5cf6;
+  --sf-project-2-dark: #6d28d9;
+  --sf-project-2-light: rgba(139, 92, 246, 0.15);
+
+  --sf-project-3: var(--sf-amber-500);
+  --sf-project-3-dark: var(--sf-amber-700);
+  --sf-project-3-light: rgba(245, 158, 11, 0.15);
+
+  --sf-project-4: #ec4899;
+  --sf-project-4-dark: #be185d;
+  --sf-project-4-light: rgba(236, 72, 153, 0.15);
+
+  --sf-project-5: #06b6d4;
+  --sf-project-5-dark: #0e7490;
+  --sf-project-5-light: rgba(6, 182, 212, 0.15);
+
+  --sf-project-6: #f43f5e;
+  --sf-project-6-dark: #be123c;
+  --sf-project-6-light: rgba(244, 63, 94, 0.15);
+
+  --sf-project-7: #84cc16;
+  --sf-project-7-dark: #4d7c0f;
+  --sf-project-7-light: rgba(132, 204, 22, 0.15);
+
+  /* ── Priority Colors ── */
+  --sf-priority-high: var(--sf-red-500);
+  --sf-priority-high-bg: var(--sf-red-100);
+  --sf-priority-medium: var(--sf-amber-500);
+  --sf-priority-medium-bg: var(--sf-amber-100);
+  --sf-priority-low: #22c55e;
+  --sf-priority-low-bg: #dcfce7;
+
+  /* ── Semantic Colors ── */
+  --sf-color-primary: var(--sf-emerald-500);
+  --sf-color-primary-dark: var(--sf-emerald-600);
+  --sf-color-primary-darker: var(--sf-emerald-700);
+  --sf-color-primary-light: var(--sf-emerald-400);
+  --sf-color-primary-lighter: var(--sf-emerald-300);
+
+  --sf-color-background: #f8f9fa;
+  --sf-color-surface: white;
+  --sf-color-text: var(--sf-gray-900);
+  --sf-color-text-secondary: var(--sf-gray-600);
+  --sf-color-text-tertiary: var(--sf-gray-500);
+  --sf-color-text-inverse: white;
+
+  --sf-color-border: var(--sf-gray-200);
+  --sf-color-border-light: var(--sf-gray-100);
+  --sf-color-border-dark: var(--sf-gray-300);
+
+  /* ========================================================================
+     Spacing & Sizing
+     ======================================================================== */
+  --sf-space-0: 0;
+  --sf-space-1: 0.25rem;
+  --sf-space-2: 0.5rem;
+  --sf-space-3: 0.75rem;
+  --sf-space-4: 1rem;
+  --sf-space-5: 1.25rem;
+  --sf-space-6: 1.5rem;
+  --sf-space-8: 2rem;
+  --sf-space-10: 2.5rem;
+  --sf-space-12: 3rem;
+  --sf-space-16: 4rem;
+
+  /* ── Fonts ── */
+  --sf-font-body: 'Space Grotesk', sans-serif;
+  --sf-font-mono: 'JetBrains Mono', monospace;
+
+  --sf-text-xs: 0.75rem;
+  --sf-text-sm: 0.875rem;
+  --sf-text-base: 1rem;
+  --sf-text-lg: 1.125rem;
+  --sf-text-xl: 1.25rem;
+  --sf-text-2xl: 1.5rem;
+  --sf-text-3xl: 1.875rem;
+  --sf-text-4xl: 2.25rem;
+
+  --sf-font-normal: 400;
+  --sf-font-medium: 500;
+  --sf-font-semibold: 600;
+  --sf-font-bold: 700;
+
+  --sf-line-none: 1;
+  --sf-line-tight: 1.25;
+  --sf-line-snug: 1.375;
+  --sf-line-normal: 1.5;
+  --sf-line-relaxed: 1.625;
+
+  /* ========================================================================
+     Borders & Radii
+     ======================================================================== */
+  --sf-border-1: 1px;
+  --sf-border-2: 2px;
+
+  --sf-radius-none: 0;
+  --sf-radius-sm: 0.125rem;
+  --sf-radius-base: 0.25rem;
+  --sf-radius-md: 0.375rem;
+  --sf-radius-lg: 0.5rem;
+  --sf-radius-xl: 0.75rem;
+  --sf-radius-2xl: 1rem;
+  --sf-radius-full: 9999px;
+
+  /* ========================================================================
+     Shadows
+     ======================================================================== */
+  --sf-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --sf-shadow-base: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --sf-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --sf-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --sf-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --sf-shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --sf-shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+  --sf-shadow-emerald: 0 4px 12px rgba(16, 185, 129, 0.3);
+  --sf-shadow-red: 0 4px 12px rgba(239, 68, 68, 0.3);
+
+  /* ========================================================================
+     Transitions
+     ======================================================================== */
+  --sf-duration-fast: 150ms;
+  --sf-duration-base: 200ms;
+  --sf-duration-slow: 300ms;
+  --sf-duration-slower: 500ms;
+
+  --sf-ease-linear: linear;
+  --sf-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --sf-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --sf-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --sf-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --sf-transition-all: all var(--sf-duration-base) var(--sf-ease-in-out);
+  --sf-transition-colors: color var(--sf-duration-base) var(--sf-ease-in-out),
+                           background-color var(--sf-duration-base) var(--sf-ease-in-out),
+                           border-color var(--sf-duration-base) var(--sf-ease-in-out);
+  --sf-transition-transform: transform var(--sf-duration-base) var(--sf-ease-in-out);
+  --sf-transition-shadow: box-shadow var(--sf-duration-base) var(--sf-ease-in-out);
+
+  /* ========================================================================
+     Z-Index Scale
+     ======================================================================== */
+  --sf-z-0: 0;
+  --sf-z-10: 10;
+  --sf-z-20: 20;
+  --sf-z-30: 30;
+  --sf-z-40: 40;
+  --sf-z-50: 50;
+  --sf-z-dropdown: 1000;
+  --sf-z-sticky: 1020;
+  --sf-z-fixed: 1030;
+  --sf-z-modal-backdrop: 1040;
+  --sf-z-modal: 1050;
+  --sf-z-popover: 1060;
+  --sf-z-tooltip: 1070;
+
+  /* ========================================================================
+     Gradients
+     ======================================================================== */
+  --sf-gradient-primary: linear-gradient(135deg, var(--sf-emerald-500) 0%, var(--sf-emerald-600) 100%);
+  --sf-gradient-primary-reverse: linear-gradient(135deg, var(--sf-emerald-600) 0%, var(--sf-emerald-700) 100%);
+  --sf-gradient-header: var(--sf-gradient-primary);
+  --sf-gradient-danger: linear-gradient(135deg, var(--sf-red-500) 0%, var(--sf-red-600) 100%);
+  --sf-gradient-warning: linear-gradient(135deg, var(--sf-amber-500) 0%, var(--sf-amber-600) 100%);
+  --sf-gradient-surface: linear-gradient(180deg, white 0%, var(--sf-gray-50) 100%);
+
+  /* ========================================================================
+     Component Variables
+     ======================================================================== */
+
+  /* Header */
+  --sf-header-bg: var(--sf-gradient-header);
+  --sf-header-height: 60px;
+  --sf-header-padding-x: var(--sf-space-8);
+
+  /* Buttons */
+  --sf-btn-padding-x: var(--sf-space-4);
+  --sf-btn-padding-y: var(--sf-space-2);
+  --sf-btn-radius: var(--sf-radius-md);
+  --sf-btn-font-weight: var(--sf-font-medium);
+
+  /* Forms */
+  --sf-input-border-color: var(--sf-emerald-500);
+  --sf-input-radius: var(--sf-radius-base);
+
+  /* Cards */
+  --sf-card-radius: var(--sf-radius-lg);
+  --sf-card-padding: var(--sf-space-4);
+  --sf-card-shadow: var(--sf-shadow-base);
+
+  /* Modals */
+  --sf-modal-radius: var(--sf-radius-xl);
+  --sf-modal-shadow: var(--sf-shadow-2xl);
+  --sf-modal-overlay-bg: rgba(0, 0, 0, 0.6);
+  --sf-modal-header-bg: var(--sf-gradient-primary);
+
+  /* Tables */
+  --sf-table-header-bg: var(--sf-gray-100);
+  --sf-table-row-hover: var(--sf-gray-50);
+
+  /* Rows */
+  --sf-row-height: 36px;
+  --sf-row-padding-x: var(--sf-space-3);
+  --sf-row-padding-y: var(--sf-space-2);
+
+  /* Badges */
+  --sf-badge-font-size: var(--sf-text-xs);
+  --sf-badge-font-weight: var(--sf-font-semibold);
+  --sf-badge-padding-x: var(--sf-space-2);
+  --sf-badge-padding-y: 2px;
+  --sf-badge-radius: var(--sf-radius-md);
+}
+/* ============================================================================
+   SolverForge UI — Reset
+   ============================================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+/* ============================================================================
+   SolverForge UI — Typography
+   Self-hosted variable-weight fonts: Space Grotesk + JetBrains Mono
+   ============================================================================ */
+
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('/sf/fonts/space-grotesk.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/sf/fonts/jetbrains-mono.woff2') format('woff2');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  font-family: var(--sf-font-body);
+  color: var(--sf-color-text);
+  line-height: var(--sf-line-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+/* ============================================================================
+   SolverForge UI — Layout
+   ============================================================================ */
+
+.sf-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--sf-color-background);
+}
+
+.sf-main {
+  flex: 1;
+  padding: var(--sf-space-4) var(--sf-space-6);
+  overflow-y: auto;
+}
+
+.sf-tab-panel {
+  display: none;
+}
+
+.sf-tab-panel.active {
+  display: block;
+}
+/* ============================================================================
+   SolverForge UI — Header
+   ============================================================================ */
+
+.sf-header {
+  background: var(--sf-header-bg);
+  height: var(--sf-header-height);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--sf-header-padding-x);
+  gap: var(--sf-space-6);
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.4);
+  position: sticky;
+  top: 0;
+  z-index: var(--sf-z-sticky);
+  flex-shrink: 0;
+}
+
+.sf-header-logo {
+  height: 44px;
+  width: 44px;
+  filter: brightness(0) invert(1);
+}
+
+.sf-header-brand {
+  display: flex;
+  flex-direction: column;
+}
+
+.sf-header-title {
+  color: white;
+  font-size: var(--sf-text-lg);
+  font-weight: var(--sf-font-semibold);
+  letter-spacing: -0.01em;
+  line-height: var(--sf-line-tight);
+}
+
+.sf-header-subtitle {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: var(--sf-text-xs);
+  font-family: var(--sf-font-mono);
+}
+
+.sf-header-nav {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.sf-nav-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 5px 14px;
+  border-radius: var(--sf-radius-base);
+  font-size: var(--sf-text-sm);
+  font-family: var(--sf-font-body);
+  font-weight: var(--sf-font-medium);
+  cursor: pointer;
+  transition: var(--sf-transition-colors);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sf-nav-btn:hover,
+.sf-nav-btn.active {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.sf-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sf-space-2);
+  margin-left: var(--sf-space-4);
+}
+
+/* Solving spinner */
+.sf-solving-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: sf-spin 0.7s linear infinite;
+  display: none;
+}
+
+.sf-solving-spinner.active {
+  display: inline-block;
+}
+/* ============================================================================
+   SolverForge UI — Status Bar
+   ============================================================================ */
+
+.sf-statusbar {
+  background: var(--sf-gray-50);
+  border-bottom: 1px solid var(--sf-gray-200);
+  padding: 6px var(--sf-header-padding-x);
+  display: flex;
+  align-items: center;
+  gap: var(--sf-space-6);
+  font-family: var(--sf-font-mono);
+  font-size: 12px;
+  color: var(--sf-gray-400);
+  flex-shrink: 0;
+}
+
+.sf-statusbar-score {
+  font-weight: var(--sf-font-semibold);
+}
+
+.sf-statusbar-score.score-green { color: var(--sf-emerald-600); }
+.sf-statusbar-score.score-red   { color: #e53e3e; }
+.sf-statusbar-score.score-yellow { color: var(--sf-amber-400); }
+
+.sf-statusbar-score.improved {
+  animation: sf-score-flash 0.4s ease-out;
+}
+
+.sf-statusbar-constraints {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.sf-constraint-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sf-emerald-500);
+  transition: background 0.3s;
+  cursor: pointer;
+}
+
+.sf-constraint-dot.violated {
+  background: var(--sf-red-500);
+  animation: sf-dot-pulse 1s ease-in-out infinite;
+}
+
+.sf-constraint-dot.violated-soft {
+  background: var(--sf-amber-400);
+  animation: sf-dot-pulse 1s ease-in-out infinite;
+}
+
+.sf-statusbar-sep {
+  color: var(--sf-gray-300);
+}
+/* ============================================================================
+   SolverForge UI — Buttons
+   Unified system: variants, sizes, shapes, states.
+   ============================================================================ */
+
+.sf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border: none;
+  border-radius: var(--sf-radius-base);
+  font-family: var(--sf-font-body);
+  font-size: var(--sf-text-sm);
+  font-weight: var(--sf-font-semibold);
+  cursor: pointer;
+  transition: var(--sf-transition-all);
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.sf-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Variants ── */
+
+.sf-btn--primary {
+  background: var(--sf-emerald-700);
+  color: white;
+}
+
+.sf-btn--primary:hover {
+  background: var(--sf-emerald-800);
+}
+
+.sf-btn--success {
+  background: white;
+  color: var(--sf-emerald-700);
+}
+
+.sf-btn--success:hover {
+  background: var(--sf-emerald-50);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.sf-btn--danger {
+  background: var(--sf-red-600);
+  color: white;
+}
+
+.sf-btn--danger:hover {
+  background: var(--sf-red-700);
+}
+
+.sf-btn--default {
+  background: var(--sf-gray-100);
+  color: var(--sf-gray-700);
+  border: 1px solid var(--sf-gray-300);
+}
+
+.sf-btn--default:hover {
+  background: var(--sf-gray-200);
+}
+
+.sf-btn--ghost {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.sf-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ── Outline Modifier ── */
+
+.sf-btn--outline {
+  background: transparent;
+}
+
+.sf-btn--outline.sf-btn--primary {
+  color: var(--sf-emerald-700);
+  border: 1px solid var(--sf-emerald-700);
+}
+
+.sf-btn--outline.sf-btn--primary:hover {
+  background: var(--sf-emerald-50);
+}
+
+.sf-btn--outline.sf-btn--danger {
+  color: var(--sf-red-600);
+  border: 1px solid var(--sf-red-600);
+  background: transparent;
+}
+
+.sf-btn--outline.sf-btn--danger:hover {
+  background: var(--sf-red-50);
+}
+
+/* ── Sizes ── */
+
+.sf-btn--sm {
+  padding: 3px 10px;
+  font-size: var(--sf-text-xs);
+  gap: 4px;
+}
+
+.sf-btn--lg {
+  padding: 10px 24px;
+  font-size: var(--sf-text-base);
+  gap: 8px;
+}
+
+/* ── Shapes ── */
+
+.sf-btn--pill {
+  border-radius: var(--sf-radius-full);
+}
+
+.sf-btn--circle {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: var(--sf-radius-base);
+}
+
+.sf-btn--icon {
+  padding: 4px 8px;
+}
+/* ============================================================================
+   SolverForge UI — Modal
+   ============================================================================ */
+
+.sf-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--sf-modal-overlay-bg);
+  backdrop-filter: blur(2px);
+  z-index: var(--sf-z-modal-backdrop);
+  align-items: center;
+  justify-content: center;
+}
+
+.sf-modal-overlay.open {
+  display: flex;
+}
+
+.sf-modal {
+  background: white;
+  border: 1px solid var(--sf-gray-200);
+  border-radius: var(--sf-modal-radius);
+  max-width: 680px;
+  width: 95%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--sf-modal-shadow);
+  animation: sf-dialog-slide-in 0.18s var(--sf-ease-out);
+  position: relative;
+  z-index: var(--sf-z-modal);
+}
+
+.sf-modal-header {
+  background: var(--sf-modal-header-bg);
+  padding: 12px 20px;
+  border-radius: var(--sf-modal-radius) var(--sf-modal-radius) 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sf-modal-title {
+  color: white;
+  font-size: var(--sf-text-base);
+  font-weight: var(--sf-font-semibold);
+}
+
+.sf-modal-close {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: white;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--sf-radius-base);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.sf-modal-close:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.sf-modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.sf-modal-footer {
+  padding: 12px 24px;
+  border-top: 1px solid var(--sf-gray-200);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sf-space-2);
+}
+/* ============================================================================
+   SolverForge UI — Data Tables
+   ============================================================================ */
+
+.sf-table-container {
+  overflow-x: auto;
+  border-radius: var(--sf-radius-lg);
+  border: 1px solid var(--sf-gray-200);
+}
+
+.sf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.sf-table thead tr {
+  background: var(--sf-table-header-bg);
+}
+
+.sf-table th {
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: var(--sf-font-semibold);
+  color: var(--sf-gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--sf-gray-200);
+}
+
+.sf-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--sf-gray-100);
+  color: var(--sf-gray-800);
+  vertical-align: middle;
+}
+
+.sf-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.sf-table tbody tr:hover {
+  background: var(--sf-table-row-hover);
+}
+
+.sf-table-mono {
+  font-family: var(--sf-font-mono);
+  font-size: 12px;
+}
+
+.sf-table-center {
+  text-align: center;
+}
+
+.sf-table-name {
+  font-weight: var(--sf-font-semibold);
+  white-space: nowrap;
+}
+
+/* ── Overview table (constraint analysis) ── */
+.sf-ov-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sf-ov-th { padding: 7px 10px; text-align: left; font-family: var(--sf-font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--sf-gray-500); border-bottom: 2px solid var(--sf-gray-200); }
+.sf-ov-row { cursor: pointer; transition: background 0.12s; }
+.sf-ov-row:hover td { background: var(--sf-gray-50); }
+.sf-ov-row-violated td { background: #fef9f9; }
+.sf-ov-row-violated:hover td { background: #fef2f2; }
+.sf-ov-td { padding: 8px 10px; border-bottom: 1px solid var(--sf-gray-100); vertical-align: middle; }
+.sf-ov-td-label { color: var(--sf-gray-800); font-weight: 500; font-family: var(--sf-font-body); }
+.sf-ov-td-num { font-family: var(--sf-font-mono); font-size: 12px; color: var(--sf-gray-600); text-align: right; }
+.sf-ov-td-score { font-family: var(--sf-font-mono); font-size: 12px; text-align: right; white-space: nowrap; }
+.sf-ov-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.sf-ov-dot-hard { background: var(--sf-red-500); }
+.sf-ov-dot-soft { background: var(--sf-amber-400); }
+.sf-ov-dot-ok { background: var(--sf-emerald-400); }
+.sf-ov-type { font-family: var(--sf-font-mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: 700; letter-spacing: .05em; }
+.sf-ov-type-hard { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
+.sf-ov-type-soft { background: #fffbeb; color: #b45309; border: 1px solid #fcd34d; }
+.sf-ov-score-hard { color: #b91c1c; }
+.sf-ov-score-soft { color: #b45309; }
+.sf-ov-score-ok { color: var(--sf-gray-400); }
+/* ============================================================================
+   SolverForge UI — Badges
+   ============================================================================ */
+
+.sf-badge {
+  display: inline-block;
+  padding: var(--sf-badge-padding-y) var(--sf-badge-padding-x);
+  border-radius: var(--sf-badge-radius);
+  font-size: var(--sf-badge-font-size);
+  font-weight: var(--sf-badge-font-weight);
+  white-space: nowrap;
+}
+
+/* Skill badge (emerald) */
+.sf-badge--skill {
+  background: var(--sf-emerald-50);
+  color: var(--sf-emerald-700);
+  border: 1px solid var(--sf-emerald-200);
+}
+
+/* Priority badges */
+.sf-badge--high {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.sf-badge--medium {
+  background: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fde68a;
+}
+
+.sf-badge--low {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+/* Type badges (hard/soft constraint) */
+.sf-badge--hard {
+  font-family: var(--sf-font-mono);
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+.sf-badge--soft {
+  font-family: var(--sf-font-mono);
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fcd34d;
+}
+
+/* Process badge (colored by process) */
+.sf-badge--process {
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid;
+  font-size: 11px;
+  font-weight: var(--sf-font-semibold);
+}
+/* ============================================================================
+   SolverForge UI — Cards & Panels
+   ============================================================================ */
+
+.sf-card {
+  background: var(--sf-color-surface);
+  border: 1px solid var(--sf-gray-200);
+  border-radius: var(--sf-card-radius);
+  padding: var(--sf-card-padding);
+  box-shadow: var(--sf-card-shadow);
+}
+
+/* Summary panel */
+.sf-summary-panel {
+  background: white;
+  border: 1px solid var(--sf-gray-200);
+  border-radius: var(--sf-radius-base);
+  padding: var(--sf-space-4);
+}
+
+.sf-summary-title {
+  font-size: 10px;
+  font-family: var(--sf-font-mono);
+  font-weight: var(--sf-font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sf-gray-400);
+  margin-bottom: var(--sf-space-3);
+}
+
+/* KPI cards */
+.sf-kpi-row {
+  display: flex;
+  gap: var(--sf-space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--sf-space-3);
+}
+
+.sf-kpi-card {
+  background: var(--sf-gray-50);
+  border: 1px solid var(--sf-gray-200);
+  border-radius: var(--sf-radius-base);
+  padding: 8px 16px;
+  min-width: 100px;
+  text-align: center;
+}
+
+.sf-kpi-value {
+  font-size: var(--sf-text-2xl);
+  font-family: var(--sf-font-mono);
+  font-weight: var(--sf-font-bold);
+  color: var(--sf-gray-900);
+  line-height: 1;
+}
+
+.sf-kpi-value.danger { color: var(--sf-red-400); }
+.sf-kpi-value.warn   { color: var(--sf-amber-400); }
+.sf-kpi-value.ok     { color: var(--sf-emerald-400); }
+
+.sf-kpi-label {
+  font-size: 9px;
+  font-family: var(--sf-font-mono);
+  color: var(--sf-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 3px;
+}
+
+/* Chip */
+.sf-chip {
+  background: var(--sf-gray-100);
+  color: var(--sf-gray-700);
+  font-size: 10px;
+  font-family: var(--sf-font-mono);
+  padding: 2px 8px;
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sf-chip-count {
+  background: var(--sf-gray-300);
+  color: var(--sf-gray-800);
+  font-size: 9px;
+  padding: 0 4px;
+  border-radius: 2px;
+  font-weight: var(--sf-font-semibold);
+}
+/* ============================================================================
+   SolverForge UI — Tooltip
+   ============================================================================ */
+
+.sf-tooltip {
+  position: fixed;
+  background: white;
+  border: 1px solid var(--sf-gray-200);
+  border-radius: var(--sf-radius-lg);
+  padding: 10px 14px;
+  font-size: var(--sf-text-xs);
+  font-family: var(--sf-font-mono);
+  color: var(--sf-gray-700);
+  z-index: var(--sf-z-tooltip);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  max-width: 240px;
+  box-shadow: var(--sf-shadow-xl);
+}
+
+.sf-tooltip.visible {
+  opacity: 1;
+}
+
+.sf-tooltip-title {
+  font-size: 11px;
+  font-weight: var(--sf-font-semibold);
+  color: var(--sf-gray-900);
+  margin-bottom: 6px;
+}
+
+.sf-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 2px;
+  line-height: 1.4;
+}
+
+.sf-tooltip-key {
+  color: var(--sf-gray-400);
+  font-size: 10px;
+}
+
+.sf-tooltip-val {
+  color: var(--sf-gray-700);
+  font-size: 10px;
+  font-weight: var(--sf-font-medium);
+  text-align: right;
+}
+/* ============================================================================
+   SolverForge UI — Footer
+   ============================================================================ */
+
+.sf-footer {
+  background: var(--sf-gray-50);
+  border-top: 1px solid var(--sf-gray-200);
+  padding: 10px var(--sf-header-padding-x);
+  display: flex;
+  align-items: center;
+  gap: var(--sf-space-4);
+  font-size: 11px;
+  color: var(--sf-gray-400);
+  flex-shrink: 0;
+}
+
+.sf-footer a {
+  color: var(--sf-gray-500);
+  text-decoration: none;
+}
+
+.sf-footer a:hover {
+  color: var(--sf-emerald-600);
+}
+
+.sf-footer .sf-vr {
+  width: 1px;
+  height: 12px;
+  background: var(--sf-gray-200);
+}
+/* ============================================================================
+   SolverForge UI — Custom Scrollbars
+   ============================================================================ */
+
+.sf-app ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.sf-app ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sf-app ::-webkit-scrollbar-thumb {
+  background: var(--sf-gray-300);
+  border-radius: 4px;
+}
+
+.sf-app ::-webkit-scrollbar-thumb:hover {
+  background: var(--sf-emerald-400);
+}
+/* ============================================================================
+   SolverForge UI — Animations
+   ============================================================================ */
+
+@keyframes sf-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes sf-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes sf-score-flash {
+  0% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+@keyframes sf-dialog-slide-in {
+  from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes sf-breathe {
+  0%, 100% { border-color: var(--sf-gray-300); }
+  50%       { border-color: var(--sf-emerald-500); box-shadow: 0 0 12px rgba(16, 185, 129, 0.25); }
+}
+
+@keyframes sf-slide-in {
+  from { opacity: 0; transform: translateY(4px) scaleY(0.8); }
+  to   { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+
+@keyframes sf-fade-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sf-late-glow {
+  0%, 100% { box-shadow: 0 0 4px rgba(239, 68, 68, 0.3); }
+  50%       { box-shadow: 0 0 12px rgba(239, 68, 68, 0.7); }
+}
+
+/* Toast animations */
+.sf-toast-enter {
+  animation: sf-fade-in 0.2s var(--sf-ease-out);
+}
+
+.sf-toast-exit {
+  animation: sf-fade-in 0.15s var(--sf-ease-in) reverse forwards;
+}
+
+/* API guide */
+.sf-api-guide {
+  max-width: 800px;
+  padding: var(--sf-space-4) 0;
+}
+
+.sf-api-section {
+  background: white;
+  border: 1px solid var(--sf-gray-200);
+  border-radius: var(--sf-radius-base);
+  padding: var(--sf-space-4);
+  margin-bottom: var(--sf-space-3);
+}
+
+.sf-api-section h3 {
+  font-size: var(--sf-text-sm);
+  font-weight: var(--sf-font-semibold);
+  color: var(--sf-emerald-700);
+  margin-bottom: var(--sf-space-2);
+}
+
+.sf-api-code-block {
+  position: relative;
+  background: var(--sf-gray-50);
+  border: 1px solid var(--sf-gray-200);
+  border-radius: var(--sf-radius-base);
+  padding: 10px 40px 10px 12px;
+}
+
+.sf-api-code-block code {
+  font-family: var(--sf-font-mono);
+  font-size: var(--sf-text-xs);
+  color: var(--sf-gray-700);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.sf-copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--sf-gray-200);
+  color: var(--sf-gray-600);
+  border: none;
+  padding: 2px 8px;
+  border-radius: 2px;
+  font-size: 10px;
+  font-family: var(--sf-font-mono);
+  cursor: pointer;
+  transition: var(--sf-transition-colors);
+}
+
+.sf-copy-btn:hover {
+  background: var(--sf-gray-300);
+  color: var(--sf-gray-800);
+}
+
+/* Toast container */
+.sf-toast-container {
+  position: fixed;
+  top: var(--sf-space-4);
+  right: var(--sf-space-4);
+  z-index: var(--sf-z-tooltip);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sf-space-2);
+}
+
+.sf-toast {
+  background: white;
+  border: 1px solid var(--sf-gray-200);
+  border-radius: var(--sf-radius-lg);
+  padding: 12px 16px;
+  box-shadow: var(--sf-shadow-lg);
+  max-width: 400px;
+  font-size: var(--sf-text-sm);
+  display: flex;
+  gap: var(--sf-space-3);
+  align-items: flex-start;
+}
+
+.sf-toast--danger {
+  border-left: 3px solid var(--sf-red-500);
+}
+
+.sf-toast--success {
+  border-left: 3px solid var(--sf-emerald-500);
+}
+
+.sf-toast--warning {
+  border-left: 3px solid var(--sf-amber-500);
+}
+
+.sf-toast-message {
+  flex: 1;
+}
+
+.sf-toast-title {
+  font-weight: var(--sf-font-semibold);
+  margin-bottom: 2px;
+}
+
+.sf-toast-close {
+  background: none;
+  border: none;
+  color: var(--sf-gray-400);
+  cursor: pointer;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.sf-toast-close:hover {
+  color: var(--sf-gray-700);
+}
+/* ============================================================================
+   SolverForge UI — Timeline Rail: Resources
+   Header, resource cards, gauges, stats.
+   ============================================================================ */
+
+/* ── Timeline Header (day columns) ── */
+.sf-timeline-header {
+  background: white;
+  border: 1px solid var(--sf-gray-300);
+  border-radius: var(--sf-radius-base) var(--sf-radius-base) 0 0;
+  display: grid;
+  height: 28px;
+  overflow: hidden;
+  margin-bottom: -1px;
+}
+
+.sf-timeline-label-spacer {
+  border-right: 1px solid var(--sf-gray-300);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--sf-gray-600);
+  font-family: var(--sf-font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.sf-timeline-days {
+  display: grid;
+}
+
+.sf-timeline-day-col {
+  border-right: 1px solid var(--sf-gray-300);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-family: var(--sf-font-mono);
+  font-weight: var(--sf-font-semibold);
+  color: var(--sf-gray-700);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  gap: 6px;
+}
+
+.sf-timeline-day-col:last-child {
+  border-right: none;
+}
+
+/* ── Resource Card ── */
+.sf-resource-card {
+  background: white;
+  border: 1px solid var(--sf-gray-300);
+  border-radius: var(--sf-radius-base);
+  overflow: hidden;
+  transition: box-shadow 0.4s ease;
+  position: relative;
+  box-shadow: var(--sf-shadow-sm);
+}
+
+.sf-resource-card.solving {
+  animation: sf-breathe 2s ease-in-out infinite;
+}
+
+/* ── Resource Header ── */
+.sf-resource-header {
+  display: grid;
+  border-bottom: 1px solid var(--sf-gray-300);
+  background: var(--sf-gray-100);
+}
+
+.sf-resource-identity {
+  padding: 8px 12px;
+  border-right: 1px solid var(--sf-gray-300);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sf-resource-name {
+  font-size: 11px;
+  font-weight: var(--sf-font-semibold);
+  color: var(--sf-gray-900);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+
+.sf-resource-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.sf-resource-type-badge {
+  font-size: 9px;
+  font-family: var(--sf-font-mono);
+  font-weight: var(--sf-font-semibold);
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+/* ── Gauge bars (temp, load, capacity) ── */
+.sf-gauges {
+  padding: 6px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+}
+
+.sf-gauge-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sf-gauge-label {
+  font-size: 9px;
+  font-family: var(--sf-font-mono);
+  color: var(--sf-gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  width: 28px;
+  flex-shrink: 0;
+}
+
+.sf-gauge-track {
+  flex: 1;
+  height: 6px;
+  background: var(--sf-gray-300);
+  border-radius: 3px;
+  overflow: hidden;
+  max-width: 120px;
+}
+
+.sf-gauge-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s var(--sf-ease-out);
+}
+
+.sf-gauge-fill--heat {
+  background: linear-gradient(90deg, #3b82f6 0%, #fbbf24 50%, #f97316 80%, #ef4444 100%);
+}
+
+.sf-gauge-fill--load {
+  background: linear-gradient(90deg, var(--sf-emerald-500) 0%, #fbbf24 70%, var(--sf-red-500) 100%);
+}
+
+.sf-gauge-fill--emerald {
+  background: var(--sf-emerald-500);
+}
+
+.sf-gauge-value {
+  font-size: 10px;
+  font-family: var(--sf-font-mono);
+  font-weight: var(--sf-font-semibold);
+  color: var(--sf-gray-700);
+  min-width: 52px;
+}
+
+/* ── Resource Body (stats) ── */
+.sf-resource-body {
+  display: grid;
+  min-height: 56px;
+}
+
+.sf-resource-stats {
+  padding: 6px 12px;
+  border-right: 1px solid var(--sf-gray-300);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  justify-content: center;
+}
+
+.sf-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sf-stat-label {
+  font-size: 9px;
+  font-family: var(--sf-font-mono);
+  color: var(--sf-gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sf-stat-value {
+  font-size: 11px;
+  font-family: var(--sf-font-mono);
+  font-weight: var(--sf-font-semibold);
+  color: var(--sf-gray-700);
+}
+/* ============================================================================
+   SolverForge UI — Timeline Rail: Blocks
+   Rail container, day grid, task blocks, changeover, heatmap, unassigned.
+   ============================================================================ */
+
+/* ── The Rail (where blocks live) ── */
+.sf-rail-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.sf-rail {
+  position: relative;
+  height: 100%;
+  min-height: 56px;
+  background: var(--sf-gray-50);
+}
+
+/* Day column dividers */
+.sf-day-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  pointer-events: none;
+}
+
+.sf-day-col {
+  border-right: 1px solid var(--sf-gray-200);
+}
+
+.sf-day-col:nth-child(odd) {
+  background: rgba(0, 0, 0, 0.01);
+}
+
+.sf-day-col:last-child {
+  border-right: none;
+}
+
+/* Hour marks */
+.sf-hour-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(0, 0, 0, 0.04);
+  pointer-events: none;
+}
+
+/* ── Work Order / Task Blocks ── */
+.sf-block {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  border-radius: 3px;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: filter 0.2s, transform 0.15s;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2px 5px;
+  overflow: hidden;
+  min-width: 20px;
+  animation: sf-slide-in 0.35s var(--sf-ease-out) both;
+}
+
+.sf-block:hover {
+  filter: brightness(1.25);
+  transform: translateY(-1px) scaleY(1.05);
+  z-index: 10;
+}
+
+.sf-block.moved {
+  animation: sf-block-moved 0.6s ease-out;
+}
+
+@keyframes sf-block-moved {
+  0%   { filter: brightness(2) saturate(2); transform: scaleY(1.15); }
+  100% { filter: brightness(1) saturate(1); transform: scaleY(1); }
+}
+
+.sf-block.late {
+  animation: sf-slide-in 0.35s var(--sf-ease-out) both, sf-late-glow 1.5s ease-in-out infinite;
+}
+
+.sf-block-label {
+  font-size: 9px;
+  font-family: var(--sf-font-mono);
+  font-weight: var(--sf-font-semibold);
+  color: rgba(0, 0, 0, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+}
+
+.sf-block-meta {
+  font-size: 8px;
+  font-family: var(--sf-font-mono);
+  color: rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+/* Changeover / gap region */
+.sf-changeover {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(251, 191, 36, 0.08) 0px,
+    rgba(251, 191, 36, 0.08) 3px,
+    transparent 3px,
+    transparent 9px
+  );
+  border-left: 1px dashed rgba(251, 191, 36, 0.3);
+  border-right: 1px dashed rgba(251, 191, 36, 0.3);
+  pointer-events: none;
+}
+
+/* ── Heatmap strip ── */
+.sf-heatmap {
+  display: grid;
+  height: 10px;
+  border-top: 1px solid var(--sf-gray-300);
+}
+
+.sf-heatmap-label {
+  background: var(--sf-gray-100);
+  border-right: 1px solid var(--sf-gray-300);
+}
+
+.sf-heatmap-track {
+  position: relative;
+  background: var(--sf-gray-100);
+  overflow: hidden;
+}
+
+.sf-heatmap-segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  transition: background 0.5s ease;
+}
+
+/* ── Unassigned row ── */
+.sf-unassigned-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 8px;
+  border-top: 1px solid var(--sf-gray-300);
+  background: var(--sf-gray-50);
+  min-height: 28px;
+}
+
+.sf-unassigned-pill {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--sf-red-400);
+  font-size: 9px;
+  font-family: var(--sf-font-mono);
+  padding: 2px 6px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+/* ============================================================================
+   SolverForge UI — Gantt: Layout
+   Split panes, gutter, container, grid table, grid rows.
+   ============================================================================ */
+
+/* ── Split Layout ── */
+.sf-gantt-split {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.sf-gantt-pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--sf-color-surface);
+  border: 1px solid var(--sf-gray-200);
+}
+
+.sf-gantt-pane-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sf-row-padding-y) var(--sf-row-padding-x);
+  background: var(--sf-gray-50);
+  border-bottom: 1px solid var(--sf-gray-200);
+  min-height: var(--sf-row-height);
+  flex-shrink: 0;
+}
+
+.sf-gantt-pane-header h3 {
+  margin: 0;
+  font-size: var(--sf-text-sm);
+  font-weight: var(--sf-font-semibold);
+  color: var(--sf-gray-700);
+}
+
+.sf-gantt-pane-controls {
+  display: flex;
+  gap: var(--sf-space-1);
+}
+
+.sf-gantt-pane-content {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+.sf-gantt-container {
+  height: 100%;
+  overflow: hidden;
+}
+
+.sf-gantt-container .gantt-container {
+  cursor: grab;
+  overflow: auto;
+  height: 100%;
+}
+
+.sf-gantt-container .gantt-container:active {
+  cursor: grabbing;
+}
+
+/* ── Split.js Gutter ── */
+.sf-gantt-split > .gutter {
+  background: var(--sf-gray-200);
+  position: relative;
+  transition: background var(--sf-duration-base);
+}
+
+.sf-gantt-split > .gutter:hover {
+  background: var(--sf-emerald-400);
+}
+
+.sf-gantt-split > .gutter.gutter-horizontal {
+  cursor: ns-resize;
+  height: 8px;
+  margin: -1px 0;
+  z-index: 10;
+}
+
+.sf-gantt-split > .gutter.gutter-horizontal::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 30px;
+  height: 3px;
+  background: currentColor;
+  opacity: 0.3;
+  border-radius: var(--sf-radius-sm);
+}
+
+/* ── Maximized Pane ── */
+.sf-gantt-pane.maximized {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 50;
+  height: 100% !important;
+  width: 100% !important;
+}
+
+/* ── Grid Table ── */
+.sf-gantt-grid {
+  height: 100%;
+  overflow: auto;
+  background: linear-gradient(180deg, var(--sf-gray-50) 0%, var(--sf-gray-100) 100%);
+  position: relative;
+}
+
+.sf-gantt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--sf-text-sm);
+}
+
+.sf-gantt-table th {
+  position: sticky;
+  top: 0;
+  background: var(--sf-gray-50);
+  color: var(--sf-gray-700);
+  font-size: var(--sf-text-sm);
+  font-weight: var(--sf-font-semibold);
+  text-align: left;
+  padding: var(--sf-row-padding-y) var(--sf-row-padding-x);
+  border-bottom: 2px solid var(--sf-gray-200);
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.sf-gantt-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--sf-duration-base), color var(--sf-duration-base);
+}
+
+.sf-gantt-table th.sortable:hover {
+  background: var(--sf-gray-100);
+  color: var(--sf-emerald-700);
+}
+
+.sf-gantt-table th.sortable.active {
+  color: var(--sf-emerald-700);
+  font-weight: var(--sf-font-bold);
+}
+
+.sf-gantt-table th .sort-icon {
+  margin-left: 4px;
+  font-size: 10px;
+  opacity: 0.45;
+  transition: opacity var(--sf-duration-base);
+}
+
+.sf-gantt-table th.sortable:hover .sort-icon,
+.sf-gantt-table th.sortable.active .sort-icon {
+  opacity: 1;
+}
+
+.sf-gantt-table td {
+  padding: var(--sf-row-padding-y) var(--sf-row-padding-x);
+  border-bottom: 1px solid var(--sf-gray-200);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--sf-text-sm);
+  color: var(--sf-gray-700);
+}
+
+/* ── Grid Rows ── */
+.sf-gantt-row {
+  transition: background var(--sf-duration-fast), transform var(--sf-duration-fast),
+              box-shadow var(--sf-duration-fast);
+  cursor: pointer;
+  position: relative;
+  border-left: 4px solid transparent;
+}
+
+.sf-gantt-row:hover {
+  background: var(--sf-gray-50);
+  transform: translateX(2px);
+  box-shadow: var(--sf-shadow-sm);
+}
+
+.sf-gantt-row.selected {
+  background: var(--sf-emerald-50);
+  box-shadow: var(--sf-shadow-base);
+}
+
+/* Project color accents on left border */
+.sf-gantt-row.sf-project-0 { border-left-color: var(--sf-project-0); }
+.sf-gantt-row.sf-project-1 { border-left-color: var(--sf-project-1); }
+.sf-gantt-row.sf-project-2 { border-left-color: var(--sf-project-2); }
+.sf-gantt-row.sf-project-3 { border-left-color: var(--sf-project-3); }
+.sf-gantt-row.sf-project-4 { border-left-color: var(--sf-project-4); }
+.sf-gantt-row.sf-project-5 { border-left-color: var(--sf-project-5); }
+.sf-gantt-row.sf-project-6 { border-left-color: var(--sf-project-6); }
+.sf-gantt-row.sf-project-7 { border-left-color: var(--sf-project-7); }
+
+/* Task name sweep underline */
+.sf-gantt-table .sf-task-name {
+  font-weight: var(--sf-font-medium);
+  color: var(--sf-gray-900);
+  max-width: 300px;
+  position: relative;
+}
+
+.sf-gantt-table .sf-task-name::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  height: 2px;
+  background: var(--sf-emerald-500);
+  transition: width var(--sf-duration-slow) var(--sf-ease-out);
+}
+
+.sf-gantt-row:hover .sf-task-name::before {
+  width: 100%;
+}
+
+/* ── View Mode Selector ── */
+.sf-gantt-view-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--sf-space-2);
+}
+
+.sf-gantt-view-select {
+  font-family: var(--sf-font-body);
+  font-size: var(--sf-text-xs);
+  padding: 3px 8px;
+  border: 1px solid var(--sf-gray-300);
+  border-radius: var(--sf-radius-base);
+  background: var(--sf-color-surface);
+  color: var(--sf-gray-700);
+  cursor: pointer;
+}
+
+.sf-gantt-view-select:focus {
+  outline: none;
+  border-color: var(--sf-emerald-500);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+/* ============================================================================
+   SolverForge UI — Gantt: Bars
+   Frappe Gantt bar overrides, drag UX, pinned, badges, popup.
+   ============================================================================ */
+
+/* ── Frappe Gantt Bar Overrides ── */
+
+/* Project colors on bars */
+.gantt .bar-wrapper.project-color-0 .bar { fill: var(--sf-project-0); }
+.gantt .bar-wrapper.project-color-1 .bar { fill: var(--sf-project-1); }
+.gantt .bar-wrapper.project-color-2 .bar { fill: var(--sf-project-2); }
+.gantt .bar-wrapper.project-color-3 .bar { fill: var(--sf-project-3); }
+.gantt .bar-wrapper.project-color-4 .bar { fill: var(--sf-project-4); }
+.gantt .bar-wrapper.project-color-5 .bar { fill: var(--sf-project-5); }
+.gantt .bar-wrapper.project-color-6 .bar { fill: var(--sf-project-6); }
+.gantt .bar-wrapper.project-color-7 .bar { fill: var(--sf-project-7); }
+
+/* Priority classes */
+.gantt .bar-wrapper.priority-1 .bar { opacity: 1; }
+.gantt .bar-wrapper.priority-2 .bar { opacity: 0.85; }
+.gantt .bar-wrapper.priority-3 .bar { opacity: 0.7; }
+
+/* Cross-project dependency arrows */
+.gantt .arrow path.cross-project-arrow {
+  stroke: var(--sf-emerald-500);
+  stroke-dasharray: 5 3;
+  stroke-width: 1.4;
+}
+
+/* Bar hover glow */
+.gantt .bar-wrapper:hover .bar {
+  filter: brightness(1.12) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.22));
+}
+
+/* Grab cursor on bars */
+.gantt .bar-wrapper .bar,
+.gantt .bar-wrapper .bar-label,
+.gantt .bar-wrapper .bar-progress {
+  cursor: grab;
+}
+
+/* Resize handles */
+.gantt .bar-wrapper .handle {
+  cursor: ew-resize;
+  fill: rgba(255, 255, 255, 0.3);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.gantt .bar-wrapper:hover .handle {
+  opacity: 1;
+}
+
+/* Bars at rest — subtle snap transition */
+.gantt .bar-wrapper:not(.dragging) .bar,
+.gantt .bar-wrapper:not(.dragging) .bar-progress {
+  transition: x 0.12s var(--sf-ease-out),
+              width 0.12s var(--sf-ease-out);
+}
+
+/* Dragging state */
+.gantt .bar-wrapper.dragging {
+  opacity: 0.88;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35));
+  z-index: 100;
+  transition: none !important;
+}
+
+.gantt .bar-wrapper.dragging .bar {
+  stroke-width: 2;
+  stroke: rgba(255, 255, 255, 0.7);
+}
+
+body.sf-gantt-dragging {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+body.sf-gantt-dragging * {
+  cursor: grabbing !important;
+}
+
+/* ── Drag Tooltip ── */
+.sf-gantt-drag-tooltip {
+  position: fixed;
+  z-index: 9999;
+  background: rgba(15, 23, 42, 0.92);
+  color: #f1f5f9;
+  font-size: 11.5px;
+  font-family: var(--sf-font-mono);
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 6px;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  letter-spacing: 0.02em;
+  display: none;
+}
+
+/* ── Pinned Task Indicators ── */
+.gantt .bar-wrapper.pinned .bar {
+  stroke: var(--sf-amber-500);
+  stroke-width: 2;
+  stroke-dasharray: 6 3;
+}
+
+.sf-gantt-pin-icon {
+  color: var(--sf-amber-500);
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+/* ── Highlighted task (pulse from grid click) ── */
+.gantt .bar-wrapper.highlighted .bar {
+  animation: sf-gantt-pulse 0.5s ease-in-out 3;
+}
+
+@keyframes sf-gantt-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
+/* ── Priority Badges (grid table) ── */
+.sf-priority-badge {
+  display: inline-block;
+  padding: var(--sf-badge-padding-y) var(--sf-badge-padding-x);
+  border-radius: var(--sf-badge-radius);
+  font-size: var(--sf-badge-font-size);
+  font-weight: var(--sf-badge-font-weight);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sf-priority-badge.priority-1 {
+  background: var(--sf-red-100);
+  color: var(--sf-red-600);
+}
+
+.sf-priority-badge.priority-2 {
+  background: var(--sf-amber-100);
+  color: var(--sf-amber-600);
+}
+
+.sf-priority-badge.priority-3 {
+  background: var(--sf-gray-100);
+  color: var(--sf-gray-500);
+}
+
+/* ── Project Badge (grid table) ── */
+.sf-project-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--sf-badge-padding-y) var(--sf-badge-padding-x);
+  padding-left: 20px;
+  border-radius: var(--sf-badge-radius);
+  font-size: var(--sf-badge-font-size);
+  font-weight: var(--sf-badge-font-weight);
+  position: relative;
+  background: var(--sf-gray-100);
+}
+
+.sf-project-badge::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.sf-project-badge.sf-project-0 { color: var(--sf-project-0); background: var(--sf-project-0-light); }
+.sf-project-badge.sf-project-1 { color: var(--sf-project-1); background: var(--sf-project-1-light); }
+.sf-project-badge.sf-project-2 { color: var(--sf-project-2); background: var(--sf-project-2-light); }
+.sf-project-badge.sf-project-3 { color: var(--sf-project-3); background: var(--sf-project-3-light); }
+.sf-project-badge.sf-project-4 { color: var(--sf-project-4); background: var(--sf-project-4-light); }
+.sf-project-badge.sf-project-5 { color: var(--sf-project-5); background: var(--sf-project-5-light); }
+.sf-project-badge.sf-project-6 { color: var(--sf-project-6); background: var(--sf-project-6-light); }
+.sf-project-badge.sf-project-7 { color: var(--sf-project-7); background: var(--sf-project-7-light); }
+
+/* ── Gantt Popup ── */
+.sf-gantt-popup {
+  padding: 8px 12px;
+  font-family: var(--sf-font-body);
+  font-size: var(--sf-text-sm);
+}
+
+.sf-gantt-popup h4 {
+  margin: 0 0 6px;
+  font-size: var(--sf-text-sm);
+  font-weight: var(--sf-font-semibold);
+  color: var(--sf-gray-900);
+}
+
+.sf-gantt-popup p {
+  margin: 2px 0;
+  font-size: var(--sf-text-xs);
+  color: var(--sf-gray-600);
+  font-family: var(--sf-font-mono);
+}
+
+.sf-gantt-popup-pinned {
+  color: var(--sf-amber-600);
+  font-weight: var(--sf-font-semibold);
+  font-size: var(--sf-text-xs);
+  margin-top: 4px;
+}

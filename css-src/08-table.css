@@ -1,0 +1,82 @@
+/* ============================================================================
+   SolverForge UI — Data Tables
+   ============================================================================ */
+
+.sf-table-container {
+  overflow-x: auto;
+  border-radius: var(--sf-radius-lg);
+  border: 1px solid var(--sf-gray-200);
+}
+
+.sf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.sf-table thead tr {
+  background: var(--sf-table-header-bg);
+}
+
+.sf-table th {
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: var(--sf-font-semibold);
+  color: var(--sf-gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--sf-gray-200);
+}
+
+.sf-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--sf-gray-100);
+  color: var(--sf-gray-800);
+  vertical-align: middle;
+}
+
+.sf-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.sf-table tbody tr:hover {
+  background: var(--sf-table-row-hover);
+}
+
+.sf-table-mono {
+  font-family: var(--sf-font-mono);
+  font-size: 12px;
+}
+
+.sf-table-center {
+  text-align: center;
+}
+
+.sf-table-name {
+  font-weight: var(--sf-font-semibold);
+  white-space: nowrap;
+}
+
+/* ── Overview table (constraint analysis) ── */
+.sf-ov-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sf-ov-th { padding: 7px 10px; text-align: left; font-family: var(--sf-font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--sf-gray-500); border-bottom: 2px solid var(--sf-gray-200); }
+.sf-ov-row { cursor: pointer; transition: background 0.12s; }
+.sf-ov-row:hover td { background: var(--sf-gray-50); }
+.sf-ov-row-violated td { background: #fef9f9; }
+.sf-ov-row-violated:hover td { background: #fef2f2; }
+.sf-ov-td { padding: 8px 10px; border-bottom: 1px solid var(--sf-gray-100); vertical-align: middle; }
+.sf-ov-td-label { color: var(--sf-gray-800); font-weight: 500; font-family: var(--sf-font-body); }
+.sf-ov-td-num { font-family: var(--sf-font-mono); font-size: 12px; color: var(--sf-gray-600); text-align: right; }
+.sf-ov-td-score { font-family: var(--sf-font-mono); font-size: 12px; text-align: right; white-space: nowrap; }
+.sf-ov-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.sf-ov-dot-hard { background: var(--sf-red-500); }
+.sf-ov-dot-soft { background: var(--sf-amber-400); }
+.sf-ov-dot-ok { background: var(--sf-emerald-400); }
+.sf-ov-type { font-family: var(--sf-font-mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: 700; letter-spacing: .05em; }
+.sf-ov-type-hard { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
+.sf-ov-type-soft { background: #fffbeb; color: #b45309; border: 1px solid #fcd34d; }
+.sf-ov-score-hard { color: #b91c1c; }
+.sf-ov-score-soft { color: #b45309; }
+.sf-ov-score-ok { color: var(--sf-gray-400); }

@@ -1,0 +1,134 @@
+/* ============================================================================
+   SolverForge UI — Buttons
+   Unified system: variants, sizes, shapes, states.
+   ============================================================================ */
+
+.sf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border: none;
+  border-radius: var(--sf-radius-base);
+  font-family: var(--sf-font-body);
+  font-size: var(--sf-text-sm);
+  font-weight: var(--sf-font-semibold);
+  cursor: pointer;
+  transition: var(--sf-transition-all);
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.sf-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Variants ── */
+
+.sf-btn--primary {
+  background: var(--sf-emerald-700);
+  color: white;
+}
+
+.sf-btn--primary:hover {
+  background: var(--sf-emerald-800);
+}
+
+.sf-btn--success {
+  background: white;
+  color: var(--sf-emerald-700);
+}
+
+.sf-btn--success:hover {
+  background: var(--sf-emerald-50);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.sf-btn--danger {
+  background: var(--sf-red-600);
+  color: white;
+}
+
+.sf-btn--danger:hover {
+  background: var(--sf-red-700);
+}
+
+.sf-btn--default {
+  background: var(--sf-gray-100);
+  color: var(--sf-gray-700);
+  border: 1px solid var(--sf-gray-300);
+}
+
+.sf-btn--default:hover {
+  background: var(--sf-gray-200);
+}
+
+.sf-btn--ghost {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.sf-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ── Outline Modifier ── */
+
+.sf-btn--outline {
+  background: transparent;
+}
+
+.sf-btn--outline.sf-btn--primary {
+  color: var(--sf-emerald-700);
+  border: 1px solid var(--sf-emerald-700);
+}
+
+.sf-btn--outline.sf-btn--primary:hover {
+  background: var(--sf-emerald-50);
+}
+
+.sf-btn--outline.sf-btn--danger {
+  color: var(--sf-red-600);
+  border: 1px solid var(--sf-red-600);
+  background: transparent;
+}
+
+.sf-btn--outline.sf-btn--danger:hover {
+  background: var(--sf-red-50);
+}
+
+/* ── Sizes ── */
+
+.sf-btn--sm {
+  padding: 3px 10px;
+  font-size: var(--sf-text-xs);
+  gap: 4px;
+}
+
+.sf-btn--lg {
+  padding: 10px 24px;
+  font-size: var(--sf-text-base);
+  gap: 8px;
+}
+
+/* ── Shapes ── */
+
+.sf-btn--pill {
+  border-radius: var(--sf-radius-full);
+}
+
+.sf-btn--circle {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: var(--sf-radius-base);
+}
+
+.sf-btn--icon {
+  padding: 4px 8px;
+}
