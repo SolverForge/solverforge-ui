@@ -23,6 +23,16 @@ let app = api::router(state)
 
 That's it. Every asset is compiled into the binary via `include_dir!`.
 
+## Screenshots
+
+**Planner123** — Gantt chart with dependency arrows, project-colored bars, and constraint scoring:
+
+![Planner123 Gantt](screenshots/planner123-gantt.png)
+
+**Furnace Scheduler** — Timeline rail with resource cards, temperature/load gauges, and positioned job blocks:
+
+![Furnace Scheduler](screenshots/furnace-scheduler.png)
+
 ## Philosophy
 
 Every backend element has a corresponding UI element. The library grows
