@@ -1,9 +1,9 @@
 use axum::{
-    Router,
     extract::Path,
-    http::{StatusCode, header},
+    http::{header, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
+    Router,
 };
 use include_dir::{include_dir, Dir};
 
@@ -27,10 +27,7 @@ async fn serve_asset(Path(path): Path<String>) -> Response {
 
     (
         StatusCode::OK,
-        [
-            (header::CONTENT_TYPE, mime),
-            (header::CACHE_CONTROL, cache),
-        ],
+        [(header::CONTENT_TYPE, mime), (header::CACHE_CONTROL, cache)],
         file.contents(),
     )
         .into_response()
@@ -56,7 +53,5 @@ fn mime_from_path(path: &str) -> &'static str {
 }
 
 fn is_immutable(path: &str) -> bool {
-    path.starts_with("fonts/")
-        || path.starts_with("vendor/")
-        || path.starts_with("img/")
+    path.starts_with("fonts/") || path.starts_with("vendor/") || path.starts_with("img/")
 }
