@@ -427,6 +427,21 @@ make
 cargo build
 ```
 
+## Acknowledgments
+
+solverforge-ui builds on these excellent open-source projects:
+
+| Project | Use | License | Link |
+|---------|-----|---------|------|
+| [Font Awesome Free](https://fontawesome.com) | Icons (Solid subset) | CC BY 4.0 (icons), SIL OFL (fonts), MIT (code) | [github](https://github.com/FortAwesome/Font-Awesome) |
+| [Frappe Gantt](https://frappe.io/gantt) | Interactive Gantt chart | MIT | [github](https://github.com/frappe/gantt) |
+| [Split.js](https://split.js.org) | Resizable split panes | MIT | [github](https://github.com/nathancahill/split) |
+| [Leaflet](https://leafletjs.com) | Interactive maps (optional module) | BSD-2-Clause | [github](https://github.com/Leaflet/Leaflet) |
+| [Space Grotesk](https://fonts.google.com/specimen/Space+Grotesk) | Body typeface | SIL Open Font License 1.1 | [github](https://github.com/floriankarsten/space-grotesk) |
+| [JetBrains Mono](https://www.jetbrains.com/lp/mono/) | Monospace typeface | SIL Open Font License 1.1 | [github](https://github.com/JetBrains/JetBrainsMono) |
+| [Axum](https://github.com/tokio-rs/axum) | Rust web framework | MIT | [github](https://github.com/tokio-rs/axum) |
+| [include_dir](https://github.com/Michael-F-Bryan/include_dir) | Compile-time file embedding | MIT | [github](https://github.com/Michael-F-Bryan/include_dir) |
+
 ## License
 
 Apache-2.0
