@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev, release/*, feature/*]
+  pull_request:
+    branches: [main, dev, release/*]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Check
+    runs-on: rust
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify assets are up to date
+        run: |
+          make clean
+          make assets
+          git diff --exit-code static/sf/sf.css static/sf/sf.js
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Build
+        run: cargo build
+
+      - name: Run tests
+        run: cargo test
