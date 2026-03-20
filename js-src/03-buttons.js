@@ -32,7 +32,7 @@
       btn.appendChild(icon);
     }
 
-    if (config.text && !config.circle) {
+    if (config.text && !config.circle && !config.iconOnly) {
       btn.appendChild(document.createTextNode(config.text));
     }
 
@@ -46,6 +46,8 @@
 
     if (config.ariaLabel) {
       btn.setAttribute('aria-label', config.ariaLabel);
+    } else if (config.iconOnly && config.text) {
+      btn.setAttribute('aria-label', config.text);
     } else if (config.icon && !config.text) {
       btn.setAttribute('aria-label', config.icon.replace(/fa-/, '').replace(/-/g, ' '));
     }

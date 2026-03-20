@@ -312,6 +312,7 @@ var header = SF.rail.createHeader({
 var card = SF.rail.createCard({
   id: 'furnace-1', name: 'FORNO 1', labelWidth: 200,
   type: 'CAMERA', typeStyle: { bg: 'rgba(59,130,246,0.15)', color: '#1d4ed8' },
+  badges: ['TEMPRA', { label: 'HOT', style: { bg: 'rgba(239,68,68,0.12)', color: '#b91c1c' } }],
   columns: 5,
   gauges: [
     { label: 'Temp', pct: 85, style: 'heat', text: '850/1000°C' },
