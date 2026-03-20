@@ -704,6 +704,34 @@ const SF = (function () {
     return createHttpBackend(config);
   };
 
+  function resolveJobId(raw) {
+    if (raw == null) return '';
+    if (typeof raw === 'string' || typeof raw === 'number') return String(raw).trim();
+    if (typeof raw !== 'object') return '';
+
+    if (raw.id != null) return String(raw.id).trim();
+    if (raw.jobId != null) return String(raw.jobId).trim();
+    if (raw.job_id != null) return String(raw.job_id).trim();
+    if (raw.scheduleId != null) return String(raw.scheduleId).trim();
+    if (raw.schedule_id != null) return String(raw.schedule_id).trim();
+
+    if (raw.data && typeof raw.data === 'object' && raw.data.id != null) {
+      return String(raw.data.id).trim();
+    }
+    return '';
+  }
+
+  function resolveEventJobId(payload) {
+    if (!payload || typeof payload !== 'object') return '';
+    if (payload.jobId != null) return String(payload.jobId).trim();
+    if (payload.job_id != null) return String(payload.job_id).trim();
+    if (payload.scheduleId != null) return String(payload.scheduleId).trim();
+    if (payload.schedule_id != null) return String(payload.schedule_id).trim();
+    if (payload.id != null) return String(payload.id).trim();
+    if (payload.data && typeof payload.data === 'object' && payload.data.jobId != null) return String(payload.data.jobId).trim();
+    return '';
+  }
+
   /* ── HTTP backend (Axum, Rails, anything) ── */
 
   function createHttpBackend(config) {
@@ -729,7 +757,7 @@ const SF = (function () {
 
     return {
       createSchedule: function (data) {
-        return request('POST', schedulesPath, data);
+        return request('POST', schedulesPath, data).then(resolveJobId);
       },
       getSchedule: function (id) {
         return request('GET', schedulesPath + '/' + id);
@@ -785,9 +813,12 @@ const SF = (function () {
         return Promise.resolve([]);
       },
       streamEvents: function (id, onMessage) {
+        var targetId = String(id);
         var unlisten = null;
         listen(eventName, function (event) {
-          onMessage(event.payload);
+          var payload = event && event.payload ? event.payload : {};
+          if (resolveEventJobId(payload) !== targetId) return;
+          onMessage(payload);
         }).then(function (fn) { unlisten = fn; });
         return function close() { if (unlisten) unlisten(); };
       },
@@ -822,8 +853,13 @@ const SF = (function () {
       }
 
       backend.createSchedule(data).then(function (id) {
-        jobId = typeof id === 'string' ? id.trim() : id;
+        if (typeof id !== 'string' || !id.trim()) {
+          throw new Error('Invalid solver backend createSchedule response');
+        }
+        jobId = id;
         closeStream = backend.streamEvents(jobId, function (msg) {
+          if (!isEventForCurrentJob(msg, jobId)) return;
+
           // Solver finished
           if (msg.solverStatus === 'NOT_SOLVING') {
             backend.getSchedule(jobId).then(function (final) {
@@ -883,6 +919,13 @@ const SF = (function () {
     api.getJobId = function () { return jobId; };
 
     return api;
+
+    function isEventForCurrentJob(msg, expectedId) {
+      if (!msg || typeof msg !== 'object') return false;
+      var candidate = msg.jobId || msg.job_id || msg.scheduleId || msg.schedule_id || msg.id || (msg.data && msg.data.id);
+      if (candidate == null) return true;
+      return String(candidate) === String(expectedId);
+    }
   };
 
 })(SF);

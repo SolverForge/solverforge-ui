@@ -25,8 +25,13 @@
       }
 
       backend.createSchedule(data).then(function (id) {
-        jobId = typeof id === 'string' ? id.trim() : id;
+        if (typeof id !== 'string' || !id.trim()) {
+          throw new Error('Invalid solver backend createSchedule response');
+        }
+        jobId = id;
         closeStream = backend.streamEvents(jobId, function (msg) {
+          if (!isEventForCurrentJob(msg, jobId)) return;
+
           // Solver finished
           if (msg.solverStatus === 'NOT_SOLVING') {
             backend.getSchedule(jobId).then(function (final) {
@@ -86,6 +91,13 @@
     api.getJobId = function () { return jobId; };
 
     return api;
+
+    function isEventForCurrentJob(msg, expectedId) {
+      if (!msg || typeof msg !== 'object') return false;
+      var candidate = msg.jobId || msg.job_id || msg.scheduleId || msg.schedule_id || msg.id || (msg.data && msg.data.id);
+      if (candidate == null) return true;
+      return String(candidate) === String(expectedId);
+    }
   };
 
 })(SF);
