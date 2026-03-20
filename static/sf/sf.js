@@ -18,6 +18,10 @@ const SF = (function () {
       .replace(/"/g, '&quot;');
   };
 
+  sf.assert = function (cond, message) {
+    if (!cond) throw new Error('[SolverForge] ' + message);
+  };
+
   sf.el = function (tag, attrs) {
     var children = Array.prototype.slice.call(arguments, 2);
     var el = document.createElement(tag);
@@ -165,6 +169,8 @@ const SF = (function () {
   'use strict';
 
   sf.createButton = function (config) {
+    sf.assert(config, 'createButton(config) requires a configuration object');
+
     var classes = ['sf-btn'];
 
     if (config.variant) classes.push('sf-btn--' + config.variant);
@@ -181,6 +187,8 @@ const SF = (function () {
     });
 
     if (config.disabled) btn.disabled = true;
+
+    sf.assert(!config.onClick || typeof config.onClick === 'function', 'createButton(onClick) must be a function');
 
     if (config.icon) {
       var icon = sf.el('i', { className: 'fa-solid ' + config.icon });
@@ -219,6 +227,8 @@ const SF = (function () {
   'use strict';
 
   sf.createHeader = function (config) {
+    sf.assert(config, 'createHeader(config) requires a configuration object');
+
     var header = sf.el('header', { className: 'sf-header' });
 
     // Logo
@@ -243,8 +253,11 @@ const SF = (function () {
 
     // Nav tabs
     if (config.tabs && config.tabs.length > 0) {
+      sf.assert(Array.isArray(config.tabs), 'createHeader(config.tabs) expects an array');
       var nav = sf.el('nav', { className: 'sf-header-nav' });
       config.tabs.forEach(function (tab) {
+        sf.assert(tab && tab.id, 'createHeader tab entries require an id');
+        sf.assert(typeof tab.label === 'string', 'createHeader tab entries require a label');
         var btn = sf.el('button', {
           className: 'sf-nav-btn' + (tab.active ? ' active' : ''),
           dataset: { tab: tab.id },
@@ -265,6 +278,12 @@ const SF = (function () {
 
     // Action buttons
     if (config.actions) {
+      sf.assert(typeof config.actions === 'object', 'createHeader(config.actions) expects an object');
+      sf.assert(!config.actions.onSolve || typeof config.actions.onSolve === 'function', 'createHeader(config.actions.onSolve) must be a function');
+      sf.assert(!config.actions.onStop || typeof config.actions.onStop === 'function', 'createHeader(config.actions.onStop) must be a function');
+      sf.assert(!config.actions.onAnalyze || typeof config.actions.onAnalyze === 'function', 'createHeader(config.actions.onAnalyze) must be a function');
+      sf.assert(!config.onTabChange || typeof config.onTabChange === 'function', 'createHeader(config.onTabChange) must be a function');
+
       var actions = sf.el('div', { className: 'sf-header-actions' });
 
       // Spinner
@@ -455,6 +474,9 @@ const SF = (function () {
   'use strict';
 
   sf.createModal = function (config) {
+    sf.assert(config, 'createModal(config) requires a configuration object');
+    sf.assert(!config.footer || Array.isArray(config.footer), 'createModal(config.footer) must be an array');
+
     var overlay = sf.el('div', { className: 'sf-modal-overlay' });
     var dialog = sf.el('div', { className: 'sf-modal' });
 
@@ -550,6 +572,9 @@ const SF = (function () {
   };
 
   sf.createTabs = function (config) {
+    sf.assert(config, 'createTabs(config) requires a configuration object');
+    sf.assert(Array.isArray(config.tabs), 'createTabs(config.tabs) must be an array');
+
     var container = sf.el('div', { className: 'sf-tabs-container' });
 
     config.tabs.forEach(function (tab) {
@@ -576,6 +601,10 @@ const SF = (function () {
   'use strict';
 
   sf.createTable = function (config) {
+    sf.assert(config, 'createTable(config) requires a configuration object');
+    sf.assert(!config.columns || Array.isArray(config.columns), 'createTable(config.columns) must be an array');
+    sf.assert(!config.rows || Array.isArray(config.rows), 'createTable(config.rows) must be an array');
+
     var wrapper = sf.el('div', { className: 'sf-table-container' });
     var table = sf.el('table', { className: 'sf-table' });
 
@@ -643,6 +672,8 @@ const SF = (function () {
   }
 
   sf.showToast = function (config) {
+    sf.assert(config, 'showToast(config) requires a configuration object');
+
     ensureContainer();
 
     var variant = config.variant || 'danger';
@@ -698,7 +729,9 @@ const SF = (function () {
   'use strict';
 
   sf.createBackend = function (config) {
+    config = config || {};
     var type = config.type || 'axum';
+    sf.assert(type === 'axum' || type === 'fetch' || type === 'tauri', 'createBackend(type) must be axum, fetch, or tauri');
     if (type === 'tauri') return createTauriBackend(config);
     return createHttpBackend(config);
   };
@@ -759,6 +792,10 @@ const SF = (function () {
   /* ── Tauri IPC backend ── */
 
   function createTauriBackend(config) {
+    sf.assert(typeof config === 'object', 'createBackend({}) is required for Tauri adapter');
+    sf.assert(typeof config.invoke === 'function', 'Tauri backend requires config.invoke');
+    sf.assert(typeof config.listen === 'function', 'Tauri backend requires config.listen');
+
     var invoke = config.invoke;
     var listen = config.listen;
     var commands = config.commands || {};
@@ -803,6 +840,16 @@ const SF = (function () {
   'use strict';
 
   sf.createSolver = function (config) {
+    sf.assert(config, 'createSolver(config) requires a configuration object');
+    sf.assert(config.backend, 'createSolver(config.backend) is required');
+    sf.assert(config.backend.createSchedule && typeof config.backend.createSchedule === 'function', 'createSolver(config.backend.createSchedule) must be a function');
+    sf.assert(config.backend.streamEvents && typeof config.backend.streamEvents === 'function', 'createSolver(config.backend.streamEvents) must be a function');
+    sf.assert(config.backend.getSchedule && typeof config.backend.getSchedule === 'function', 'createSolver(config.backend.getSchedule) must be a function');
+    sf.assert(!config.onUpdate || typeof config.onUpdate === 'function', 'createSolver(config.onUpdate) must be a function');
+    sf.assert(!config.onComplete || typeof config.onComplete === 'function', 'createSolver(config.onComplete) must be a function');
+    sf.assert(!config.onAnalysis || typeof config.onAnalysis === 'function', 'createSolver(config.onAnalysis) must be a function');
+    sf.assert(!config.onError || typeof config.onError === 'function', 'createSolver(config.onError) must be a function');
+
     var backend = config.backend;
     var statusBar = config.statusBar;
     var closeStream = null;
@@ -894,8 +941,11 @@ const SF = (function () {
   'use strict';
 
   sf.createApiGuide = function (config) {
+    sf.assert(config, 'createApiGuide(config) requires a configuration object');
+    sf.assert(Array.isArray(config.endpoints), 'createApiGuide(config.endpoints) must be an array');
+
     var guide = sf.el('div', { className: 'sf-api-guide' });
-    var endpoints = config.endpoints || [];
+    var endpoints = config.endpoints;
 
     endpoints.forEach(function (ep) {
       var section = sf.el('div', { className: 'sf-api-section' });
@@ -927,6 +977,8 @@ const SF = (function () {
   };
 
   sf.createFooter = function (config) {
+    sf.assert(config, 'createFooter(config) requires a configuration object');
+
     var footer = sf.el('footer', { className: 'sf-footer' });
     if (config.links) {
       config.links.forEach(function (link, i) {
@@ -952,6 +1004,9 @@ const SF = (function () {
   sf.rail = {};
 
   sf.rail.createHeader = function (config) {
+    sf.assert(config, 'createHeader(config) requires a configuration object');
+    sf.assert(!config.columns || Array.isArray(config.columns), 'createHeader(config.columns) expects an array');
+
     var labelWidth = config.labelWidth || 200;
     var columns = config.columns || [];
 
@@ -975,6 +1030,8 @@ const SF = (function () {
   };
 
   sf.rail.createCard = function (config) {
+    sf.assert(config, 'createCard(config) requires a configuration object');
+
     var labelWidth = config.labelWidth || 200;
     var card = sf.el('div', { className: 'sf-resource-card' });
 
@@ -1079,6 +1136,10 @@ const SF = (function () {
   };
 
   sf.rail.addBlock = function (rail, config) {
+    sf.assert(rail, 'addBlock(rail) requires a rail element');
+    sf.assert(config && config.horizon != null, 'addBlock(config.horizon) is required');
+    sf.assert(config.start != null && config.end != null, 'addBlock(config.start/config.end) are required');
+
     var horizon = config.horizon || 1;
     var startPct = (config.start / horizon) * 100;
     var widthPct = ((config.end - config.start) / horizon) * 100;
@@ -1118,6 +1179,10 @@ const SF = (function () {
   };
 
   sf.rail.addChangeover = function (rail, config) {
+    sf.assert(rail, 'addChangeover(rail) requires a rail element');
+    sf.assert(config && config.horizon != null, 'addChangeover(config.horizon) is required');
+    sf.assert(config.start != null && config.end != null, 'addChangeover(config.start/config.end) are required');
+
     var horizon = config.horizon || 1;
     var startPct = (config.start / horizon) * 100;
     var widthPct = ((config.end - config.start) / horizon) * 100;
@@ -1141,6 +1206,8 @@ const SF = (function () {
   sf.gantt = {};
 
   sf.gantt.create = function (config) {
+    sf.assert(config, 'gantt.create(config) requires a configuration object');
+
     var chartPaneId = config.chartPane || 'sf-gantt-chart-pane';
     var gridPaneId = config.gridPane || 'sf-gantt-grid-pane';
     var chartContainerId = config.chartContainer || 'sf-gantt-container';
@@ -1209,12 +1276,15 @@ const SF = (function () {
     var ctrl = { el: wrapper };
 
     ctrl.mount = function (parent) {
+      sf.assert(parent, 'gantt.mount(parent) requires a mount target');
       var target = typeof parent === 'string' ? document.getElementById(parent) : parent;
+      sf.assert(target, 'gantt.mount(parent) target not found: ' + parent);
       target.appendChild(wrapper);
       initSplit();
     };
 
     ctrl.setTasks = function (newTasks) {
+      sf.assert(Array.isArray(newTasks), 'gantt.setTasks(tasks) expects an array');
       tasks = newTasks;
       renderGrid(newTasks);
       renderChart(newTasks);

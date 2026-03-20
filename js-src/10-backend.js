@@ -7,7 +7,9 @@
   'use strict';
 
   sf.createBackend = function (config) {
+    config = config || {};
     var type = config.type || 'axum';
+    sf.assert(type === 'axum' || type === 'fetch' || type === 'tauri', 'createBackend(type) must be axum, fetch, or tauri');
     if (type === 'tauri') return createTauriBackend(config);
     return createHttpBackend(config);
   };
@@ -68,6 +70,10 @@
   /* ── Tauri IPC backend ── */
 
   function createTauriBackend(config) {
+    sf.assert(typeof config === 'object', 'createBackend({}) is required for Tauri adapter');
+    sf.assert(typeof config.invoke === 'function', 'Tauri backend requires config.invoke');
+    sf.assert(typeof config.listen === 'function', 'Tauri backend requires config.listen');
+
     var invoke = config.invoke;
     var listen = config.listen;
     var commands = config.commands || {};

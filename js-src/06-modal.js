@@ -6,6 +6,9 @@
   'use strict';
 
   sf.createModal = function (config) {
+    sf.assert(config, 'createModal(config) requires a configuration object');
+    sf.assert(!config.footer || Array.isArray(config.footer), 'createModal(config.footer) must be an array');
+
     var overlay = sf.el('div', { className: 'sf-modal-overlay' });
     var dialog = sf.el('div', { className: 'sf-modal' });
 

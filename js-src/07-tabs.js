@@ -14,6 +14,9 @@
   };
 
   sf.createTabs = function (config) {
+    sf.assert(config, 'createTabs(config) requires a configuration object');
+    sf.assert(Array.isArray(config.tabs), 'createTabs(config.tabs) must be an array');
+
     var container = sf.el('div', { className: 'sf-tabs-container' });
 
     config.tabs.forEach(function (tab) {
