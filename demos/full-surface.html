@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>solverforge-ui full surface demo</title>
+  <link rel="stylesheet" href="../static/sf/vendor/fontawesome/css/fontawesome.min.css">
+  <link rel="stylesheet" href="../static/sf/vendor/fontawesome/css/solid.min.css">
+  <link rel="stylesheet" href="../static/sf/vendor/frappe-gantt/frappe-gantt.min.css">
+  <link rel="stylesheet" href="../static/sf/sf.css">
+  <script src="../static/sf/vendor/split/split.min.js"></script>
+  <script src="../static/sf/vendor/frappe-gantt/frappe-gantt.min.js"></script>
+  <script src="../static/sf/sf.js"></script>
+  <style>
+    body { margin: 0; }
+    .demo-stack { display: grid; gap: 18px; }
+    .demo-card { background: white; border: 1px solid var(--sf-gray-200); border-radius: 12px; box-shadow: var(--sf-shadow-base); padding: 18px; }
+    .demo-card h2 { margin: 0 0 12px; }
+    .demo-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .demo-gantt { height: 520px; }
+    .demo-footer-space { height: 32px; }
+  </style>
+</head>
+<body class="sf-app">
+  <script>
+    var scoreModal;
+
+    function buildPlannerTable() {
+      return SF.createTable({
+        columns: [
+          { label: 'Task' },
+          { label: 'Machine' },
+          { label: 'Due', align: 'right' }
+        ],
+        rows: [
+          ['ODL-2847', 'FORNO 1', 'Mon 14:00'],
+          ['ODL-3012', 'FORNO 2', 'Mon 17:30'],
+          ['ODL-1802', 'FORNO 1', 'Tue 09:15']
+        ],
+        onRowClick: function (index, row) {
+          SF.showToast({
+            title: 'Row selected',
+            message: row[0] + ' on ' + row[1],
+            variant: 'success',
+            delay: 2500
+          });
+        }
+      });
+    }
+
+    function buildRailCard() {
+      var card = SF.rail.createCard({
+        id: 'furnace-1',
+        name: 'FORNO 1',
+        labelWidth: 220,
+        columns: 5,
+        type: 'CAMERA',
+        typeStyle: {
+          bg: 'rgba(59,130,246,0.15)',
+          color: '#1d4ed8',
+          border: '1px solid rgba(59,130,246,0.30)'
+        },
+        gauges: [
+          { label: 'Temp', pct: 84, style: 'heat', text: '840 / 1000 C' },
+          { label: 'Load', pct: 63, style: 'load', text: '126 / 200 kg' }
+        ],
+        stats: [
+          { label: 'Jobs', value: 12 },
+          { label: 'Prod', value: '840 kg' }
+        ]
+      });
+
+      card.addBlock({
+        start: 120,
+        end: 340,
+        horizon: 600,
+        label: 'ODL-2847',
+        meta: 'Bianchi',
+        color: 'rgba(59,130,246,0.55)',
+        borderColor: '#3b82f6'
+      });
+
+      SF.rail.addChangeover(card.rail, {
+        start: 340,
+        end: 385,
+        horizon: 600
+      });
+
+      card.addBlock({
+        start: 385,
+        end: 560,
+        horizon: 600,
+        label: 'ODL-3012',
+        meta: 'Rossi',
+        color: 'rgba(16,185,129,0.55)',
+        borderColor: '#10b981',
+        late: true
+      });
+
+      return card.el;
+    }
+
+    function buildGantt() {
+      var mount = document.createElement('div');
+      mount.className = 'demo-gantt';
+
+      var gantt = SF.gantt.create({
+        gridTitle: 'Tasks',
+        chartTitle: 'Schedule',
+        viewMode: 'Half Day',
+        splitSizes: [38, 62],
+        columns: [
+          { key: 'name', label: 'Task' },
+          { key: 'start', label: 'Start' },
+          { key: 'end', label: 'End' },
+          { key: 'priority', label: 'P', render: function (task) {
+            return '<span class="sf-priority-badge priority-' + task.priority + '">P' + task.priority + '</span>';
+          } }
+        ],
+        onTaskClick: function (task) {
+          SF.showToast({
+            title: 'Gantt task',
+            message: task.name,
+            variant: 'success',
+            delay: 1800
+          });
+        }
+      });
+
+      gantt.mount(mount);
+      gantt.setTasks([
+        {
+          id: 'task-1',
+          name: 'Design review',
+          start: '2026-03-20 09:00',
+          end: '2026-03-20 10:30',
+          priority: 1,
+          custom_class: 'project-color-0 priority-1',
+          dependencies: ''
+        },
+        {
+          id: 'task-2',
+          name: 'Implementation',
+          start: '2026-03-20 10:30',
+          end: '2026-03-20 14:00',
+          priority: 2,
+          custom_class: 'project-color-1 priority-2',
+          dependencies: 'task-1'
+        },
+        {
+          id: 'task-3',
+          name: 'Validation',
+          start: '2026-03-20 14:30',
+          end: '2026-03-20 17:00',
+          priority: 3,
+          custom_class: 'project-color-2 priority-3',
+          dependencies: 'task-2'
+        }
+      ]);
+
+      return mount;
+    }
+
+    function buildApiGuide() {
+      return SF.createApiGuide({
+        endpoints: [
+          {
+            method: 'POST',
+            path: '/schedules',
+            description: 'Start a new solving session.',
+            curl: 'curl -X POST http://localhost:3000/schedules'
+          },
+          {
+            method: 'GET',
+            path: '/schedules/{id}',
+            description: 'Fetch the current best solution.',
+            curl: 'curl http://localhost:3000/schedules/job-123'
+          }
+        ]
+      });
+    }
+
+    function openScoreModal() {
+      scoreModal.setBody('<p>Hard: 0</p><p>Soft: -42</p><p>Moves/s: 12,400</p>');
+      scoreModal.open();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      var header = SF.createHeader({
+        logo: '../static/sf/img/ouroboros.svg',
+        title: 'Planner123',
+        subtitle: 'solverforge-ui fixture',
+        tabs: [
+          { id: 'overview', label: 'Overview', icon: 'fa-table-columns', active: true },
+          { id: 'gantt', label: 'Gantt', icon: 'fa-chart-gantt' },
+          { id: 'api', label: 'API', icon: 'fa-plug' }
+        ],
+        onTabChange: function (id) { SF.showTab(id); },
+        actions: {
+          onSolve: function () {
+            statusBar.setSolving(true);
+            statusBar.updateScore('0hard/-42soft');
+            statusBar.updateMoves(12400);
+            SF.showToast({ title: 'Solve started', message: 'Fixture solver state updated', variant: 'success', delay: 2200 });
+          },
+          onStop: function () {
+            statusBar.setSolving(false);
+            statusBar.updateMoves(null);
+            SF.showToast({ title: 'Solve stopped', message: 'Fixture solver state reset', variant: 'warning', delay: 2200 });
+          },
+          onAnalyze: openScoreModal
+        }
+      });
+      document.body.prepend(header);
+
+      var statusBar = SF.createStatusBar({
+        constraints: [
+          { name: 'Machine capacity', type: 'hard' },
+          { name: 'Preferred due date', type: 'soft' },
+          { name: 'Setup continuity', type: 'soft' }
+        ],
+        onConstraintClick: function (index) {
+          SF.showToast({ title: 'Constraint selected', message: 'Constraint #' + (index + 1), variant: 'success', delay: 1600 });
+        }
+      });
+      header.after(statusBar.el);
+      statusBar.updateScore('0hard/0soft');
+
+      scoreModal = SF.createModal({
+        title: 'Score Analysis',
+        body: '<p>Use the Analyze action to inspect the current score snapshot.</p>',
+        footer: [
+          SF.createButton({ text: 'Close', variant: 'default', onClick: function () { scoreModal.close(); } })
+        ]
+      });
+
+      var tabs = SF.createTabs({
+        tabs: [
+          {
+            id: 'overview',
+            active: true,
+            content: (function () {
+              var panel = document.createElement('div');
+              panel.className = 'demo-stack';
+
+              var controls = document.createElement('section');
+              controls.className = 'demo-card';
+              controls.innerHTML = '<h2>Interactive controls</h2>';
+              var actions = document.createElement('div');
+              actions.className = 'demo-actions';
+              actions.appendChild(SF.createButton({ text: 'Show success toast', variant: 'primary', onClick: function () {
+                SF.showToast({ title: 'Saved', message: 'Fixture action completed', variant: 'success' });
+              } }));
+              actions.appendChild(SF.createButton({ text: 'Show error toast', variant: 'danger', onClick: function () {
+                SF.showError('Fixture error', 'This is a demo error payload.');
+              } }));
+              actions.appendChild(SF.createButton({ text: 'Open score modal', variant: 'default', onClick: openScoreModal }));
+              controls.appendChild(actions);
+              panel.appendChild(controls);
+
+              var railSection = document.createElement('section');
+              railSection.className = 'demo-card';
+              railSection.innerHTML = '<h2>Rail</h2>';
+              railSection.appendChild(SF.rail.createHeader({ label: 'Resource', labelWidth: 220, columns: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] }));
+              railSection.appendChild(buildRailCard());
+              panel.appendChild(railSection);
+
+              var tableSection = document.createElement('section');
+              tableSection.className = 'demo-card';
+              tableSection.innerHTML = '<h2>Table</h2>';
+              tableSection.appendChild(buildPlannerTable());
+              panel.appendChild(tableSection);
+
+              return panel;
+            })()
+          },
+          {
+            id: 'gantt',
+            content: (function () {
+              var panel = document.createElement('section');
+              panel.className = 'demo-card';
+              panel.innerHTML = '<h2>Gantt</h2>';
+              panel.appendChild(buildGantt());
+              return panel;
+            })()
+          },
+          {
+            id: 'api',
+            content: (function () {
+              var panel = document.createElement('section');
+              panel.className = 'demo-card';
+              panel.innerHTML = '<h2>API Guide</h2>';
+              panel.appendChild(buildApiGuide());
+              return panel;
+            })()
+          }
+        ]
+      });
+
+      var main = document.createElement('main');
+      main.className = 'sf-main';
+      main.appendChild(tabs.el);
+      document.body.appendChild(main);
+
+      document.body.appendChild(SF.createFooter({
+        links: [
+          { label: 'Demo Index', url: './index.html' },
+          { label: 'Repository', url: 'https://github.com/SolverForge/solverforge-ui' }
+        ],
+        version: 'fixture v0.1.0'
+      }));
+    });
+  </script>
+</body>
+</html>

@@ -29,7 +29,7 @@ VERSIONED_JS := static/sf/sf.$(VERSION).js
 # ============== Phony Targets ==============
 .PHONY: banner help assets build build-release test test-quick test-doc test-unit test-one \
         lint fmt fmt-check clippy ci-local pre-release version package-verify \
-        bump-patch bump-minor bump-major bump-dry \
+        bump-patch bump-minor bump-major bump-dry demo-serve \
         publish-dry publish clean watch
 
 # ============== Default Target ==============
@@ -251,11 +251,18 @@ watch:
 	@printf "$(ARROW) Watching for changes...\n"
 	@cargo watch -x build
 
+demo-serve: assets
+	@printf "$(ARROW) Serving demos at http://localhost:8000/demos/\n"
+	@python3 -m http.server 8000
+
 # ============== Help ==============
 
 help: banner
 	@/bin/echo -e "$(CYAN)$(BOLD)Asset Commands:$(RESET)"
 	@/bin/echo -e "  $(GREEN)make assets$(RESET)         - Bundle CSS/JS from sources"
+	@/bin/echo -e ""
+	@/bin/echo -e "$(CYAN)$(BOLD)Demo Commands:$(RESET)"
+	@/bin/echo -e "  $(GREEN)make demo-serve$(RESET)     - Serve the runnable demo fixtures locally"
 	@/bin/echo -e ""
 	@/bin/echo -e "$(CYAN)$(BOLD)Build Commands:$(RESET)"
 	@/bin/echo -e "  $(GREEN)make build$(RESET)          - Bundle assets + build crate"
