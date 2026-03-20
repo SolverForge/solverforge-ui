@@ -25,7 +25,7 @@ That's it. Every asset is compiled into the binary via `include_dir!`.
 
 ## Screenshots
 
-**Planner123** — Gantt chart with dependency arrows, project-colored bars, and constraint scoring:
+**Planner123** — Gantt chart with split panes, project-colored bars, and constraint scoring:
 
 ![Planner123 Gantt](screenshots/planner123-gantt.png)
 
@@ -166,7 +166,7 @@ SF.createButton({ text: 'Sm',       variant: 'primary', size: 'small' })
 ## Timeline Rail
 
 The scheduling hero view. Resource lanes with positioned task blocks,
-gauges, stats, heatmaps, and changeover indicators.
+gauges, stats, and changeover indicators.
 
 ```javascript
 // Day header
@@ -227,7 +227,8 @@ Gauge styles: `heat` (blue→amber→red), `load` (emerald→amber→red), `emer
 
 Interactive task scheduling with Frappe Gantt. Split-pane layout: task grid
 on top, SVG timeline chart on bottom. Drag to reschedule, resize to change
-duration, sortable grid columns, project-colored bars, and pinned task styling.
+duration, sortable grid columns, project-colored bars, dependency arrows,
+and pinned task styling.
 
 ```html
 <link rel="stylesheet" href="/sf/vendor/frappe-gantt/frappe-gantt.min.css">
@@ -394,8 +395,9 @@ SF.map.decodePolyline('_p~iF~ps|U...');  // Google polyline algorithm
 solverforge-ui/
 ├── Cargo.toml              # 2 deps: axum + include_dir
 ├── src/lib.rs              # routes() + asset serving
-├── Makefile                # make → cats css-src/ + js-src/ into sf.css + sf.js
-├── css-src/                # 16 CSS source files (numbered for concat order)
+├── Makefile                # bundles css-src/ + js-src/ into sf.css + sf.js
+├── .github/workflows/      # CI, release, and publish automation
+├── css-src/                # 19 CSS source files (numbered for concat order)
 │   ├── 00-tokens.css       #   design system variables
 │   ├── 01-reset.css        #   box-sizing reset
 │   ├── 02-typography.css   #   @font-face declarations
@@ -411,8 +413,10 @@ solverforge-ui/
 │   ├── 12-footer.css       #   .sf-footer
 │   ├── 13-scrollbars.css   #   custom webkit scrollbars
 │   ├── 14-animations.css   #   @keyframes + toast + api guide
-│   ├── 15-rail.css         #   timeline rail, resource cards, blocks
-│   └── 16-gantt.css        #   Frappe Gantt + Split.js layout + bar styling
+│   ├── 15-rail-resources.css # resource cards, gauges, resource layout
+│   ├── 16-rail-blocks.css  #   rail blocks, changeovers, unassigned styles
+│   ├── 17-gantt-layout.css #   split layout, grid table, view controls
+│   └── 18-gantt-bars.css   #   Frappe bar overrides, pinned/highlighted bars
 ├── js-src/                 # 15 JS source files
 │   ├── 00-core.js          #   SF namespace, escHtml, el()
 │   ├── 01-score.js         #   score parsing
@@ -427,7 +431,7 @@ solverforge-ui/
 │   ├── 10-backend.js       #   createBackend() — axum/tauri/fetch
 │   ├── 11-solver.js        #   createSolver() — SSE state machine
 │   ├── 12-api-guide.js     #   createApiGuide(), createFooter()
-│   ├── 13-rail.js          #   timeline rail, resource cards, blocks
+│   ├── 13-rail.js          #   timeline rail header, cards, blocks, changeovers
 │   └── 14-gantt.js         #   Frappe Gantt wrapper (split pane, grid, chart)
 └── static/sf/              # Embedded assets (include_dir!)
     ├── sf.css              # concatenated from css-src/
