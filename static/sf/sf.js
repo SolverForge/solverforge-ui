@@ -1141,12 +1141,17 @@ const SF = (function () {
   sf.gantt = {};
 
   sf.gantt.create = function (config) {
+    if (!config) throw new Error('SF.gantt.create(config) requires a configuration object');
+
     var chartPaneId = config.chartPane || 'sf-gantt-chart-pane';
     var gridPaneId = config.gridPane || 'sf-gantt-grid-pane';
     var chartContainerId = config.chartContainer || 'sf-gantt-container';
     var svgId = config.svgId || 'sf-gantt-svg';
     var ganttChart = null;
     var splitInstance = null;
+    var mounted = false;
+    var mountTarget = null;
+    var resizeObserver = null;
     var tasks = [];
 
     // ── Build DOM ──
@@ -1210,11 +1215,31 @@ const SF = (function () {
 
     ctrl.mount = function (parent) {
       var target = typeof parent === 'string' ? document.getElementById(parent) : parent;
+      if (!target) throw new Error('gantt.mount(parent) requires a valid DOM node or existing element id');
+
+      if (mounted && mountTarget === target && wrapper.parentNode === target) {
+        return;
+      }
+      if (mounted) ctrl.destroy();
+
+      if (!target.appendChild || typeof target.appendChild !== 'function') {
+        throw new Error('gantt.mount(parent) requires a valid DOM container');
+      }
+      if (target.clientWidth <= 0 || target.clientHeight <= 0) {
+        throw new Error('gantt.mount(parent) target is not laid out yet');
+      }
+
       target.appendChild(wrapper);
+      mounted = true;
+      mountTarget = target;
       initSplit();
+      bindResizeObserver();
     };
 
     ctrl.setTasks = function (newTasks) {
+      if (!Array.isArray(newTasks)) {
+        throw new Error('gantt.setTasks(tasks) expects an array');
+      }
       tasks = newTasks;
       renderGrid(newTasks);
       renderChart(newTasks);
@@ -1251,8 +1276,14 @@ const SF = (function () {
     };
 
     ctrl.destroy = function () {
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+        resizeObserver = null;
+      }
       if (splitInstance) { splitInstance.destroy(); splitInstance = null; }
       ganttChart = null;
+      mounted = false;
+      mountTarget = null;
       if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
     };
 
@@ -1262,10 +1293,18 @@ const SF = (function () {
 
     function initSplit() {
       if (typeof Split !== 'function') return;
+      if (splitInstance) {
+        splitInstance.destroy();
+        splitInstance = null;
+      }
+
+      var splitSizes = normalizePair(config.splitSizes, [40, 60]);
+      var splitMinSize = normalizePair(config.splitMinSize, [200, 300]);
+
       splitInstance = Split(['#' + gridPaneId, '#' + chartPaneId], {
         direction: 'vertical',
-        sizes: config.splitSizes || [40, 60],
-        minSize: config.splitMinSize || [200, 300],
+        sizes: splitSizes,
+        minSize: splitMinSize,
         snapOffset: 30,
         gutterSize: 4,
         cursor: 'col-resize',
@@ -1275,6 +1314,26 @@ const SF = (function () {
           }
         },
       });
+    }
+
+    function bindResizeObserver() {
+      if (typeof ResizeObserver !== 'function') return;
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      resizeObserver = new ResizeObserver(function () {
+        if (!ganttChart) return;
+        setTimeout(function () { ganttChart.refresh(tasksToFrappe(tasks)); }, 0);
+      });
+      if (wrapper.parentNode) resizeObserver.observe(wrapper.parentNode);
+    }
+
+    function normalizePair(value, fallback) {
+      if (!Array.isArray(value) || value.length !== 2) return fallback.slice();
+      var n0 = Number(value[0]);
+      var n1 = Number(value[1]);
+      if (!isFinite(n0) || !isFinite(n1)) return fallback.slice();
+      return [n0, n1];
     }
 
     function tasksToFrappe(taskList) {
