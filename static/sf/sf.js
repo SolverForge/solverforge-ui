@@ -1194,6 +1194,10 @@ const SF = (function () {
 
     var labelWidth = config.labelWidth || 200;
     var card = sf.el('div', { className: 'sf-resource-card' });
+    var state = {
+      unassigned: [],
+      railConfig: config,
+    };
 
     if (config.id) card.dataset.resourceId = config.id;
 
@@ -1275,11 +1279,48 @@ const SF = (function () {
     body.appendChild(railContainer);
     card.appendChild(body);
 
+    // Optional heatmap strip
+    if (config.heatmap) {
+      var heatmapCfg = {
+        horizon: config.heatmap.horizon || 1,
+        label: config.heatmap.label,
+        segments: config.heatmap.segments,
+      };
+      heatmapCfg.railConfig = config;
+      var heatmap = sf.rail.createHeatmap(heatmapCfg);
+      if (heatmap) card.appendChild(heatmap);
+    }
+
+    // Optional unassigned list
+    var unassignedRail = sf.el('div', { className: 'sf-unassigned-rail' });
+    if (config.unassigned) {
+      state.unassigned = config.unassigned;
+      renderUnassigned(unassignedRail, config.unassigned, config.onUnassignedClick);
+    }
+    if (unassignedRail.children.length > 0) card.appendChild(unassignedRail);
+
     // API
     var cardApi = { el: card, rail: rail };
 
     cardApi.addBlock = function (blockConfig) {
       return sf.rail.addBlock(rail, blockConfig);
+    };
+
+    cardApi.setUnassigned = function (items) {
+      state.unassigned = Array.isArray(items) ? items : [];
+      if (state.unassigned.length === 0 && unassignedRail.parentNode) {
+        unassignedRail.innerHTML = '';
+        unassignedRail.parentNode && unassignedRail.parentNode.removeChild(unassignedRail);
+        return;
+      }
+      if (state.unassigned.length > 0) {
+        renderUnassigned(unassignedRail, state.unassigned, config.onUnassignedClick);
+      } else {
+        unassignedRail.innerHTML = '';
+      }
+      if (state.unassigned.length > 0 && !unassignedRail.parentNode) {
+        card.appendChild(unassignedRail);
+      }
     };
 
     cardApi.clearBlocks = function () {
@@ -1293,6 +1334,41 @@ const SF = (function () {
     };
 
     return cardApi;
+  };
+
+  sf.rail.createHeatmap = function (config) {
+    if (!config || !config.segments || !Array.isArray(config.segments) || config.segments.length === 0) return null;
+
+    var heatmap = sf.el('div', { className: 'sf-heatmap' });
+    var label = sf.el('div', { className: 'sf-heatmap-label' }, config.label || '');
+    heatmap.appendChild(label);
+
+    var track = sf.el('div', { className: 'sf-heatmap-track' });
+    var columns = config.railConfig && config.railConfig.columns || 1;
+    track.style.gridTemplateColumns = 'repeat(' + columns + ', 1fr)';
+    heatmap.appendChild(track);
+
+    var horizon = config.horizon || 1;
+    config.segments.forEach(function (segment) {
+      if (!segment || segment.end <= segment.start) return;
+      var band = sf.el('div', { className: 'sf-heatmap-segment' });
+      var start = Math.max(0, segment.start);
+      var width = Math.max(0, segment.end - start);
+      band.style.left = (start / horizon * 100) + '%';
+      band.style.width = Math.max(width / horizon * 100, 0.25) + '%';
+      if (segment.color) band.style.background = segment.color;
+      if (segment.opacity != null) band.style.opacity = segment.opacity;
+      if (segment.tooltip) band.title = segment.tooltip;
+      track.appendChild(band);
+    });
+
+    return heatmap;
+  };
+
+  sf.rail.createUnassignedRail = function (tasks, onTaskClick) {
+    var rail = sf.el('div', { className: 'sf-unassigned-rail' });
+    renderUnassigned(rail, tasks, onTaskClick);
+    return rail;
   };
 
   sf.rail.addBlock = function (rail, config) {
@@ -1355,6 +1431,21 @@ const SF = (function () {
     rail.appendChild(co);
     return co;
   };
+
+  function renderUnassigned(unassignedRail, items, onTaskClick) {
+    unassignedRail.innerHTML = '';
+    (items || []).forEach(function (item) {
+      var label = typeof item === 'string' ? item : item.label || item.id || '';
+      if (!label) return;
+      var pill = sf.el('button', {
+        className: 'sf-unassigned-pill',
+        onClick: function () {
+          if (onTaskClick) onTaskClick(item);
+        },
+      }, label);
+      unassignedRail.appendChild(pill);
+    });
+  }
 
 })(SF);
 /* ============================================================================
