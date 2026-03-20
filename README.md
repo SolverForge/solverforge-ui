@@ -2,7 +2,8 @@
 
 Frontend component library for [SolverForge](https://solverforge.org)
 constraint-optimization applications. Emerald-themed, zero-framework,
-vendor-ready. One line to mount, zero npm, zero webpack.
+vendor-ready. One line to mount, zero npm in the runtime integration path,
+zero webpack.
 
 ```rust
 // Cargo.toml
@@ -484,6 +485,16 @@ make
 # Compile the crate (embeds updated assets)
 cargo build
 ```
+
+## Release Workflow
+
+Consumer integration stays npm-free. Maintainer release automation does not.
+
+- Runtime and application integration use only the bundled static assets and the Rust crate.
+- Version bump targets in `Makefile` currently use `npx commit-and-tag-version`.
+- Release and publish validation otherwise run through Cargo and GitHub Actions.
+
+If you are cutting a release locally, make sure Node.js with `npx` is available before using the `bump-*` targets.
 
 ## Acknowledgments
 
