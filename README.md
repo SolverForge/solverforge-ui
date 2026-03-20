@@ -23,6 +23,14 @@ let app = api::router(state)
 
 That's it. Every asset is compiled into the binary via `include_dir!`.
 
+## Shipped vs Planned
+
+This repository keeps both shipped UI code and design exploration in the same tree.
+
+- Shipped features are the ones implemented in `js-src/`, or exposed as documented optional modules under `static/sf/modules/`, and described in the API reference below.
+- Planned or exploratory ideas may appear in CSS or wireframes before the public API is finished. Those should not be treated as supported integration surface until they are wired into a shipped asset and described in the README API reference.
+- When adding new surface area, update the JavaScript API, README, and runnable examples in the same change so the public contract stays explicit.
+
 ## Screenshots
 
 **Planner123** — Gantt chart with split panes, project-colored bars, and constraint scoring:

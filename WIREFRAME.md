@@ -3,6 +3,11 @@
 Visual reference for every component in the library. Each section shows the
 DOM structure, CSS classes, and how the JS factory wires them together.
 
+Sections in this document follow a simple staging rule:
+
+- Shipped: backed by the current JavaScript API in `js-src/` and safe to document as supported behavior.
+- Planned: useful design or styling direction, but not part of the supported public API yet.
+
 ---
 
 ## 1. Full Page Layout
@@ -268,7 +273,7 @@ Shorthand: `SF.showError(title, detail)`
 
 ---
 
-## 13. Timeline Rail (the hero scheduling view)
+## 13. Timeline Rail (Shipped Core)
 
 ```
   .sf-timeline-header
@@ -387,6 +392,15 @@ gantt.highlightTask('task-1');
 ```
 
 Requires: `/sf/vendor/frappe-gantt/` + `/sf/vendor/split/`
+
+## 15. Planned Rail Extensions
+
+These ideas are intentionally not part of the shipped API surface yet:
+
+- Heatmap strips rendered via `.sf-heatmap` and `.sf-heatmap-segment`
+- Unassigned task pills rendered via `.sf-unassigned-pill`
+
+Treat those as design direction until they are wired into `js-src/13-rail.js` and added to the README API reference.
 
 ---
 
