@@ -8,6 +8,7 @@
   sf.createModal = function (config) {
     var overlay = sf.el('div', { className: 'sf-modal-overlay' });
     var dialog = sf.el('div', { className: 'sf-modal' });
+    var body = sf.el('div', { className: 'sf-modal-body' });
 
     // Header
     var header = sf.el('div', { className: 'sf-modal-header' });
@@ -15,21 +16,14 @@
 
     var closeBtn = sf.el('button', {
       className: 'sf-modal-close',
-      html: '&times;',
       onClick: function () { api.close(); },
-    });
+    }, '×');
     header.appendChild(closeBtn);
+
     dialog.appendChild(header);
 
     // Body
-    var body = sf.el('div', { className: 'sf-modal-body' });
-    if (config.body) {
-      if (typeof config.body === 'string') {
-        body.innerHTML = config.body;
-      } else if (config.body instanceof Node) {
-        body.appendChild(config.body);
-      }
-    }
+    setBodyContent(body, config.body || config.unsafeBody);
     dialog.appendChild(body);
 
     // Footer
@@ -69,12 +63,7 @@
     };
 
     api.setBody = function (content) {
-      body.innerHTML = '';
-      if (typeof content === 'string') {
-        body.innerHTML = content;
-      } else if (content instanceof Node) {
-        body.appendChild(content);
-      }
+      setBodyContent(body, content);
     };
 
     if (config.width) {
@@ -83,5 +72,16 @@
 
     return api;
   };
+
+  function setBodyContent(target, content) {
+    target.textContent = '';
+    if (typeof content === 'string') {
+      target.textContent = content;
+    } else if (content && content.unsafeHtml) {
+      target.innerHTML = content.unsafeHtml;
+    } else if (content instanceof Node) {
+      target.appendChild(content);
+    }
+  }
 
 })(SF);

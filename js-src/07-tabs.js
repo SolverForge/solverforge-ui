@@ -22,7 +22,8 @@
         id: 'sf-tab-' + tab.id,
       });
       if (tab.content) {
-        if (typeof tab.content === 'string') panel.innerHTML = tab.content;
+        if (typeof tab.content === 'string') panel.textContent = tab.content;
+        else if (tab.content && tab.content.unsafeHtml) panel.innerHTML = tab.content.unsafeHtml;
         else if (tab.content instanceof Node) panel.appendChild(tab.content);
       }
       container.appendChild(panel);
