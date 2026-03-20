@@ -431,7 +431,7 @@ solverforge-ui/
 │   ├── 16-rail-blocks.css  #   rail blocks, changeovers, unassigned styles
 │   ├── 17-gantt-layout.css #   split layout, grid table, view controls
 │   └── 18-gantt-bars.css   #   Frappe bar overrides, pinned/highlighted bars
-├── js-src/                 # 15 JS source files
+├── js-src/                 # 16 JS source files
 │   ├── 00-core.js          #   SF namespace, escHtml, el()
 │   ├── 01-score.js         #   score parsing
 │   ├── 02-colors.js        #   Tango palette + project colors
@@ -444,9 +444,10 @@ solverforge-ui/
 │   ├── 09-toast.js         #   showToast(), showError()
 │   ├── 10-backend.js       #   createBackend() — axum/tauri/fetch
 │   ├── 11-solver.js        #   createSolver() — SSE state machine
-│   ├── 12-api-guide.js     #   createApiGuide(), createFooter()
+│   ├── 12-api-guide.js     #   createApiGuide()
 │   ├── 13-rail.js          #   timeline rail header, cards, blocks, changeovers
-│   └── 14-gantt.js         #   Frappe Gantt wrapper (split pane, grid, chart)
+│   ├── 14-gantt.js         #   Frappe Gantt wrapper (split pane, grid, chart)
+│   └── 15-footer.js        #   createFooter()
 └── static/sf/              # Embedded assets (include_dir!)
     ├── sf.css              # concatenated from css-src/
     ├── sf.js               # concatenated from js-src/
