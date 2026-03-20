@@ -55,3 +55,99 @@ fn mime_from_path(path: &str) -> &'static str {
 fn is_immutable(path: &str) -> bool {
     path.starts_with("fonts/") || path.starts_with("vendor/") || path.starts_with("img/")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::{
+        body::{to_bytes, Body},
+        http::{Method, Request, StatusCode},
+    };
+    use tower::util::ServiceExt;
+
+    #[test]
+    fn caches_paths_are_predicted_correctly() {
+        assert_eq!(mime_from_path("styles/sf.css"), "text/css; charset=utf-8");
+        assert_eq!(
+            mime_from_path("scripts/sf.js"),
+            "application/javascript; charset=utf-8"
+        );
+        assert_eq!(mime_from_path("img/logo.svg"), "image/svg+xml");
+        assert_eq!(mime_from_path("font.woff2"), "font/woff2");
+
+        assert!(is_immutable("fonts/jetbrains-mono.woff2"));
+        assert!(is_immutable("vendor/leaflet/leaflet.js"));
+        assert!(is_immutable("img/solverforge-logo.svg"));
+        assert!(!is_immutable("sf.css"));
+    }
+
+    #[tokio::test]
+    async fn serves_assets_with_expected_headers() {
+        let app = routes();
+
+        let immutable_resp = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method(Method::GET)
+                    .uri("/sf/fonts/jetbrains-mono.woff2")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(immutable_resp.status(), StatusCode::OK);
+        assert_eq!(
+            immutable_resp.headers().get("cache-control").unwrap(),
+            "public, max-age=31536000, immutable"
+        );
+        assert_eq!(
+            immutable_resp.headers().get("content-type").unwrap(),
+            "font/woff2"
+        );
+        assert!(!to_bytes(immutable_resp.into_body(), 16_000_000)
+            .await
+            .unwrap()
+            .is_empty());
+
+        let mutable_resp = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method(Method::GET)
+                    .uri("/sf/sf.css")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(mutable_resp.status(), StatusCode::OK);
+        assert_eq!(
+            mutable_resp.headers().get("cache-control").unwrap(),
+            "public, max-age=3600"
+        );
+        assert_eq!(
+            mutable_resp.headers().get("content-type").unwrap(),
+            "text/css; charset=utf-8"
+        );
+        assert!(!to_bytes(mutable_resp.into_body(), 16_000_000)
+            .await
+            .unwrap()
+            .is_empty());
+
+        let missing_resp = app
+            .oneshot(
+                Request::builder()
+                    .method(Method::GET)
+                    .uri("/sf/does-not-exist")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(missing_resp.status(), StatusCode::NOT_FOUND);
+    }
+}

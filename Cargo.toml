@@ -21,3 +21,7 @@ exclude = [
 [dependencies]
 axum = "0.8"
 include_dir = "0.7"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tower = "0.5"
