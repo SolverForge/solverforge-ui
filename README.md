@@ -500,6 +500,12 @@ Consumer integration stays npm-free. Maintainer release automation does not.
 
 If you are cutting a release locally, make sure Node.js with `npx` is available before using the `bump-*` targets. After the bump completes, push the release commit and tag with `git push --follow-tags` or an equivalent tag-push command so the release automation actually starts.
 
+## Package Verification
+
+Use `make package-verify` to inspect the exact crate contents that would be published.
+
+The verification step checks that required bundled assets and crate metadata are present, and that development-only sources such as `css-src/`, `js-src/`, `scripts/`, and screenshots are not shipped in the published crate.
+
 ## Acknowledgments
 
 solverforge-ui builds on these excellent open-source projects:

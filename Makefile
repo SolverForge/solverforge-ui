@@ -26,7 +26,7 @@ JS_SRC  := $(sort $(wildcard js-src/*.js))
 
 # ============== Phony Targets ==============
 .PHONY: banner help assets build build-release test test-quick test-doc test-unit test-one \
-        lint fmt fmt-check clippy ci-local pre-release version \
+        lint fmt fmt-check clippy ci-local pre-release version package-verify \
         bump-patch bump-minor bump-major bump-dry \
         publish-dry publish clean watch
 
@@ -195,8 +195,15 @@ pre-release: banner
 	@cargo test --quiet && printf "$(GREEN)$(CHECK) All tests passed$(RESET)\n"
 	@printf "$(PROGRESS) Dry-run publish...\n"
 	@cargo publish --dry-run 2>&1 | tail -1
+	@printf "$(PROGRESS) Verifying packaged contents...\n"
+	@./scripts/verify-package.sh
 	@printf "$(GREEN)$(CHECK) Package valid$(RESET)\n"
 	@printf "\n$(GREEN)$(BOLD)$(CHECK) Ready for release v$(VERSION)$(RESET)\n\n"
+
+package-verify:
+	@printf "$(PROGRESS) Verifying packaged crate contents...\n"
+	@./scripts/verify-package.sh
+	@printf "$(GREEN)$(CHECK) Package contents verified$(RESET)\n"
 
 # ============== Publishing ==============
 
@@ -206,6 +213,7 @@ publish-dry: test banner
 	@printf "$(CYAN)$(BOLD)╚══════════════════════════════════════════════════════════╝$(RESET)\n\n"
 	@printf "$(GREEN)$(CHECK) All tests passed$(RESET)\n"
 	@cargo publish --dry-run && \
+		./scripts/verify-package.sh && \
 		printf "$(GREEN)$(CHECK) Package valid$(RESET)\n" || \
 		(printf "$(RED)$(CROSS) Package validation failed$(RESET)\n" && exit 1)
 	@printf "\n$(GRAY)Use 'make publish' to publish v$(VERSION) to crates.io$(RESET)\n\n"
