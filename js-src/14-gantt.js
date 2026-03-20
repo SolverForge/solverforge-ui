@@ -21,6 +21,7 @@
     var mountTarget = null;
     var resizeObserver = null;
     var tasks = [];
+    var sortState = { key: null, direction: 'asc' };
 
     // ── Build DOM ──
     var wrapper = sf.el('div', { className: 'sf-gantt-split' });
@@ -43,7 +44,6 @@
     var chartHeader = sf.el('div', { className: 'sf-gantt-pane-header' });
     chartHeader.appendChild(sf.el('h3', null, config.chartTitle || 'Timeline'));
 
-    // View mode selector
     var viewControls = sf.el('div', { className: 'sf-gantt-view-controls' });
     var viewSelect = sf.el('select', { className: 'sf-gantt-view-select' });
     var modes = [
@@ -59,9 +59,7 @@
       viewSelect.appendChild(opt);
     });
     viewSelect.addEventListener('change', function () {
-      if (ganttChart) {
-        ganttChart.change_view_mode(viewSelect.value);
-      }
+      if (ganttChart) ganttChart.change_view_mode(viewSelect.value);
     });
     viewControls.appendChild(viewSelect);
 
@@ -111,8 +109,7 @@
 
     ctrl.refresh = function () {
       if (ganttChart && tasks.length > 0) {
-        var frappeTasks = tasksToFrappe(tasks);
-        ganttChart.refresh(frappeTasks);
+        ganttChart.refresh(tasksToFrappe(tasks));
       }
     };
 
@@ -124,11 +121,9 @@
     };
 
     ctrl.highlightTask = function (taskId) {
-      // Grid highlight
       grid.querySelectorAll('.sf-gantt-row').forEach(function (row) {
         row.classList.toggle('selected', row.dataset.taskId === taskId);
       });
-      // Bar highlight
       var svg = chartContainer.querySelector('svg');
       if (svg) {
         svg.querySelectorAll('.bar-wrapper').forEach(function (bw) {
@@ -152,8 +147,6 @@
     };
 
     return ctrl;
-
-    // ── Internal ──
 
     function initSplit() {
       if (typeof Split !== 'function') return;
@@ -224,12 +217,16 @@
       return taskList
         .filter(function (t) { return t.start && t.end; })
         .map(function (t) {
+          var customClass = t.custom_class || '';
+          if (t.pinned) {
+            customClass = customClass ? customClass + ' pinned' : 'pinned';
+          }
           return {
             id: t.id,
             name: t.name || t.label || t.id,
             start: t.start,
             end: t.end,
-            custom_class: t.custom_class || '',
+            custom_class: customClass,
             dependencies: t.dependencies || '',
           };
         });
@@ -273,32 +270,36 @@
     function renderGrid(taskList) {
       while (grid.firstChild) grid.removeChild(grid.firstChild);
       var table = sf.el('table', { className: 'sf-gantt-table' });
-
-      // Header
-      var thead = sf.el('thead');
-      var headerRow = sf.el('tr');
       var columns = config.columns || [
         { key: 'name', label: 'Task' },
         { key: 'start', label: 'Start' },
         { key: 'end', label: 'End' },
       ];
+      var sortedTasks = sortTasks(taskList);
+
+      var thead = sf.el('thead');
+      var headerRow = sf.el('tr');
       columns.forEach(function (col) {
-        headerRow.appendChild(sf.el('th', null, col.label));
+        headerRow.appendChild(buildHeaderCell(col));
       });
       thead.appendChild(headerRow);
       table.appendChild(thead);
 
-      // Body
       var tbody = sf.el('tbody');
-      taskList.forEach(function (task) {
+      sortedTasks.forEach(function (task) {
+        var rowClasses = ['sf-gantt-row'];
+        if (task.custom_class) rowClasses.push(task.custom_class);
+        if (task.projectIndex != null) rowClasses.push('sf-project-' + task.projectIndex);
+
         var tr = sf.el('tr', {
-          className: 'sf-gantt-row' + (task.custom_class ? ' ' + task.custom_class : ''),
+          className: rowClasses.join(' '),
           dataset: { taskId: task.id },
           onClick: function () {
             ctrl.highlightTask(task.id);
             if (config.onTaskClick) config.onTaskClick(task);
           },
         });
+
         columns.forEach(function (col) {
           var td = sf.el('td');
           if (col.key === 'name') {
@@ -316,10 +317,62 @@
           }
           tr.appendChild(td);
         });
+
         tbody.appendChild(tr);
       });
       table.appendChild(tbody);
       grid.appendChild(table);
+    }
+
+    function buildHeaderCell(col) {
+      if (!col.sortable) {
+        return sf.el('th', null, col.label);
+      }
+
+      var isCurrent = sortState.key === col.key;
+      var th = sf.el('th', {
+        className: 'sortable' + (isCurrent ? ' active' : ''),
+        role: 'button',
+        tabIndex: 0,
+        'aria-sort': isCurrent ? (sortState.direction === 'asc' ? 'ascending' : 'descending') : 'none',
+      });
+      th.appendChild(document.createTextNode(col.label));
+      th.appendChild(sf.el('span', { className: 'sort-icon' }, isCurrent ? (sortState.direction === 'asc' ? '▲' : '▼') : ''));
+
+      sf.bindActivation(th, function () {
+        if (sortState.key === col.key) {
+          sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortState.key = col.key;
+          sortState.direction = 'asc';
+        }
+        renderGrid(tasks);
+      });
+
+      return th;
+    }
+
+    function sortTasks(taskList) {
+      if (!sortState.key) return taskList.slice();
+      var sorted = taskList.slice();
+      sorted.sort(function (a, b) {
+        var aVal = sortValue(a[sortState.key], sortState.key);
+        var bVal = sortValue(b[sortState.key], sortState.key);
+        if (aVal === bVal) return 0;
+        if (sortState.direction === 'asc') return aVal < bVal ? -1 : 1;
+        return aVal > bVal ? -1 : 1;
+      });
+      return sorted;
+    }
+
+    function sortValue(value, key) {
+      if (value == null) return '';
+      if (key === 'start' || key === 'end') {
+        var parsed = Date.parse(value);
+        return isNaN(parsed) ? String(value).toLowerCase() : parsed;
+      }
+      if (typeof value === 'number') return value;
+      return String(value).toLowerCase();
     }
 
     function defaultPopup(task) {

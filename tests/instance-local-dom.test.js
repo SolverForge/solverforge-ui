@@ -263,3 +263,47 @@ test('gantt initSplit keeps accepting scalar splitMinSize values', () => {
   assert.equal(splitCalls[0].options.minSize[0], 160);
   assert.equal(splitCalls[0].options.minSize[1], 160);
 });
+
+test('gantt sortable columns render and reorder grid rows without throwing', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js']);
+
+  const gantt = SF.gantt.create({
+    columns: [
+      { key: 'name', label: 'Task', sortable: true },
+      { key: 'start', label: 'Start' },
+    ],
+  });
+
+  gantt.setTasks([
+    { id: 'b', name: 'Beta', start: '2026-03-22', end: '2026-03-23' },
+    { id: 'a', name: 'Alpha', start: '2026-03-21', end: '2026-03-22' },
+  ]);
+
+  const header = gantt.el.querySelector('th');
+  header.click();
+
+  const rows = gantt.el.querySelectorAll('.sf-gantt-row');
+  assert.equal(rows[0].dataset.taskId, 'a');
+  assert.equal(rows[1].dataset.taskId, 'b');
+});
+
+test('gantt pinned tasks propagate pinned custom class to chart tasks', () => {
+  let seenTasks = null;
+
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js'], {
+    Gantt: function (_selector, tasks) {
+      seenTasks = tasks;
+      return {
+        change_view_mode() {},
+        refresh() {},
+      };
+    },
+  });
+
+  const gantt = SF.gantt.create({});
+  gantt.setTasks([
+    { id: 'task-1', start: '2026-03-21', end: '2026-03-22', pinned: true, custom_class: 'critical' },
+  ]);
+
+  assert.equal(seenTasks[0].custom_class, 'critical pinned');
+});

@@ -221,7 +221,7 @@ Gauge styles: `heat` (blue→amber→red), `load` (emerald→amber→red), `emer
 
 Interactive task scheduling with Frappe Gantt. Split-pane layout: task grid
 on top, SVG timeline chart on bottom. Drag to reschedule, resize to change
-duration, project-colored bars, dependency arrows.
+duration, sortable grid columns, project-colored bars, and pinned task styling.
 
 ```html
 <link rel="stylesheet" href="/sf/vendor/frappe-gantt/frappe-gantt.min.css">
@@ -236,9 +236,9 @@ var gantt = SF.gantt.create({
   viewMode: 'Quarter Day',
   splitSizes: [40, 60],
   columns: [
-    { key: 'name', label: 'Task' },
-    { key: 'start', label: 'Start' },
-    { key: 'end', label: 'End' },
+    { key: 'name', label: 'Task', sortable: true },
+    { key: 'start', label: 'Start', sortable: true },
+    { key: 'end', label: 'End', sortable: true },
     { key: 'priority', label: 'P', render: function (t) {
       return {
         unsafeHtml: '<span class="sf-priority-badge priority-' + t.priority + '">P' + t.priority + '</span>',
@@ -258,6 +258,8 @@ gantt.setTasks([
     start: '2026-03-15 09:00',
     end: '2026-03-15 10:30',
     priority: 1,
+    projectIndex: 0,
+    pinned: true,
     custom_class: 'project-color-0 priority-1',
     dependencies: '',
   },
@@ -277,6 +279,7 @@ gantt.highlightTask('task-1');
 ```
 
 View modes: `Quarter Day`, `Half Day`, `Day`, `Week`, `Month`.
+Sortable headers are opt-in per column via `sortable: true`.
 
 ## Backend Adapters
 

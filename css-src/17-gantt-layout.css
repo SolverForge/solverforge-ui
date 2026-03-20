@@ -94,15 +94,6 @@
   border-radius: var(--sf-radius-sm);
 }
 
-/* ── Maximized Pane ── */
-.sf-gantt-pane.maximized {
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: 50;
-  height: 100% !important;
-  width: 100% !important;
-}
-
 /* ── Grid Table ── */
 .sf-gantt-grid {
   height: 100%;
