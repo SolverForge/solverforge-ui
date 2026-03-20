@@ -20,7 +20,11 @@
     ensureContainer();
 
     var variant = config.variant || 'danger';
-    var toast = sf.el('div', { className: 'sf-toast sf-toast--' + variant + ' sf-toast-enter' });
+    var toast = sf.el('div', {
+      className: 'sf-toast sf-toast--' + variant + ' sf-toast-enter',
+      role: 'status',
+      'aria-live': 'polite',
+    });
 
     var msg = sf.el('div', { className: 'sf-toast-message' });
     if (config.title) {
@@ -38,6 +42,8 @@
 
     var closeBtn = sf.el('button', {
       className: 'sf-toast-close',
+      html: '&times;',
+      'aria-label': 'Dismiss toast',
       onClick: function () { dismiss(); },
     }, '×');
     toast.appendChild(closeBtn);

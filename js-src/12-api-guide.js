@@ -25,6 +25,7 @@
         block.appendChild(sf.el('code', null, ep.curl));
         var copyBtn = sf.el('button', {
           className: 'sf-copy-btn',
+          'aria-label': 'Copy command',
           onClick: function () {
             navigator.clipboard.writeText(ep.curl).then(function () {
               copyBtn.textContent = 'Copied!';

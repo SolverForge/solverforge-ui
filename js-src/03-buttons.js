@@ -44,6 +44,12 @@
       btn.title = config.tooltip;
     }
 
+    if (config.ariaLabel) {
+      btn.setAttribute('aria-label', config.ariaLabel);
+    } else if (config.icon && !config.text) {
+      btn.setAttribute('aria-label', config.icon.replace(/fa-/, '').replace(/-/g, ' '));
+    }
+
     if (config.id) {
       btn.id = config.id;
     }

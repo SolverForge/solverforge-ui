@@ -52,6 +52,19 @@ const SF = (function () {
     return (prefix || 'sf') + '-' + uidCounter;
   };
 
+  sf.bindActivation = function (el, onActivate) {
+    if (!el || typeof onActivate !== 'function') return;
+
+    function handleActivate(e) {
+      if (!e || e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+      if (e.type === 'keydown') e.preventDefault();
+      onActivate(e);
+    }
+
+    el.addEventListener('click', handleActivate);
+    el.addEventListener('keydown', handleActivate);
+  };
+
   if (typeof window !== 'undefined') window.SF = sf;
   return sf;
 })();
@@ -214,6 +227,12 @@ const SF = (function () {
       btn.title = config.tooltip;
     }
 
+    if (config.ariaLabel) {
+      btn.setAttribute('aria-label', config.ariaLabel);
+    } else if (config.icon && !config.text) {
+      btn.setAttribute('aria-label', config.icon.replace(/fa-/, '').replace(/-/g, ' '));
+    }
+
     if (config.id) {
       btn.id = config.id;
     }
@@ -247,7 +266,7 @@ const SF = (function () {
     };
 
     // Logo
-    if (config.logo) {
+  if (config.logo) {
       var logo = sf.el('img', {
         className: 'sf-header-logo',
         src: config.logo,
@@ -276,10 +295,26 @@ const SF = (function () {
         sf.assert(typeof tab.label === 'string', 'createHeader tab entries require a label');
         var btn = sf.el('button', {
           className: 'sf-nav-btn' + (tab.active ? ' active' : ''),
+          role: 'tab',
+          'aria-selected': !!tab.active,
+          tabIndex: 0,
           dataset: { tab: tab.id },
+          onKeyDown: function (e) {
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+            var buttons = nav.querySelectorAll('.sf-nav-btn');
+            var list = Array.prototype.slice.call(buttons);
+            var nextIndex = e.key === 'ArrowRight'
+              ? (list.indexOf(btn) + 1) % list.length
+              : (list.length + list.indexOf(btn) - 1) % list.length;
+            var next = list[nextIndex];
+            if (next && next.focus) next.focus();
+          },
           onClick: function () {
             nav.querySelectorAll('.sf-nav-btn').forEach(function (b) { b.classList.remove('active'); });
             btn.classList.add('active');
+            nav.querySelectorAll('.sf-nav-btn').forEach(function (b) {
+              b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+            });
             if (config.onTabChange) config.onTabChange(tab.id);
           },
         });
@@ -365,6 +400,7 @@ const SF = (function () {
 
     // Score display
     var scoreEl = sf.el('span', { className: 'sf-statusbar-score' }, '\u2014');
+    var scoreEl = sf.el('span', { className: 'sf-statusbar-score', id: 'sfScoreDisplay', 'aria-live': 'polite' }, '\u2014');
     bar.appendChild(scoreEl);
 
     // Separator
@@ -386,6 +422,7 @@ const SF = (function () {
     // Separator + status text
     bar.appendChild(sf.el('span', { className: 'sf-statusbar-sep' }, '|'));
     var statusEl = sf.el('span');
+    var statusEl = sf.el('span', { id: 'sfStatusText', role: 'status', 'aria-live': 'polite' });
     bar.appendChild(statusEl);
 
     // Build initial constraint dots
@@ -482,12 +519,16 @@ const SF = (function () {
     constraints.forEach(function (c, i) {
       var dot = sf.el('div', {
         className: 'sf-constraint-dot',
+        id: 'sf-cdot-' + i,
         title: c.name || ('Constraint ' + i),
+        role: onClick ? 'button' : null,
+        tabIndex: onClick ? '0' : null,
+        'aria-label': onClick ? ('Open constraint ' + (c.name || ('Constraint ' + i))) : null,
         dataset: { type: c.type || 'hard', index: String(i) },
       });
       if (onClick) {
         dot.style.cursor = 'pointer';
-        dot.addEventListener('click', function () { onClick(i); });
+        sf.bindActivation(dot, function () { onClick(i); });
       }
       container.appendChild(dot);
     });
@@ -506,15 +547,25 @@ const SF = (function () {
     sf.assert(!config.footer || Array.isArray(config.footer), 'createModal(config.footer) must be an array');
 
     var overlay = sf.el('div', { className: 'sf-modal-overlay' });
-    var dialog = sf.el('div', { className: 'sf-modal' });
+    var dialogId = sf.uid('sf-modal');
+    var dialog = sf.el('div', {
+      className: 'sf-modal',
+      id: dialogId,
+      role: 'dialog',
+      'aria-modal': 'true',
+      'aria-labelledby': dialogId + '-title',
+    });
     var body = sf.el('div', { className: 'sf-modal-body' });
 
     // Header
     var header = sf.el('div', { className: 'sf-modal-header' });
-    header.appendChild(sf.el('div', { className: 'sf-modal-title' }, config.title || ''));
+    var titleEl = sf.el('div', { className: 'sf-modal-title', id: dialogId + '-title' }, config.title || '');
+    header.appendChild(titleEl);
 
     var closeBtn = sf.el('button', {
       className: 'sf-modal-close',
+      html: '&times;',
+      'aria-label': 'Close modal',
       onClick: function () { api.close(); },
     }, '×');
     header.appendChild(closeBtn);
@@ -536,6 +587,8 @@ const SF = (function () {
 
     overlay.appendChild(dialog);
 
+    var previousFocus = null;
+
     // Close on backdrop click
     overlay.addEventListener('click', function (e) {
       if (e.target === overlay) api.close();
@@ -549,15 +602,18 @@ const SF = (function () {
     var api = { el: overlay, body: body };
 
     api.open = function () {
-      document.body.appendChild(overlay);
-      overlay.classList.add('open');
-      document.addEventListener('keydown', onKeyDown);
-    };
+        previousFocus = document.activeElement;
+        document.body.appendChild(overlay);
+        if (closeBtn.focus) closeBtn.focus();
+        overlay.classList.add('open');
+        document.addEventListener('keydown', onKeyDown);
+      };
 
     api.close = function () {
       overlay.classList.remove('open');
       document.removeEventListener('keydown', onKeyDown);
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      if (previousFocus && previousFocus.focus) previousFocus.focus();
       if (config.onClose) config.onClose();
     };
 
@@ -695,7 +751,9 @@ const SF = (function () {
         });
         if (config.onRowClick) {
           tr.style.cursor = 'pointer';
-          tr.addEventListener('click', function () { config.onRowClick(rowIdx, row); });
+          tr.setAttribute('role', 'button');
+          tr.tabIndex = 0;
+          sf.bindActivation(tr, function () { config.onRowClick(rowIdx, row); });
         }
         tbody.appendChild(tr);
       });
@@ -729,7 +787,11 @@ const SF = (function () {
     ensureContainer();
 
     var variant = config.variant || 'danger';
-    var toast = sf.el('div', { className: 'sf-toast sf-toast--' + variant + ' sf-toast-enter' });
+    var toast = sf.el('div', {
+      className: 'sf-toast sf-toast--' + variant + ' sf-toast-enter',
+      role: 'status',
+      'aria-live': 'polite',
+    });
 
     var msg = sf.el('div', { className: 'sf-toast-message' });
     if (config.title) {
@@ -747,6 +809,8 @@ const SF = (function () {
 
     var closeBtn = sf.el('button', {
       className: 'sf-toast-close',
+      html: '&times;',
+      'aria-label': 'Dismiss toast',
       onClick: function () { dismiss(); },
     }, '×');
     toast.appendChild(closeBtn);
@@ -1054,6 +1118,7 @@ const SF = (function () {
         block.appendChild(sf.el('code', null, ep.curl));
         var copyBtn = sf.el('button', {
           className: 'sf-copy-btn',
+          'aria-label': 'Copy command',
           onClick: function () {
             navigator.clipboard.writeText(ep.curl).then(function () {
               copyBtn.textContent = 'Copied!';
@@ -1266,7 +1331,9 @@ const SF = (function () {
       block.addEventListener('mouseleave', function () { config.onLeave(); });
     }
     if (config.onClick) {
-      block.addEventListener('click', function (e) { config.onClick(e, config); });
+      block.setAttribute('role', 'button');
+      block.tabIndex = 0;
+      sf.bindActivation(block, function (e) { config.onClick(e, config); });
     }
 
     rail.appendChild(block);
