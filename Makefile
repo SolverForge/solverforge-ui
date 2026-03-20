@@ -23,6 +23,8 @@ RUST_VERSION := 1.75+
 # ============== Asset Sources ==============
 CSS_SRC := $(sort $(wildcard css-src/*.css))
 JS_SRC  := $(sort $(wildcard js-src/*.js))
+VERSIONED_CSS := static/sf/sf.$(VERSION).css
+VERSIONED_JS := static/sf/sf.$(VERSION).js
 
 # ============== Phony Targets ==============
 .PHONY: banner help assets build build-release test test-quick test-doc test-unit test-one \
@@ -40,16 +42,18 @@ banner:
 
 # ============== Asset Targets ==============
 
-assets: static/sf/sf.css static/sf/sf.js
+assets: static/sf/sf.css static/sf/sf.js $(VERSIONED_CSS) $(VERSIONED_JS)
 
-static/sf/sf.css: $(CSS_SRC)
+static/sf/sf.css $(VERSIONED_CSS): $(CSS_SRC)
 	@printf "$(PROGRESS) CSS  sf.css ($(words $(CSS_SRC)) files)\n"
-	@cat $(CSS_SRC) > $@
+	@cat $(CSS_SRC) > static/sf/sf.css
+	@cp static/sf/sf.css $(VERSIONED_CSS)
 	@printf "$(GREEN)$(CHECK) CSS bundled$(RESET)\n"
 
-static/sf/sf.js: $(JS_SRC)
+static/sf/sf.js $(VERSIONED_JS): $(JS_SRC)
 	@printf "$(PROGRESS) JS   sf.js ($(words $(JS_SRC)) files)\n"
-	@cat $(JS_SRC) > $@
+	@cat $(JS_SRC) > static/sf/sf.js
+	@cp static/sf/sf.js $(VERSIONED_JS)
 	@printf "$(GREEN)$(CHECK) JS bundled$(RESET)\n"
 
 # ============== Build Targets ==============
@@ -238,7 +242,7 @@ publish: banner
 clean:
 	@printf "$(ARROW) Cleaning build artifacts...\n"
 	@cargo clean
-	@rm -f static/sf/sf.css static/sf/sf.js
+	@rm -f static/sf/sf.css static/sf/sf.js static/sf/sf.*.css static/sf/sf.*.js
 	@printf "$(GREEN)$(CHECK) Clean complete$(RESET)\n"
 
 # ============== Development ==============

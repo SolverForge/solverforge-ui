@@ -53,7 +53,27 @@ fn mime_from_path(path: &str) -> &'static str {
 }
 
 fn is_immutable(path: &str) -> bool {
-    path.starts_with("fonts/") || path.starts_with("vendor/") || path.starts_with("img/")
+    path.starts_with("fonts/")
+        || path.starts_with("vendor/")
+        || path.starts_with("img/")
+        || is_versioned_bundle(path)
+}
+
+fn is_versioned_bundle(path: &str) -> bool {
+    path.strip_prefix("sf.")
+        .and_then(|rest| rest.rsplit_once('.'))
+        .map(|(version, ext)| {
+            !version.is_empty()
+                && version.chars().all(|ch| {
+                    ch.is_ascii_digit()
+                        || ch == '.'
+                        || ch == '-'
+                        || ch == '+'
+                        || ch.is_ascii_alphabetic()
+                })
+                && matches!(ext, "css" | "js")
+        })
+        .unwrap_or(false)
 }
 
 #[cfg(test)]
@@ -64,6 +84,17 @@ mod tests {
         http::{Method, Request, StatusCode},
     };
     use tower::util::ServiceExt;
+
+    #[test]
+    fn versioned_bundles_are_detected() {
+        assert!(is_versioned_bundle("sf.0.1.0.css"));
+        assert!(is_versioned_bundle("sf.0.1.0.js"));
+        assert!(is_versioned_bundle("sf.0.2.0-beta.1.js"));
+        assert!(is_versioned_bundle("sf.0.1.0+build.7.css"));
+        assert!(!is_versioned_bundle("sf.css"));
+        assert!(!is_versioned_bundle("sf.js"));
+        assert!(!is_versioned_bundle("vendor/sf.0.1.0.js"));
+    }
 
     #[test]
     fn caches_paths_are_predicted_correctly() {
@@ -78,7 +109,18 @@ mod tests {
         assert!(is_immutable("fonts/jetbrains-mono.woff2"));
         assert!(is_immutable("vendor/leaflet/leaflet.js"));
         assert!(is_immutable("img/solverforge-logo.svg"));
+        assert!(is_immutable("sf.0.1.0.css"));
+        assert!(is_immutable("sf.0.1.0+build.7.js"));
         assert!(!is_immutable("sf.css"));
+    }
+
+    #[test]
+    fn mime_detection_still_works_for_versioned_assets() {
+        assert_eq!(mime_from_path("sf.0.1.0.css"), "text/css; charset=utf-8");
+        assert_eq!(
+            mime_from_path("sf.0.1.0+build.7.js"),
+            "application/javascript; charset=utf-8"
+        );
     }
 
     #[tokio::test]
