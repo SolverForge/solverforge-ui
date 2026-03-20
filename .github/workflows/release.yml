@@ -69,14 +69,18 @@ jobs:
             echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Generate changelog
+      - name: Extract changelog entry
         id: changelog
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -n "$PREV_TAG" ]; then
-            CHANGELOG=$(git log --pretty=format:"* %s (%h)" $PREV_TAG..HEAD)
-          else
-            CHANGELOG=$(git log --pretty=format:"* %s (%h)" -20)
+          VERSION="${{ steps.version.outputs.version }}"
+          SECTION=$(awk "/^## ${VERSION//./\\.} /{flag=1; next} /^## /{flag=0} flag" CHANGELOG.md)
+          if ! grep -q "^## ${VERSION//./\\.} " CHANGELOG.md; then
+            echo "Missing CHANGELOG.md entry for version $VERSION" >&2
+            exit 1
+          fi
+          CHANGELOG="$SECTION"
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="- See CHANGELOG.md for version $VERSION."
           fi
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
