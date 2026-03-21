@@ -1706,15 +1706,6 @@ body {
   border-radius: var(--sf-radius-sm);
 }
 
-/* ── Maximized Pane ── */
-.sf-gantt-pane.maximized {
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: 50;
-  height: 100% !important;
-  width: 100% !important;
-}
-
 /* ── Grid Table ── */
 .sf-gantt-grid {
   height: 100%;
@@ -1879,13 +1870,6 @@ body {
 .gantt .bar-wrapper.priority-2 .bar { opacity: 0.85; }
 .gantt .bar-wrapper.priority-3 .bar { opacity: 0.7; }
 
-/* Cross-project dependency arrows */
-.gantt .arrow path.cross-project-arrow {
-  stroke: var(--sf-emerald-500);
-  stroke-dasharray: 5 3;
-  stroke-width: 1.4;
-}
-
 /* Bar hover glow */
 .gantt .bar-wrapper:hover .bar {
   filter: brightness(1.12) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.22));
@@ -1917,59 +1901,11 @@ body {
               width 0.12s var(--sf-ease-out);
 }
 
-/* Dragging state */
-.gantt .bar-wrapper.dragging {
-  opacity: 0.88;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35));
-  z-index: 100;
-  transition: none !important;
-}
-
-.gantt .bar-wrapper.dragging .bar {
-  stroke-width: 2;
-  stroke: rgba(255, 255, 255, 0.7);
-}
-
-body.sf-gantt-dragging {
-  cursor: grabbing !important;
-  user-select: none !important;
-}
-
-body.sf-gantt-dragging * {
-  cursor: grabbing !important;
-}
-
-/* ── Drag Tooltip ── */
-.sf-gantt-drag-tooltip {
-  position: fixed;
-  z-index: 9999;
-  background: rgba(15, 23, 42, 0.92);
-  color: #f1f5f9;
-  font-size: 11.5px;
-  font-family: var(--sf-font-mono);
-  font-weight: 500;
-  padding: 5px 10px;
-  border-radius: 6px;
-  pointer-events: none;
-  white-space: nowrap;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  letter-spacing: 0.02em;
-  display: none;
-}
-
 /* ── Pinned Task Indicators ── */
 .gantt .bar-wrapper.pinned .bar {
   stroke: var(--sf-amber-500);
   stroke-width: 2;
   stroke-dasharray: 6 3;
-}
-
-.sf-gantt-pin-icon {
-  color: var(--sf-amber-500);
-  font-size: 11px;
-  opacity: 0.85;
 }
 
 /* ── Highlighted task (pulse from grid click) ── */
@@ -2007,40 +1943,6 @@ body.sf-gantt-dragging * {
   background: var(--sf-gray-100);
   color: var(--sf-gray-500);
 }
-
-/* ── Project Badge (grid table) ── */
-.sf-project-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--sf-badge-padding-y) var(--sf-badge-padding-x);
-  padding-left: 20px;
-  border-radius: var(--sf-badge-radius);
-  font-size: var(--sf-badge-font-size);
-  font-weight: var(--sf-badge-font-weight);
-  position: relative;
-  background: var(--sf-gray-100);
-}
-
-.sf-project-badge::before {
-  content: '';
-  position: absolute;
-  left: 7px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.sf-project-badge.sf-project-0 { color: var(--sf-project-0); background: var(--sf-project-0-light); }
-.sf-project-badge.sf-project-1 { color: var(--sf-project-1); background: var(--sf-project-1-light); }
-.sf-project-badge.sf-project-2 { color: var(--sf-project-2); background: var(--sf-project-2-light); }
-.sf-project-badge.sf-project-3 { color: var(--sf-project-3); background: var(--sf-project-3-light); }
-.sf-project-badge.sf-project-4 { color: var(--sf-project-4); background: var(--sf-project-4-light); }
-.sf-project-badge.sf-project-5 { color: var(--sf-project-5); background: var(--sf-project-5-light); }
-.sf-project-badge.sf-project-6 { color: var(--sf-project-6); background: var(--sf-project-6-light); }
-.sf-project-badge.sf-project-7 { color: var(--sf-project-7); background: var(--sf-project-7-light); }
 
 /* ── Gantt Popup ── */
 .sf-gantt-popup {
