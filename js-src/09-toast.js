@@ -38,9 +38,8 @@
 
     var closeBtn = sf.el('button', {
       className: 'sf-toast-close',
-      html: '&times;',
       onClick: function () { dismiss(); },
-    });
+    }, '×');
     toast.appendChild(closeBtn);
 
     container.appendChild(toast);

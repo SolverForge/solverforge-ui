@@ -6,6 +6,7 @@ const SF = (function () {
   'use strict';
 
   const sf = { version: '0.1.0' };
+  var uidCounter = 0;
 
   /* ── Utilities ── */
 
@@ -33,7 +34,8 @@ const SF = (function () {
         }
         else if (key.indexOf('on') === 0) el.addEventListener(key.slice(2).toLowerCase(), attrs[key]);
         else if (key === 'dataset') Object.assign(el.dataset, attrs[key]);
-        else if (key === 'html') el.innerHTML = attrs[key];
+        else if (key === 'html') el.textContent = attrs[key];
+        else if (key === 'unsafeHtml') el.innerHTML = attrs[key];
         else el.setAttribute(key, attrs[key]);
       });
     }
@@ -43,6 +45,11 @@ const SF = (function () {
       else if (child instanceof Node) el.appendChild(child);
     });
     return el;
+  };
+
+  sf.uid = function (prefix) {
+    uidCounter += 1;
+    return (prefix || 'sf') + '-' + uidCounter;
   };
 
   if (typeof window !== 'undefined') window.SF = sf;
@@ -230,6 +237,14 @@ const SF = (function () {
     sf.assert(config, 'createHeader(config) requires a configuration object');
 
     var header = sf.el('header', { className: 'sf-header' });
+    var controls = {
+      actions: null,
+      spinner: null,
+      solveBtn: null,
+      stopBtn: null,
+      analyzeBtn: null,
+      nav: null,
+    };
 
     // Logo
     if (config.logo) {
@@ -255,6 +270,7 @@ const SF = (function () {
     if (config.tabs && config.tabs.length > 0) {
       sf.assert(Array.isArray(config.tabs), 'createHeader(config.tabs) expects an array');
       var nav = sf.el('nav', { className: 'sf-header-nav' });
+      controls.nav = nav;
       config.tabs.forEach(function (tab) {
         sf.assert(tab && tab.id, 'createHeader tab entries require an id');
         sf.assert(typeof tab.label === 'string', 'createHeader tab entries require a label');
@@ -285,9 +301,11 @@ const SF = (function () {
       sf.assert(!config.onTabChange || typeof config.onTabChange === 'function', 'createHeader(config.onTabChange) must be a function');
 
       var actions = sf.el('div', { className: 'sf-header-actions' });
+      controls.actions = actions;
 
       // Spinner
-      var spinner = sf.el('div', { className: 'sf-solving-spinner', id: 'sfSolvingSpinner' });
+      var spinner = sf.el('div', { className: 'sf-solving-spinner' });
+      controls.spinner = spinner;
       actions.appendChild(spinner);
 
       if (config.actions.onSolve) {
@@ -295,9 +313,9 @@ const SF = (function () {
           text: 'Solve',
           variant: 'success',
           icon: 'fa-play',
-          id: 'sfSolveBtn',
           onClick: config.actions.onSolve,
         });
+        controls.solveBtn = solveBtn;
         actions.appendChild(solveBtn);
       }
 
@@ -306,10 +324,10 @@ const SF = (function () {
           text: 'Stop',
           variant: 'danger',
           icon: 'fa-stop',
-          id: 'sfStopBtn',
           onClick: config.actions.onStop,
         });
         stopBtn.style.display = 'none';
+        controls.stopBtn = stopBtn;
         actions.appendChild(stopBtn);
       }
 
@@ -318,16 +336,17 @@ const SF = (function () {
           variant: 'ghost',
           icon: 'fa-chart-bar',
           circle: true,
-          id: 'sfAnalyzeBtn',
           tooltip: 'Score Analysis',
           onClick: config.actions.onAnalyze,
         });
+        controls.analyzeBtn = analyzeBtn;
         actions.appendChild(analyzeBtn);
       }
 
       header.appendChild(actions);
     }
 
+    header.sfControls = controls;
     return header;
   };
 
@@ -342,30 +361,31 @@ const SF = (function () {
   sf.createStatusBar = function (config) {
     var bar = sf.el('div', { className: 'sf-statusbar' });
     var lastScore = null;
+    var controls = null;
 
     // Score display
-    var scoreEl = sf.el('span', { className: 'sf-statusbar-score', id: 'sfScoreDisplay' }, '\u2014');
+    var scoreEl = sf.el('span', { className: 'sf-statusbar-score' }, '\u2014');
     bar.appendChild(scoreEl);
 
     // Separator
     bar.appendChild(sf.el('span', { className: 'sf-statusbar-sep' }, '|'));
 
     // Constraint dots container
-    var dotsContainer = sf.el('div', { className: 'sf-statusbar-constraints', id: 'sfConstraintDots' });
+    var dotsContainer = sf.el('div', { className: 'sf-statusbar-constraints' });
     bar.appendChild(dotsContainer);
 
     // Separator + moves display
-    var movesSep = sf.el('span', { className: 'sf-statusbar-sep', id: 'sfMovesSep' }, '|');
+    var movesSep = sf.el('span', { className: 'sf-statusbar-sep' }, '|');
     movesSep.style.display = 'none';
     bar.appendChild(movesSep);
 
-    var movesEl = sf.el('span', { id: 'sfMovesDisplay' });
+    var movesEl = sf.el('span');
     movesEl.style.display = 'none';
     bar.appendChild(movesEl);
 
     // Separator + status text
     bar.appendChild(sf.el('span', { className: 'sf-statusbar-sep' }, '|'));
-    var statusEl = sf.el('span', { id: 'sfStatusText' });
+    var statusEl = sf.el('span');
     bar.appendChild(statusEl);
 
     // Build initial constraint dots
@@ -374,6 +394,11 @@ const SF = (function () {
     }
 
     var api = { el: bar };
+
+    api.bindHeader = function (header) {
+      controls = header && header.sfControls ? header.sfControls : null;
+      return api;
+    };
 
     api.updateScore = function (scoreStr) {
       if (scoreStr && scoreStr !== lastScore) {
@@ -391,9 +416,9 @@ const SF = (function () {
     };
 
     api.setSolving = function (solving) {
-      var solveBtn = document.getElementById('sfSolveBtn');
-      var stopBtn = document.getElementById('sfStopBtn');
-      var spinner = document.getElementById('sfSolvingSpinner');
+      var solveBtn = controls && controls.solveBtn;
+      var stopBtn = controls && controls.stopBtn;
+      var spinner = controls && controls.spinner;
 
       if (solveBtn) solveBtn.style.display = solving ? 'none' : '';
       if (stopBtn) stopBtn.style.display = solving ? '' : 'none';
@@ -433,8 +458,8 @@ const SF = (function () {
     api.colorDotsFromAnalysis = function (constraints) {
       if (!constraints || constraints.length === 0) return;
       buildDots(dotsContainer, constraints, config && config.onConstraintClick);
-      constraints.forEach(function (c, i) {
-        var dot = document.getElementById('sf-cdot-' + i);
+      dotsContainer.querySelectorAll('.sf-constraint-dot').forEach(function (dot, i) {
+        var c = constraints[i];
         if (!dot) return;
         var isHard = c.type === 'hard';
         var scoreVal = isHard ? sf.score.parseHard(c.score) : sf.score.parseSoft(c.score);
@@ -443,6 +468,10 @@ const SF = (function () {
         dot.classList.toggle('violated-soft', !isHard && violated);
       });
     };
+
+    if (config && config.header) {
+      api.bindHeader(config.header);
+    }
 
     return api;
   };
@@ -453,7 +482,6 @@ const SF = (function () {
     constraints.forEach(function (c, i) {
       var dot = sf.el('div', {
         className: 'sf-constraint-dot',
-        id: 'sf-cdot-' + i,
         title: c.name || ('Constraint ' + i),
         dataset: { type: c.type || 'hard', index: String(i) },
       });
@@ -479,6 +507,7 @@ const SF = (function () {
 
     var overlay = sf.el('div', { className: 'sf-modal-overlay' });
     var dialog = sf.el('div', { className: 'sf-modal' });
+    var body = sf.el('div', { className: 'sf-modal-body' });
 
     // Header
     var header = sf.el('div', { className: 'sf-modal-header' });
@@ -486,21 +515,14 @@ const SF = (function () {
 
     var closeBtn = sf.el('button', {
       className: 'sf-modal-close',
-      html: '&times;',
       onClick: function () { api.close(); },
-    });
+    }, '×');
     header.appendChild(closeBtn);
+
     dialog.appendChild(header);
 
     // Body
-    var body = sf.el('div', { className: 'sf-modal-body' });
-    if (config.body) {
-      if (typeof config.body === 'string') {
-        body.innerHTML = config.body;
-      } else if (config.body instanceof Node) {
-        body.appendChild(config.body);
-      }
-    }
+    setBodyContent(body, config.body, config.unsafeBody);
     dialog.appendChild(body);
 
     // Footer
@@ -540,12 +562,7 @@ const SF = (function () {
     };
 
     api.setBody = function (content) {
-      body.innerHTML = '';
-      if (typeof content === 'string') {
-        body.innerHTML = content;
-      } else if (content instanceof Node) {
-        body.appendChild(content);
-      }
+      setBodyContent(body, content);
     };
 
     if (config.width) {
@@ -555,6 +572,21 @@ const SF = (function () {
     return api;
   };
 
+  function setBodyContent(target, content, explicitUnsafeHtml) {
+    target.textContent = '';
+    if (explicitUnsafeHtml != null) {
+      target.innerHTML = explicitUnsafeHtml;
+    } else if (typeof content === 'string') {
+      target.textContent = content;
+    } else if (content && content.unsafeBody) {
+      target.innerHTML = content.unsafeBody;
+    } else if (content && content.unsafeHtml) {
+      target.innerHTML = content.unsafeHtml;
+    } else if (content instanceof Node) {
+      target.appendChild(content);
+    }
+  }
+
 })(SF);
 /* ============================================================================
    SolverForge UI — Tab Switching
@@ -563,12 +595,15 @@ const SF = (function () {
 (function (sf) {
   'use strict';
 
-  sf.showTab = function (tabId) {
-    document.querySelectorAll('.sf-tab-panel').forEach(function (p) {
-      p.classList.remove('active');
+  sf.showTab = function (tabId, root) {
+    if (root) {
+      activateTabInScope(root, tabId);
+      return;
+    }
+
+    document.querySelectorAll('.sf-tabs-container').forEach(function (container) {
+      activateTabInScope(container, tabId);
     });
-    var panel = document.getElementById('sf-tab-' + tabId);
-    if (panel) panel.classList.add('active');
   };
 
   sf.createTabs = function (config) {
@@ -576,21 +611,38 @@ const SF = (function () {
     sf.assert(Array.isArray(config.tabs), 'createTabs(config.tabs) must be an array');
 
     var container = sf.el('div', { className: 'sf-tabs-container' });
+    var tabsId = sf.uid('sf-tabs');
 
     config.tabs.forEach(function (tab) {
       var panel = sf.el('div', {
         className: 'sf-tab-panel' + (tab.active ? ' active' : ''),
-        id: 'sf-tab-' + tab.id,
+        id: tabsId + '-' + tab.id,
+        dataset: { tabId: tab.id },
       });
       if (tab.content) {
-        if (typeof tab.content === 'string') panel.innerHTML = tab.content;
+        if (typeof tab.content === 'string') panel.textContent = tab.content;
+        else if (tab.content && tab.content.unsafeHtml) panel.innerHTML = tab.content.unsafeHtml;
         else if (tab.content instanceof Node) panel.appendChild(tab.content);
       }
       container.appendChild(panel);
     });
 
-    return { el: container, show: sf.showTab };
+    return {
+      el: container,
+      show: function (tabId) {
+        sf.showTab(tabId, container);
+      },
+    };
   };
+
+  function activateTabInScope(scope, tabId) {
+    scope.querySelectorAll('.sf-tab-panel').forEach(function (p) {
+      p.classList.remove('active');
+    });
+
+    var panel = scope.querySelector('[data-tab-id="' + tabId + '"]');
+    if (panel) panel.classList.add('active');
+  }
 
 })(SF);
 /* ============================================================================
@@ -633,8 +685,8 @@ const SF = (function () {
             td.textContent = cell;
           } else if (cell instanceof Node) {
             td.appendChild(cell);
-          } else if (cell && cell.html) {
-            td.innerHTML = cell.html;
+          } else if (cell && cell.unsafeHtml) {
+            td.innerHTML = cell.unsafeHtml;
           }
           var col = config.columns && config.columns[colIdx];
           if (col && col.align) td.style.textAlign = col.align;
@@ -695,9 +747,8 @@ const SF = (function () {
 
     var closeBtn = sf.el('button', {
       className: 'sf-toast-close',
-      html: '&times;',
       onClick: function () { dismiss(); },
-    });
+    }, '×');
     toast.appendChild(closeBtn);
 
     container.appendChild(toast);
@@ -731,10 +782,38 @@ const SF = (function () {
   sf.createBackend = function (config) {
     config = config || {};
     var type = config.type || 'axum';
-    sf.assert(type === 'axum' || type === 'fetch' || type === 'tauri', 'createBackend(type) must be axum, fetch, or tauri');
     if (type === 'tauri') return createTauriBackend(config);
     return createHttpBackend(config);
   };
+
+  function resolveJobId(raw) {
+    if (raw == null) return '';
+    if (typeof raw === 'string' || typeof raw === 'number') return String(raw).trim();
+    if (typeof raw !== 'object') return '';
+
+    if (raw.id != null) return String(raw.id).trim();
+    if (raw.jobId != null) return String(raw.jobId).trim();
+    if (raw.job_id != null) return String(raw.job_id).trim();
+    if (raw.scheduleId != null) return String(raw.scheduleId).trim();
+    if (raw.schedule_id != null) return String(raw.schedule_id).trim();
+
+    if (raw.data && typeof raw.data === 'object' && raw.data.id != null) {
+      return String(raw.data.id).trim();
+    }
+    return '';
+  }
+
+  function resolveEventJobId(payload) {
+    if (!payload || typeof payload !== 'object') return '';
+    if (payload.jobId != null) return String(payload.jobId).trim();
+    if (payload.job_id != null) return String(payload.job_id).trim();
+    if (payload.scheduleId != null) return String(payload.scheduleId).trim();
+    if (payload.schedule_id != null) return String(payload.schedule_id).trim();
+    if (payload.id != null) return String(payload.id).trim();
+    if (payload.data && typeof payload.data === 'object' && payload.data.id != null) return String(payload.data.id).trim();
+    if (payload.data && typeof payload.data === 'object' && payload.data.jobId != null) return String(payload.data.jobId).trim();
+    return '';
+  }
 
   /* ── HTTP backend (Axum, Rails, anything) ── */
 
@@ -761,7 +840,7 @@ const SF = (function () {
 
     return {
       createSchedule: function (data) {
-        return request('POST', schedulesPath, data);
+        return request('POST', schedulesPath, data).then(resolveJobId);
       },
       getSchedule: function (id) {
         return request('GET', schedulesPath + '/' + id);
@@ -803,7 +882,7 @@ const SF = (function () {
 
     return {
       createSchedule: function (data) {
-        return invoke(commands.startSolve || 'create_schedule', { request: data });
+        return invoke(commands.startSolve || 'create_schedule', { request: data }).then(resolveJobId);
       },
       getSchedule: function (id) {
         return invoke(commands.getSchedule || 'get_schedule', { id: id });
@@ -821,9 +900,13 @@ const SF = (function () {
         return Promise.resolve([]);
       },
       streamEvents: function (id, onMessage) {
+        var targetId = String(id);
         var unlisten = null;
         listen(eventName, function (event) {
-          onMessage(event.payload);
+          var payload = event && event.payload ? event.payload : {};
+          var payloadId = resolveEventJobId(payload);
+          if (payloadId && payloadId !== targetId) return;
+          onMessage(payload);
         }).then(function (fn) { unlisten = fn; });
         return function close() { if (unlisten) unlisten(); };
       },
@@ -868,8 +951,13 @@ const SF = (function () {
       }
 
       backend.createSchedule(data).then(function (id) {
-        jobId = typeof id === 'string' ? id.trim() : id;
+        if (typeof id !== 'string' || !id.trim()) {
+          throw new Error('Invalid solver backend createSchedule response');
+        }
+        jobId = id;
         closeStream = backend.streamEvents(jobId, function (msg) {
+          if (!isEventForCurrentJob(msg, jobId)) return;
+
           // Solver finished
           if (msg.solverStatus === 'NOT_SOLVING') {
             backend.getSchedule(jobId).then(function (final) {
@@ -929,6 +1017,13 @@ const SF = (function () {
     api.getJobId = function () { return jobId; };
 
     return api;
+
+    function isEventForCurrentJob(msg, expectedId) {
+      if (!msg || typeof msg !== 'object') return false;
+      var candidate = msg.jobId || msg.job_id || msg.scheduleId || msg.schedule_id || msg.id || (msg.data && msg.data.id);
+      if (candidate == null) return true;
+      return String(candidate) === String(expectedId);
+    }
   };
 
 })(SF);
@@ -1206,12 +1301,12 @@ const SF = (function () {
   sf.gantt = {};
 
   sf.gantt.create = function (config) {
-    sf.assert(config, 'gantt.create(config) requires a configuration object');
-
-    var chartPaneId = config.chartPane || 'sf-gantt-chart-pane';
-    var gridPaneId = config.gridPane || 'sf-gantt-grid-pane';
-    var chartContainerId = config.chartContainer || 'sf-gantt-container';
-    var svgId = config.svgId || 'sf-gantt-svg';
+    config = config || {};
+    var instanceId = sf.uid('sf-gantt');
+    var chartPaneId = config.chartPane || (instanceId + '-chart-pane');
+    var gridPaneId = config.gridPane || (instanceId + '-grid-pane');
+    var chartContainerId = config.chartContainer || (instanceId + '-container');
+    var svgId = config.svgId || (instanceId + '-svg');
     var ganttChart = null;
     var splitInstance = null;
     var tasks = [];
@@ -1366,17 +1461,27 @@ const SF = (function () {
       var frappeTasks = tasksToFrappe(taskList);
 
       if (frappeTasks.length === 0) {
-        chartContainer.innerHTML = '<div style="padding:24px;color:var(--sf-gray-400);font-family:var(--sf-font-mono);font-size:13px;">No scheduled tasks to display.</div>';
+        chartContainer.textContent = '';
+        chartContainer.appendChild(sf.el('div', {
+          className: 'sf-gantt-empty-state',
+          style: {
+            padding: '24px',
+            color: 'var(--sf-gray-400)',
+            fontFamily: 'var(--sf-font-mono)',
+            fontSize: '13px',
+          },
+        }, 'No scheduled tasks to display.'));
         ganttChart = null;
         return;
       }
 
-      chartContainer.innerHTML = '<svg id="' + svgId + '"></svg>';
+      chartContainer.textContent = '';
+      chartContainer.appendChild(createSvgRoot(svgId));
 
       ganttChart = new Gantt('#' + svgId, frappeTasks, {
         view_mode: viewSelect.value || 'Quarter Day',
         date_format: 'YYYY-MM-DD HH:mm',
-        custom_popup_html: config.popupHtml || defaultPopup,
+        custom_popup_html: config.unsafePopupHtml || config.popupHtml || defaultPopup,
         on_click: function (task) {
           ctrl.highlightTask(task.id);
           if (config.onTaskClick) config.onTaskClick(task);
@@ -1388,7 +1493,7 @@ const SF = (function () {
     }
 
     function renderGrid(taskList) {
-      grid.innerHTML = '';
+      while (grid.firstChild) grid.removeChild(grid.firstChild);
       var table = sf.el('table', { className: 'sf-gantt-table' });
 
       // Header
@@ -1423,7 +1528,8 @@ const SF = (function () {
             td.textContent = task.name || task.label || task.id;
           } else if (col.render) {
             var content = col.render(task);
-            if (typeof content === 'string') td.innerHTML = content;
+            if (typeof content === 'string') td.textContent = content;
+            else if (content && content.unsafeHtml) td.innerHTML = content.unsafeHtml;
             else if (content instanceof Node) td.appendChild(content);
           } else {
             td.textContent = task[col.key] || '';
@@ -1448,6 +1554,15 @@ const SF = (function () {
         (t.duration_minutes ? '<p><strong>Duration:</strong> ' + t.duration_minutes + ' min</p>' : '') +
         (t.pinned ? '<p class="sf-gantt-popup-pinned"><i class="fa-solid fa-thumbtack"></i> Pinned</p>' : '') +
         '</div>';
+    }
+
+    function createSvgRoot(id) {
+      if (document.createElementNS) {
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.id = id;
+        return svg;
+      }
+      return sf.el('svg', { id: id });
     }
   };
 

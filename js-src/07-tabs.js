@@ -5,12 +5,15 @@
 (function (sf) {
   'use strict';
 
-  sf.showTab = function (tabId) {
-    document.querySelectorAll('.sf-tab-panel').forEach(function (p) {
-      p.classList.remove('active');
+  sf.showTab = function (tabId, root) {
+    if (root) {
+      activateTabInScope(root, tabId);
+      return;
+    }
+
+    document.querySelectorAll('.sf-tabs-container').forEach(function (container) {
+      activateTabInScope(container, tabId);
     });
-    var panel = document.getElementById('sf-tab-' + tabId);
-    if (panel) panel.classList.add('active');
   };
 
   sf.createTabs = function (config) {
@@ -18,20 +21,37 @@
     sf.assert(Array.isArray(config.tabs), 'createTabs(config.tabs) must be an array');
 
     var container = sf.el('div', { className: 'sf-tabs-container' });
+    var tabsId = sf.uid('sf-tabs');
 
     config.tabs.forEach(function (tab) {
       var panel = sf.el('div', {
         className: 'sf-tab-panel' + (tab.active ? ' active' : ''),
-        id: 'sf-tab-' + tab.id,
+        id: tabsId + '-' + tab.id,
+        dataset: { tabId: tab.id },
       });
       if (tab.content) {
-        if (typeof tab.content === 'string') panel.innerHTML = tab.content;
+        if (typeof tab.content === 'string') panel.textContent = tab.content;
+        else if (tab.content && tab.content.unsafeHtml) panel.innerHTML = tab.content.unsafeHtml;
         else if (tab.content instanceof Node) panel.appendChild(tab.content);
       }
       container.appendChild(panel);
     });
 
-    return { el: container, show: sf.showTab };
+    return {
+      el: container,
+      show: function (tabId) {
+        sf.showTab(tabId, container);
+      },
+    };
   };
+
+  function activateTabInScope(scope, tabId) {
+    scope.querySelectorAll('.sf-tab-panel').forEach(function (p) {
+      p.classList.remove('active');
+    });
+
+    var panel = scope.querySelector('[data-tab-id="' + tabId + '"]');
+    if (panel) panel.classList.add('active');
+  }
 
 })(SF);

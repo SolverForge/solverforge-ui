@@ -9,6 +9,14 @@
     sf.assert(config, 'createHeader(config) requires a configuration object');
 
     var header = sf.el('header', { className: 'sf-header' });
+    var controls = {
+      actions: null,
+      spinner: null,
+      solveBtn: null,
+      stopBtn: null,
+      analyzeBtn: null,
+      nav: null,
+    };
 
     // Logo
     if (config.logo) {
@@ -34,6 +42,7 @@
     if (config.tabs && config.tabs.length > 0) {
       sf.assert(Array.isArray(config.tabs), 'createHeader(config.tabs) expects an array');
       var nav = sf.el('nav', { className: 'sf-header-nav' });
+      controls.nav = nav;
       config.tabs.forEach(function (tab) {
         sf.assert(tab && tab.id, 'createHeader tab entries require an id');
         sf.assert(typeof tab.label === 'string', 'createHeader tab entries require a label');
@@ -64,9 +73,11 @@
       sf.assert(!config.onTabChange || typeof config.onTabChange === 'function', 'createHeader(config.onTabChange) must be a function');
 
       var actions = sf.el('div', { className: 'sf-header-actions' });
+      controls.actions = actions;
 
       // Spinner
-      var spinner = sf.el('div', { className: 'sf-solving-spinner', id: 'sfSolvingSpinner' });
+      var spinner = sf.el('div', { className: 'sf-solving-spinner' });
+      controls.spinner = spinner;
       actions.appendChild(spinner);
 
       if (config.actions.onSolve) {
@@ -74,9 +85,9 @@
           text: 'Solve',
           variant: 'success',
           icon: 'fa-play',
-          id: 'sfSolveBtn',
           onClick: config.actions.onSolve,
         });
+        controls.solveBtn = solveBtn;
         actions.appendChild(solveBtn);
       }
 
@@ -85,10 +96,10 @@
           text: 'Stop',
           variant: 'danger',
           icon: 'fa-stop',
-          id: 'sfStopBtn',
           onClick: config.actions.onStop,
         });
         stopBtn.style.display = 'none';
+        controls.stopBtn = stopBtn;
         actions.appendChild(stopBtn);
       }
 
@@ -97,16 +108,17 @@
           variant: 'ghost',
           icon: 'fa-chart-bar',
           circle: true,
-          id: 'sfAnalyzeBtn',
           tooltip: 'Score Analysis',
           onClick: config.actions.onAnalyze,
         });
+        controls.analyzeBtn = analyzeBtn;
         actions.appendChild(analyzeBtn);
       }
 
       header.appendChild(actions);
     }
 
+    header.sfControls = controls;
     return header;
   };
 
