@@ -48,3 +48,6 @@ jobs:
 
       - name: Run tests
         run: cargo test
+
+      - name: Verify package contents
+        run: ./scripts/verify-package.sh
