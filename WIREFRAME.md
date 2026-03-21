@@ -70,8 +70,12 @@ sticky header, and scrollable main area.
 +------------------------------------------------------------------------+
 ```
 
-**JS:** `SF.createStatusBar({ constraints[], onConstraintClick })`
-Returns: `{ el, updateScore(str), setSolving(bool), updateMoves(n), colorDotsFromAnalysis(arr) }`
+**JS:** `SF.createStatusBar({ header?, constraints[], onConstraintClick })`
+Returns: `{ el, bindHeader(header), updateScore(str), setSolving(bool), updateMoves(n), colorDotsFromAnalysis(arr) }`
+
+Pass `header` or call `bindHeader(header)` when the status bar should control a
+specific header's Solve/Stop/spinner state. Without a bound header,
+`setSolving()` only updates the status text and moves display.
 
 ---
 

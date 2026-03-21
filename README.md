@@ -89,7 +89,7 @@ alongside the solver. When you scaffold a new SolverForge project with
 | Factory | Returns | Description |
 |---------|---------|-------------|
 | `SF.createHeader(config)` | `HTMLElement` | Sticky header with logo, title, nav tabs, solve/stop/analyze buttons |
-| `SF.createStatusBar(config)` | `{el, bindHeader, updateScore, setSolving, updateMoves, colorDotsFromAnalysis}` | Score display + constraint dot indicators, with optional header binding for local solve/stop controls |
+| `SF.createStatusBar(config)` | `{el, bindHeader, updateScore, setSolving, updateMoves, colorDotsFromAnalysis}` | Score display + constraint dot indicators; pass `header` or call `bindHeader()` if it should toggle local solve/stop controls |
 | `SF.createButton(config)` | `HTMLButtonElement` | Button with variant/size/icon/shape modifiers |
 | `SF.createModal(config)` | `{el, body, open, close, setBody}` | Dialog with emerald gradient header, backdrop, Escape key |
 | `SF.createTable(config)` | `HTMLElement` | Data table with headers and row click |
@@ -98,7 +98,7 @@ alongside the solver. When you scaffold a new SolverForge project with
 | `SF.createApiGuide(config)` | `HTMLElement` | REST API documentation panel |
 | `SF.showToast(config)` | `void` | Toast notification (auto-dismiss) |
 | `SF.showError(title, detail)` | `void` | Danger toast shorthand |
-| `SF.showTab(tabId, root?)` | `void` | Activate a tab panel within an optional root container |
+| `SF.showTab(tabId, root?)` | `void` | Activate matching tab panels in every tab container, or only within `root` when provided |
 
 ### Timeline Rail
 
