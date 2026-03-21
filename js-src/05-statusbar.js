@@ -12,6 +12,7 @@
 
     // Score display
     var scoreEl = sf.el('span', { className: 'sf-statusbar-score' }, '\u2014');
+    var scoreEl = sf.el('span', { className: 'sf-statusbar-score', id: 'sfScoreDisplay', 'aria-live': 'polite' }, '\u2014');
     bar.appendChild(scoreEl);
 
     // Separator
@@ -33,6 +34,7 @@
     // Separator + status text
     bar.appendChild(sf.el('span', { className: 'sf-statusbar-sep' }, '|'));
     var statusEl = sf.el('span');
+    var statusEl = sf.el('span', { id: 'sfStatusText', role: 'status', 'aria-live': 'polite' });
     bar.appendChild(statusEl);
 
     // Build initial constraint dots
@@ -129,12 +131,16 @@
     constraints.forEach(function (c, i) {
       var dot = sf.el('div', {
         className: 'sf-constraint-dot',
+        id: 'sf-cdot-' + i,
         title: c.name || ('Constraint ' + i),
+        role: onClick ? 'button' : null,
+        tabIndex: onClick ? '0' : null,
+        'aria-label': onClick ? ('Open constraint ' + (c.name || ('Constraint ' + i))) : null,
         dataset: { type: c.type || 'hard', index: String(i) },
       });
       if (onClick) {
         dot.style.cursor = 'pointer';
-        dot.addEventListener('click', function () { onClick(i); });
+        sf.bindActivation(dot, function () { onClick(i); });
       }
       container.appendChild(dot);
     });

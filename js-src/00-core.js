@@ -52,6 +52,19 @@ const SF = (function () {
     return (prefix || 'sf') + '-' + uidCounter;
   };
 
+  sf.bindActivation = function (el, onActivate) {
+    if (!el || typeof onActivate !== 'function') return;
+
+    function handleActivate(e) {
+      if (!e || e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+      if (e.type === 'keydown') e.preventDefault();
+      onActivate(e);
+    }
+
+    el.addEventListener('click', handleActivate);
+    el.addEventListener('keydown', handleActivate);
+  };
+
   if (typeof window !== 'undefined') window.SF = sf;
   return sf;
 })();

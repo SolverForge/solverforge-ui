@@ -1225,6 +1225,20 @@ body {
 .sf-toast-close:hover {
   color: var(--sf-gray-700);
 }
+
+@media (prefers-reduced-motion: reduce) {
+  [class^="sf-"],
+  [class*=" sf-"],
+  [class^="sf-"]::before,
+  [class*=" sf-"]::before,
+  [class^="sf-"]::after,
+  [class*=" sf-"]::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 /* ============================================================================
    SolverForge UI — Timeline Rail: Resources
    Header, resource cards, gauges, stats.

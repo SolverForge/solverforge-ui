@@ -48,7 +48,9 @@
         });
         if (config.onRowClick) {
           tr.style.cursor = 'pointer';
-          tr.addEventListener('click', function () { config.onRowClick(rowIdx, row); });
+          tr.setAttribute('role', 'button');
+          tr.tabIndex = 0;
+          sf.bindActivation(tr, function () { config.onRowClick(rowIdx, row); });
         }
         tbody.appendChild(tr);
       });

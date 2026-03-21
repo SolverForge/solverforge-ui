@@ -176,7 +176,9 @@
       block.addEventListener('mouseleave', function () { config.onLeave(); });
     }
     if (config.onClick) {
-      block.addEventListener('click', function (e) { config.onClick(e, config); });
+      block.setAttribute('role', 'button');
+      block.tabIndex = 0;
+      sf.bindActivation(block, function (e) { config.onClick(e, config); });
     }
 
     rail.appendChild(block);

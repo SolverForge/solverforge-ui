@@ -10,15 +10,25 @@
     sf.assert(!config.footer || Array.isArray(config.footer), 'createModal(config.footer) must be an array');
 
     var overlay = sf.el('div', { className: 'sf-modal-overlay' });
-    var dialog = sf.el('div', { className: 'sf-modal' });
+    var dialogId = sf.uid('sf-modal');
+    var dialog = sf.el('div', {
+      className: 'sf-modal',
+      id: dialogId,
+      role: 'dialog',
+      'aria-modal': 'true',
+      'aria-labelledby': dialogId + '-title',
+    });
     var body = sf.el('div', { className: 'sf-modal-body' });
 
     // Header
     var header = sf.el('div', { className: 'sf-modal-header' });
-    header.appendChild(sf.el('div', { className: 'sf-modal-title' }, config.title || ''));
+    var titleEl = sf.el('div', { className: 'sf-modal-title', id: dialogId + '-title' }, config.title || '');
+    header.appendChild(titleEl);
 
     var closeBtn = sf.el('button', {
       className: 'sf-modal-close',
+      html: '&times;',
+      'aria-label': 'Close modal',
       onClick: function () { api.close(); },
     }, '×');
     header.appendChild(closeBtn);
@@ -40,6 +50,8 @@
 
     overlay.appendChild(dialog);
 
+    var previousFocus = null;
+
     // Close on backdrop click
     overlay.addEventListener('click', function (e) {
       if (e.target === overlay) api.close();
@@ -53,15 +65,18 @@
     var api = { el: overlay, body: body };
 
     api.open = function () {
-      document.body.appendChild(overlay);
-      overlay.classList.add('open');
-      document.addEventListener('keydown', onKeyDown);
-    };
+        previousFocus = document.activeElement;
+        document.body.appendChild(overlay);
+        if (closeBtn.focus) closeBtn.focus();
+        overlay.classList.add('open');
+        document.addEventListener('keydown', onKeyDown);
+      };
 
     api.close = function () {
       overlay.classList.remove('open');
       document.removeEventListener('keydown', onKeyDown);
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      if (previousFocus && previousFocus.focus) previousFocus.focus();
       if (config.onClose) config.onClose();
     };
 
