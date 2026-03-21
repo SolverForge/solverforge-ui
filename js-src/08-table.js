@@ -34,8 +34,8 @@
             td.textContent = cell;
           } else if (cell instanceof Node) {
             td.appendChild(cell);
-          } else if (cell && cell.html) {
-            td.innerHTML = cell.html;
+          } else if (cell && cell.unsafeHtml) {
+            td.innerHTML = cell.unsafeHtml;
           }
           var col = config.columns && config.columns[colIdx];
           if (col && col.align) td.style.textAlign = col.align;

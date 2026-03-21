@@ -30,7 +30,8 @@ const SF = (function () {
         }
         else if (key.indexOf('on') === 0) el.addEventListener(key.slice(2).toLowerCase(), attrs[key]);
         else if (key === 'dataset') Object.assign(el.dataset, attrs[key]);
-        else if (key === 'html') el.innerHTML = attrs[key];
+        else if (key === 'html') el.textContent = attrs[key];
+        else if (key === 'unsafeHtml') el.innerHTML = attrs[key];
         else el.setAttribute(key, attrs[key]);
       });
     }
@@ -484,6 +485,7 @@ const SF = (function () {
   sf.createModal = function (config) {
     var overlay = sf.el('div', { className: 'sf-modal-overlay' });
     var dialog = sf.el('div', { className: 'sf-modal' });
+    var body = sf.el('div', { className: 'sf-modal-body' });
 
     // Header
     var header = sf.el('div', { className: 'sf-modal-header' });
@@ -491,21 +493,14 @@ const SF = (function () {
 
     var closeBtn = sf.el('button', {
       className: 'sf-modal-close',
-      html: '&times;',
       onClick: function () { api.close(); },
-    });
+    }, '×');
     header.appendChild(closeBtn);
+
     dialog.appendChild(header);
 
     // Body
-    var body = sf.el('div', { className: 'sf-modal-body' });
-    if (config.body) {
-      if (typeof config.body === 'string') {
-        body.innerHTML = config.body;
-      } else if (config.body instanceof Node) {
-        body.appendChild(config.body);
-      }
-    }
+    setBodyContent(body, config.body, config.unsafeBody);
     dialog.appendChild(body);
 
     // Footer
@@ -545,12 +540,7 @@ const SF = (function () {
     };
 
     api.setBody = function (content) {
-      body.innerHTML = '';
-      if (typeof content === 'string') {
-        body.innerHTML = content;
-      } else if (content instanceof Node) {
-        body.appendChild(content);
-      }
+      setBodyContent(body, content);
     };
 
     if (config.width) {
@@ -559,6 +549,21 @@ const SF = (function () {
 
     return api;
   };
+
+  function setBodyContent(target, content, explicitUnsafeHtml) {
+    target.textContent = '';
+    if (explicitUnsafeHtml != null) {
+      target.innerHTML = explicitUnsafeHtml;
+    } else if (typeof content === 'string') {
+      target.textContent = content;
+    } else if (content && content.unsafeBody) {
+      target.innerHTML = content.unsafeBody;
+    } else if (content && content.unsafeHtml) {
+      target.innerHTML = content.unsafeHtml;
+    } else if (content instanceof Node) {
+      target.appendChild(content);
+    }
+  }
 
 })(SF);
 /* ============================================================================
@@ -590,7 +595,8 @@ const SF = (function () {
         dataset: { tabId: tab.id },
       });
       if (tab.content) {
-        if (typeof tab.content === 'string') panel.innerHTML = tab.content;
+        if (typeof tab.content === 'string') panel.textContent = tab.content;
+        else if (tab.content && tab.content.unsafeHtml) panel.innerHTML = tab.content.unsafeHtml;
         else if (tab.content instanceof Node) panel.appendChild(tab.content);
       }
       container.appendChild(panel);
@@ -650,8 +656,8 @@ const SF = (function () {
             td.textContent = cell;
           } else if (cell instanceof Node) {
             td.appendChild(cell);
-          } else if (cell && cell.html) {
-            td.innerHTML = cell.html;
+          } else if (cell && cell.unsafeHtml) {
+            td.innerHTML = cell.unsafeHtml;
           }
           var col = config.columns && config.columns[colIdx];
           if (col && col.align) td.style.textAlign = col.align;
@@ -710,9 +716,8 @@ const SF = (function () {
 
     var closeBtn = sf.el('button', {
       className: 'sf-toast-close',
-      html: '&times;',
       onClick: function () { dismiss(); },
-    });
+    }, '×');
     toast.appendChild(closeBtn);
 
     container.appendChild(toast);
@@ -1343,17 +1348,27 @@ const SF = (function () {
       var frappeTasks = tasksToFrappe(taskList);
 
       if (frappeTasks.length === 0) {
-        chartContainer.innerHTML = '<div style="padding:24px;color:var(--sf-gray-400);font-family:var(--sf-font-mono);font-size:13px;">No scheduled tasks to display.</div>';
+        chartContainer.textContent = '';
+        chartContainer.appendChild(sf.el('div', {
+          className: 'sf-gantt-empty-state',
+          style: {
+            padding: '24px',
+            color: 'var(--sf-gray-400)',
+            fontFamily: 'var(--sf-font-mono)',
+            fontSize: '13px',
+          },
+        }, 'No scheduled tasks to display.'));
         ganttChart = null;
         return;
       }
 
-      chartContainer.innerHTML = '<svg id="' + svgId + '"></svg>';
+      chartContainer.textContent = '';
+      chartContainer.appendChild(createSvgRoot(svgId));
 
       ganttChart = new Gantt('#' + svgId, frappeTasks, {
         view_mode: viewSelect.value || 'Quarter Day',
         date_format: 'YYYY-MM-DD HH:mm',
-        custom_popup_html: config.popupHtml || defaultPopup,
+        custom_popup_html: config.unsafePopupHtml || config.popupHtml || defaultPopup,
         on_click: function (task) {
           ctrl.highlightTask(task.id);
           if (config.onTaskClick) config.onTaskClick(task);
@@ -1365,7 +1380,7 @@ const SF = (function () {
     }
 
     function renderGrid(taskList) {
-      grid.innerHTML = '';
+      while (grid.firstChild) grid.removeChild(grid.firstChild);
       var table = sf.el('table', { className: 'sf-gantt-table' });
 
       // Header
@@ -1400,7 +1415,8 @@ const SF = (function () {
             td.textContent = task.name || task.label || task.id;
           } else if (col.render) {
             var content = col.render(task);
-            if (typeof content === 'string') td.innerHTML = content;
+            if (typeof content === 'string') td.textContent = content;
+            else if (content && content.unsafeHtml) td.innerHTML = content.unsafeHtml;
             else if (content instanceof Node) td.appendChild(content);
           } else {
             td.textContent = task[col.key] || '';
@@ -1425,6 +1441,15 @@ const SF = (function () {
         (t.duration_minutes ? '<p><strong>Duration:</strong> ' + t.duration_minutes + ' min</p>' : '') +
         (t.pinned ? '<p class="sf-gantt-popup-pinned"><i class="fa-solid fa-thumbtack"></i> Pinned</p>' : '') +
         '</div>';
+    }
+
+    function createSvgRoot(id) {
+      if (document.createElementNS) {
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.id = id;
+        return svg;
+      }
+      return sf.el('svg', { id: id });
     }
   };
 

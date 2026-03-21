@@ -165,17 +165,27 @@
       var frappeTasks = tasksToFrappe(taskList);
 
       if (frappeTasks.length === 0) {
-        chartContainer.innerHTML = '<div style="padding:24px;color:var(--sf-gray-400);font-family:var(--sf-font-mono);font-size:13px;">No scheduled tasks to display.</div>';
+        chartContainer.textContent = '';
+        chartContainer.appendChild(sf.el('div', {
+          className: 'sf-gantt-empty-state',
+          style: {
+            padding: '24px',
+            color: 'var(--sf-gray-400)',
+            fontFamily: 'var(--sf-font-mono)',
+            fontSize: '13px',
+          },
+        }, 'No scheduled tasks to display.'));
         ganttChart = null;
         return;
       }
 
-      chartContainer.innerHTML = '<svg id="' + svgId + '"></svg>';
+      chartContainer.textContent = '';
+      chartContainer.appendChild(createSvgRoot(svgId));
 
       ganttChart = new Gantt('#' + svgId, frappeTasks, {
         view_mode: viewSelect.value || 'Quarter Day',
         date_format: 'YYYY-MM-DD HH:mm',
-        custom_popup_html: config.popupHtml || defaultPopup,
+        custom_popup_html: config.unsafePopupHtml || config.popupHtml || defaultPopup,
         on_click: function (task) {
           ctrl.highlightTask(task.id);
           if (config.onTaskClick) config.onTaskClick(task);
@@ -187,7 +197,7 @@
     }
 
     function renderGrid(taskList) {
-      grid.innerHTML = '';
+      while (grid.firstChild) grid.removeChild(grid.firstChild);
       var table = sf.el('table', { className: 'sf-gantt-table' });
 
       // Header
@@ -222,7 +232,8 @@
             td.textContent = task.name || task.label || task.id;
           } else if (col.render) {
             var content = col.render(task);
-            if (typeof content === 'string') td.innerHTML = content;
+            if (typeof content === 'string') td.textContent = content;
+            else if (content && content.unsafeHtml) td.innerHTML = content.unsafeHtml;
             else if (content instanceof Node) td.appendChild(content);
           } else {
             td.textContent = task[col.key] || '';
@@ -247,6 +258,15 @@
         (t.duration_minutes ? '<p><strong>Duration:</strong> ' + t.duration_minutes + ' min</p>' : '') +
         (t.pinned ? '<p class="sf-gantt-popup-pinned"><i class="fa-solid fa-thumbtack"></i> Pinned</p>' : '') +
         '</div>';
+    }
+
+    function createSvgRoot(id) {
+      if (document.createElementNS) {
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.id = id;
+        return svg;
+      }
+      return sf.el('svg', { id: id });
     }
   };
 

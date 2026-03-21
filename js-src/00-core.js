@@ -30,7 +30,8 @@ const SF = (function () {
         }
         else if (key.indexOf('on') === 0) el.addEventListener(key.slice(2).toLowerCase(), attrs[key]);
         else if (key === 'dataset') Object.assign(el.dataset, attrs[key]);
-        else if (key === 'html') el.innerHTML = attrs[key];
+        else if (key === 'html') el.textContent = attrs[key];
+        else if (key === 'unsafeHtml') el.innerHTML = attrs[key];
         else el.setAttribute(key, attrs[key]);
       });
     }

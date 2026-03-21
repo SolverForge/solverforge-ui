@@ -100,6 +100,18 @@ alongside the solver. When you scaffold a new SolverForge project with
 | `SF.showError(title, detail)` | `void` | Danger toast shorthand |
 | `SF.showTab(tabId, root?)` | `void` | Activate matching tab panels in every tab container, or only within `root` when provided |
 
+### Unsafe HTML APIs (opt-in)
+
+Default content is always text-rendered. Use these fields only with trusted HTML:
+
+| Factory | Unsafe HTML field |
+|---------|-------------------|
+| `SF.el(tag, attrs, ...)` | `unsafeHtml` |
+| `SF.createModal(config)` | `unsafeBody` |
+| `SF.createTabs(config)` | `tabs[].content.unsafeHtml` |
+| `SF.createTable(config)` | `cells[].unsafeHtml` |
+| `SF.gantt.create(config)` | `unsafePopupHtml`, `columns[].render(task).unsafeHtml` |
+
 ### Timeline Rail
 
 | Factory | Returns | Description |
@@ -228,7 +240,9 @@ var gantt = SF.gantt.create({
     { key: 'start', label: 'Start' },
     { key: 'end', label: 'End' },
     { key: 'priority', label: 'P', render: function (t) {
-      return '<span class="sf-priority-badge priority-' + t.priority + '">P' + t.priority + '</span>';
+      return {
+        unsafeHtml: '<span class="sf-priority-badge priority-' + t.priority + '">P' + t.priority + '</span>',
+      };
     }},
   ],
   onTaskClick: function (task) { console.log('clicked', task.id); },
