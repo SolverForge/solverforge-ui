@@ -23,7 +23,7 @@
     dialog.appendChild(header);
 
     // Body
-    setBodyContent(body, config.body || config.unsafeBody);
+    setBodyContent(body, config.body, config.unsafeBody);
     dialog.appendChild(body);
 
     // Footer
@@ -73,10 +73,14 @@
     return api;
   };
 
-  function setBodyContent(target, content) {
+  function setBodyContent(target, content, explicitUnsafeHtml) {
     target.textContent = '';
-    if (typeof content === 'string') {
+    if (explicitUnsafeHtml != null) {
+      target.innerHTML = explicitUnsafeHtml;
+    } else if (typeof content === 'string') {
       target.textContent = content;
+    } else if (content && content.unsafeBody) {
+      target.innerHTML = content.unsafeBody;
     } else if (content && content.unsafeHtml) {
       target.innerHTML = content.unsafeHtml;
     } else if (content instanceof Node) {
