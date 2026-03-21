@@ -9,10 +9,11 @@
   sf.gantt = {};
 
   sf.gantt.create = function (config) {
-    var chartPaneId = config.chartPane || 'sf-gantt-chart-pane';
-    var gridPaneId = config.gridPane || 'sf-gantt-grid-pane';
-    var chartContainerId = config.chartContainer || 'sf-gantt-container';
-    var svgId = config.svgId || 'sf-gantt-svg';
+    var instanceId = sf.uid('sf-gantt');
+    var chartPaneId = config.chartPane || (instanceId + '-chart-pane');
+    var gridPaneId = config.gridPane || (instanceId + '-grid-pane');
+    var chartContainerId = config.chartContainer || (instanceId + '-container');
+    var svgId = config.svgId || (instanceId + '-svg');
     var ganttChart = null;
     var splitInstance = null;
     var tasks = [];

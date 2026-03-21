@@ -6,6 +6,7 @@ const SF = (function () {
   'use strict';
 
   const sf = { version: '0.1.0' };
+  var uidCounter = 0;
 
   /* ── Utilities ── */
 
@@ -40,6 +41,11 @@ const SF = (function () {
       else if (child instanceof Node) el.appendChild(child);
     });
     return el;
+  };
+
+  sf.uid = function (prefix) {
+    uidCounter += 1;
+    return (prefix || 'sf') + '-' + uidCounter;
   };
 
   if (typeof window !== 'undefined') window.SF = sf;

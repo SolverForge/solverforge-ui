@@ -7,6 +7,14 @@
 
   sf.createHeader = function (config) {
     var header = sf.el('header', { className: 'sf-header' });
+    var controls = {
+      actions: null,
+      spinner: null,
+      solveBtn: null,
+      stopBtn: null,
+      analyzeBtn: null,
+      nav: null,
+    };
 
     // Logo
     if (config.logo) {
@@ -31,6 +39,7 @@
     // Nav tabs
     if (config.tabs && config.tabs.length > 0) {
       var nav = sf.el('nav', { className: 'sf-header-nav' });
+      controls.nav = nav;
       config.tabs.forEach(function (tab) {
         var btn = sf.el('button', {
           className: 'sf-nav-btn' + (tab.active ? ' active' : ''),
@@ -53,9 +62,11 @@
     // Action buttons
     if (config.actions) {
       var actions = sf.el('div', { className: 'sf-header-actions' });
+      controls.actions = actions;
 
       // Spinner
-      var spinner = sf.el('div', { className: 'sf-solving-spinner', id: 'sfSolvingSpinner' });
+      var spinner = sf.el('div', { className: 'sf-solving-spinner' });
+      controls.spinner = spinner;
       actions.appendChild(spinner);
 
       if (config.actions.onSolve) {
@@ -63,9 +74,9 @@
           text: 'Solve',
           variant: 'success',
           icon: 'fa-play',
-          id: 'sfSolveBtn',
           onClick: config.actions.onSolve,
         });
+        controls.solveBtn = solveBtn;
         actions.appendChild(solveBtn);
       }
 
@@ -74,10 +85,10 @@
           text: 'Stop',
           variant: 'danger',
           icon: 'fa-stop',
-          id: 'sfStopBtn',
           onClick: config.actions.onStop,
         });
         stopBtn.style.display = 'none';
+        controls.stopBtn = stopBtn;
         actions.appendChild(stopBtn);
       }
 
@@ -86,16 +97,17 @@
           variant: 'ghost',
           icon: 'fa-chart-bar',
           circle: true,
-          id: 'sfAnalyzeBtn',
           tooltip: 'Score Analysis',
           onClick: config.actions.onAnalyze,
         });
+        controls.analyzeBtn = analyzeBtn;
         actions.appendChild(analyzeBtn);
       }
 
       header.appendChild(actions);
     }
 
+    header.sfControls = controls;
     return header;
   };
 

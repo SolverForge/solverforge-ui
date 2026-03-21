@@ -6,6 +6,7 @@ const SF = (function () {
   'use strict';
 
   const sf = { version: '0.1.0' };
+  var uidCounter = 0;
 
   /* ── Utilities ── */
 
@@ -40,6 +41,11 @@ const SF = (function () {
       else if (child instanceof Node) el.appendChild(child);
     });
     return el;
+  };
+
+  sf.uid = function (prefix) {
+    uidCounter += 1;
+    return (prefix || 'sf') + '-' + uidCounter;
   };
 
   if (typeof window !== 'undefined') window.SF = sf;
@@ -221,6 +227,14 @@ const SF = (function () {
 
   sf.createHeader = function (config) {
     var header = sf.el('header', { className: 'sf-header' });
+    var controls = {
+      actions: null,
+      spinner: null,
+      solveBtn: null,
+      stopBtn: null,
+      analyzeBtn: null,
+      nav: null,
+    };
 
     // Logo
     if (config.logo) {
@@ -245,6 +259,7 @@ const SF = (function () {
     // Nav tabs
     if (config.tabs && config.tabs.length > 0) {
       var nav = sf.el('nav', { className: 'sf-header-nav' });
+      controls.nav = nav;
       config.tabs.forEach(function (tab) {
         var btn = sf.el('button', {
           className: 'sf-nav-btn' + (tab.active ? ' active' : ''),
@@ -267,9 +282,11 @@ const SF = (function () {
     // Action buttons
     if (config.actions) {
       var actions = sf.el('div', { className: 'sf-header-actions' });
+      controls.actions = actions;
 
       // Spinner
-      var spinner = sf.el('div', { className: 'sf-solving-spinner', id: 'sfSolvingSpinner' });
+      var spinner = sf.el('div', { className: 'sf-solving-spinner' });
+      controls.spinner = spinner;
       actions.appendChild(spinner);
 
       if (config.actions.onSolve) {
@@ -277,9 +294,9 @@ const SF = (function () {
           text: 'Solve',
           variant: 'success',
           icon: 'fa-play',
-          id: 'sfSolveBtn',
           onClick: config.actions.onSolve,
         });
+        controls.solveBtn = solveBtn;
         actions.appendChild(solveBtn);
       }
 
@@ -288,10 +305,10 @@ const SF = (function () {
           text: 'Stop',
           variant: 'danger',
           icon: 'fa-stop',
-          id: 'sfStopBtn',
           onClick: config.actions.onStop,
         });
         stopBtn.style.display = 'none';
+        controls.stopBtn = stopBtn;
         actions.appendChild(stopBtn);
       }
 
@@ -300,16 +317,17 @@ const SF = (function () {
           variant: 'ghost',
           icon: 'fa-chart-bar',
           circle: true,
-          id: 'sfAnalyzeBtn',
           tooltip: 'Score Analysis',
           onClick: config.actions.onAnalyze,
         });
+        controls.analyzeBtn = analyzeBtn;
         actions.appendChild(analyzeBtn);
       }
 
       header.appendChild(actions);
     }
 
+    header.sfControls = controls;
     return header;
   };
 
@@ -324,30 +342,31 @@ const SF = (function () {
   sf.createStatusBar = function (config) {
     var bar = sf.el('div', { className: 'sf-statusbar' });
     var lastScore = null;
+    var controls = null;
 
     // Score display
-    var scoreEl = sf.el('span', { className: 'sf-statusbar-score', id: 'sfScoreDisplay' }, '\u2014');
+    var scoreEl = sf.el('span', { className: 'sf-statusbar-score' }, '\u2014');
     bar.appendChild(scoreEl);
 
     // Separator
     bar.appendChild(sf.el('span', { className: 'sf-statusbar-sep' }, '|'));
 
     // Constraint dots container
-    var dotsContainer = sf.el('div', { className: 'sf-statusbar-constraints', id: 'sfConstraintDots' });
+    var dotsContainer = sf.el('div', { className: 'sf-statusbar-constraints' });
     bar.appendChild(dotsContainer);
 
     // Separator + moves display
-    var movesSep = sf.el('span', { className: 'sf-statusbar-sep', id: 'sfMovesSep' }, '|');
+    var movesSep = sf.el('span', { className: 'sf-statusbar-sep' }, '|');
     movesSep.style.display = 'none';
     bar.appendChild(movesSep);
 
-    var movesEl = sf.el('span', { id: 'sfMovesDisplay' });
+    var movesEl = sf.el('span');
     movesEl.style.display = 'none';
     bar.appendChild(movesEl);
 
     // Separator + status text
     bar.appendChild(sf.el('span', { className: 'sf-statusbar-sep' }, '|'));
-    var statusEl = sf.el('span', { id: 'sfStatusText' });
+    var statusEl = sf.el('span');
     bar.appendChild(statusEl);
 
     // Build initial constraint dots
@@ -356,6 +375,11 @@ const SF = (function () {
     }
 
     var api = { el: bar };
+
+    api.bindHeader = function (header) {
+      controls = header && header.sfControls ? header.sfControls : null;
+      return api;
+    };
 
     api.updateScore = function (scoreStr) {
       if (scoreStr && scoreStr !== lastScore) {
@@ -373,9 +397,9 @@ const SF = (function () {
     };
 
     api.setSolving = function (solving) {
-      var solveBtn = document.getElementById('sfSolveBtn');
-      var stopBtn = document.getElementById('sfStopBtn');
-      var spinner = document.getElementById('sfSolvingSpinner');
+      var solveBtn = controls && controls.solveBtn;
+      var stopBtn = controls && controls.stopBtn;
+      var spinner = controls && controls.spinner;
 
       if (solveBtn) solveBtn.style.display = solving ? 'none' : '';
       if (stopBtn) stopBtn.style.display = solving ? '' : 'none';
@@ -415,8 +439,8 @@ const SF = (function () {
     api.colorDotsFromAnalysis = function (constraints) {
       if (!constraints || constraints.length === 0) return;
       buildDots(dotsContainer, constraints, config && config.onConstraintClick);
-      constraints.forEach(function (c, i) {
-        var dot = document.getElementById('sf-cdot-' + i);
+      dotsContainer.querySelectorAll('.sf-constraint-dot').forEach(function (dot, i) {
+        var c = constraints[i];
         if (!dot) return;
         var isHard = c.type === 'hard';
         var scoreVal = isHard ? sf.score.parseHard(c.score) : sf.score.parseSoft(c.score);
@@ -425,6 +449,10 @@ const SF = (function () {
         dot.classList.toggle('violated-soft', !isHard && violated);
       });
     };
+
+    if (config && config.header) {
+      api.bindHeader(config.header);
+    }
 
     return api;
   };
@@ -435,7 +463,6 @@ const SF = (function () {
     constraints.forEach(function (c, i) {
       var dot = sf.el('div', {
         className: 'sf-constraint-dot',
-        id: 'sf-cdot-' + i,
         title: c.name || ('Constraint ' + i),
         dataset: { type: c.type || 'hard', index: String(i) },
       });
@@ -542,21 +569,26 @@ const SF = (function () {
 (function (sf) {
   'use strict';
 
-  sf.showTab = function (tabId) {
-    document.querySelectorAll('.sf-tab-panel').forEach(function (p) {
-      p.classList.remove('active');
+  sf.showTab = function (tabId, root) {
+    if (root) {
+      activateTabInScope(root, tabId);
+      return;
+    }
+
+    document.querySelectorAll('.sf-tabs-container').forEach(function (container) {
+      activateTabInScope(container, tabId);
     });
-    var panel = document.getElementById('sf-tab-' + tabId);
-    if (panel) panel.classList.add('active');
   };
 
   sf.createTabs = function (config) {
     var container = sf.el('div', { className: 'sf-tabs-container' });
+    var tabsId = sf.uid('sf-tabs');
 
     config.tabs.forEach(function (tab) {
       var panel = sf.el('div', {
         className: 'sf-tab-panel' + (tab.active ? ' active' : ''),
-        id: 'sf-tab-' + tab.id,
+        id: tabsId + '-' + tab.id,
+        dataset: { tabId: tab.id },
       });
       if (tab.content) {
         if (typeof tab.content === 'string') panel.textContent = tab.content;
@@ -566,8 +598,22 @@ const SF = (function () {
       container.appendChild(panel);
     });
 
-    return { el: container, show: sf.showTab };
+    return {
+      el: container,
+      show: function (tabId) {
+        sf.showTab(tabId, container);
+      },
+    };
   };
+
+  function activateTabInScope(scope, tabId) {
+    scope.querySelectorAll('.sf-tab-panel').forEach(function (p) {
+      p.classList.remove('active');
+    });
+
+    var panel = scope.querySelector('[data-tab-id="' + tabId + '"]');
+    if (panel) panel.classList.add('active');
+  }
 
 })(SF);
 /* ============================================================================
@@ -1142,10 +1188,11 @@ const SF = (function () {
   sf.gantt = {};
 
   sf.gantt.create = function (config) {
-    var chartPaneId = config.chartPane || 'sf-gantt-chart-pane';
-    var gridPaneId = config.gridPane || 'sf-gantt-grid-pane';
-    var chartContainerId = config.chartContainer || 'sf-gantt-container';
-    var svgId = config.svgId || 'sf-gantt-svg';
+    var instanceId = sf.uid('sf-gantt');
+    var chartPaneId = config.chartPane || (instanceId + '-chart-pane');
+    var gridPaneId = config.gridPane || (instanceId + '-grid-pane');
+    var chartContainerId = config.chartContainer || (instanceId + '-container');
+    var svgId = config.svgId || (instanceId + '-svg');
     var ganttChart = null;
     var splitInstance = null;
     var tasks = [];
