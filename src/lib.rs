@@ -87,13 +87,13 @@ mod tests {
 
     #[test]
     fn versioned_bundles_are_detected() {
-        assert!(is_versioned_bundle("sf.0.1.0.css"));
-        assert!(is_versioned_bundle("sf.0.1.0.js"));
+        assert!(is_versioned_bundle("sf.0.2.0.css"));
+        assert!(is_versioned_bundle("sf.0.2.0.js"));
         assert!(is_versioned_bundle("sf.0.2.0-beta.1.js"));
-        assert!(is_versioned_bundle("sf.0.1.0+build.7.css"));
+        assert!(is_versioned_bundle("sf.0.2.0+build.7.css"));
         assert!(!is_versioned_bundle("sf.css"));
         assert!(!is_versioned_bundle("sf.js"));
-        assert!(!is_versioned_bundle("vendor/sf.0.1.0.js"));
+        assert!(!is_versioned_bundle("vendor/sf.0.2.0.js"));
     }
 
     #[test]
@@ -109,16 +109,16 @@ mod tests {
         assert!(is_immutable("fonts/jetbrains-mono.woff2"));
         assert!(is_immutable("vendor/leaflet/leaflet.js"));
         assert!(is_immutable("img/solverforge-logo.svg"));
-        assert!(is_immutable("sf.0.1.0.css"));
-        assert!(is_immutable("sf.0.1.0+build.7.js"));
+        assert!(is_immutable("sf.0.2.0.css"));
+        assert!(is_immutable("sf.0.2.0+build.7.js"));
         assert!(!is_immutable("sf.css"));
     }
 
     #[test]
     fn mime_detection_still_works_for_versioned_assets() {
-        assert_eq!(mime_from_path("sf.0.1.0.css"), "text/css; charset=utf-8");
+        assert_eq!(mime_from_path("sf.0.2.0.css"), "text/css; charset=utf-8");
         assert_eq!(
-            mime_from_path("sf.0.1.0+build.7.js"),
+            mime_from_path("sf.0.2.0+build.7.js"),
             "application/javascript; charset=utf-8"
         );
     }

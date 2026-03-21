@@ -13,7 +13,8 @@ Use this checklist for every public release of `solverforge-ui`.
 
 ## Tagging
 
-- Use one of the `make bump-patch`, `make bump-minor`, or `make bump-major` targets if you want the existing tag helper workflow.
+- This repository uses `commit-and-tag-version` for release version bumps and tag creation.
+- Use one of the `make bump-patch`, `make bump-minor`, or `make bump-major` targets to run that `commit-and-tag-version` flow.
 - If using the bump targets locally, ensure Node.js with `npx` is available.
 - Push the release commit and tag to GitHub.
 
