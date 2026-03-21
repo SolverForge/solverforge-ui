@@ -516,6 +516,14 @@ Bundling writes both stable compatibility assets (`static/sf/sf.css`,
 `static/sf/sf.js`) and versioned assets (`static/sf/sf.<version>.css`,
 `static/sf/sf.<version>.js`).
 
+## Demo Fixtures
+
+Runnable demo fixtures live in `demos/`.
+
+- `demos/full-surface.html` exercises the primary shipped component surface together.
+- `demos/rail.html` focuses on resource cards, blocks, gauges, and changeovers.
+- `make demo-serve` serves the repository at `http://localhost:8000/demos/` for local validation.
+
 ## Acknowledgments
 
 solverforge-ui builds on these excellent open-source projects:

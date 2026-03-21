@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>solverforge-ui rail demo</title>
+  <link rel="stylesheet" href="../static/sf/vendor/fontawesome/css/fontawesome.min.css">
+  <link rel="stylesheet" href="../static/sf/vendor/fontawesome/css/solid.min.css">
+  <link rel="stylesheet" href="../static/sf/sf.css">
+  <script src="../static/sf/sf.js"></script>
+  <style>
+    body { margin: 0; }
+    .demo-wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+    .demo-stack { display: grid; gap: 16px; }
+  </style>
+</head>
+<body class="sf-app">
+  <main class="sf-main">
+    <div class="demo-wrap demo-stack" id="app"></div>
+  </main>
+
+  <script>
+    var app = document.getElementById('app');
+
+    var header = SF.rail.createHeader({
+      label: 'Resource',
+      labelWidth: 220,
+      columns: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    });
+    app.appendChild(header);
+
+    [
+      {
+        id: 'furnace-1',
+        name: 'FORNO 1',
+        type: 'CAMERA',
+        typeStyle: { bg: 'rgba(59,130,246,0.15)', color: '#1d4ed8', border: '1px solid rgba(59,130,246,0.30)' },
+        gauges: [
+          { label: 'Temp', pct: 82, style: 'heat', text: '820 / 1000 C' },
+          { label: 'Load', pct: 68, style: 'load', text: '136 / 200 kg' }
+        ],
+        stats: [
+          { label: 'Jobs', value: 12 },
+          { label: 'Prod', value: '840 kg' }
+        ],
+        blocks: [
+          { start: 120, end: 420, label: 'ODL-2847', meta: 'Bianchi', color: 'rgba(59,130,246,0.55)', borderColor: '#3b82f6' },
+          { start: 480, end: 700, label: 'ODL-3012', meta: 'Rossi', color: 'rgba(16,185,129,0.55)', borderColor: '#10b981', late: true }
+        ],
+        changeover: { start: 420, end: 480 }
+      },
+      {
+        id: 'furnace-2',
+        name: 'FORNO 2',
+        type: 'RICOTTURA',
+        typeStyle: { bg: 'rgba(245,158,11,0.15)', color: '#b45309', border: '1px solid rgba(245,158,11,0.30)' },
+        gauges: [
+          { label: 'Temp', pct: 55, style: 'heat', text: '550 / 1000 C' },
+          { label: 'Load', pct: 44, style: 'load', text: '88 / 200 kg' }
+        ],
+        stats: [
+          { label: 'Jobs', value: 9 },
+          { label: 'Prod', value: '510 kg' }
+        ],
+        blocks: [
+          { start: 30, end: 210, label: 'ODL-1802', meta: 'Verdi', color: 'rgba(245,158,11,0.55)', borderColor: '#f59e0b' },
+          { start: 260, end: 560, label: 'ODL-1994', meta: 'Neri', color: 'rgba(236,72,153,0.45)', borderColor: '#ec4899' }
+        ]
+      }
+    ].forEach(function (cfg) {
+      var card = SF.rail.createCard({
+        id: cfg.id,
+        name: cfg.name,
+        labelWidth: 220,
+        columns: 6,
+        type: cfg.type,
+        typeStyle: cfg.typeStyle,
+        gauges: cfg.gauges,
+        stats: cfg.stats
+      });
+
+      cfg.blocks.forEach(function (block) {
+        card.addBlock({
+          start: block.start,
+          end: block.end,
+          horizon: 720,
+          label: block.label,
+          meta: block.meta,
+          color: block.color,
+          borderColor: block.borderColor,
+          late: !!block.late
+        });
+      });
+
+      if (cfg.changeover) {
+        SF.rail.addChangeover(card.rail, {
+          start: cfg.changeover.start,
+          end: cfg.changeover.end,
+          horizon: 720
+        });
+      }
+
+      app.appendChild(card.el);
+    });
+  </script>
+</body>
+</html>
