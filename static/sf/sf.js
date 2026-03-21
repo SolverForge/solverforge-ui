@@ -500,7 +500,7 @@ const SF = (function () {
     dialog.appendChild(header);
 
     // Body
-    setBodyContent(body, config.body || config.unsafeBody);
+    setBodyContent(body, config.body, config.unsafeBody);
     dialog.appendChild(body);
 
     // Footer
@@ -550,10 +550,14 @@ const SF = (function () {
     return api;
   };
 
-  function setBodyContent(target, content) {
+  function setBodyContent(target, content, explicitUnsafeHtml) {
     target.textContent = '';
-    if (typeof content === 'string') {
+    if (explicitUnsafeHtml != null) {
+      target.innerHTML = explicitUnsafeHtml;
+    } else if (typeof content === 'string') {
       target.textContent = content;
+    } else if (content && content.unsafeBody) {
+      target.innerHTML = content.unsafeBody;
     } else if (content && content.unsafeHtml) {
       target.innerHTML = content.unsafeHtml;
     } else if (content instanceof Node) {
@@ -1359,7 +1363,7 @@ const SF = (function () {
       }
 
       chartContainer.textContent = '';
-      chartContainer.appendChild(sf.el('svg', { id: svgId }));
+      chartContainer.appendChild(createSvgRoot(svgId));
 
       ganttChart = new Gantt('#' + svgId, frappeTasks, {
         view_mode: viewSelect.value || 'Quarter Day',
@@ -1437,6 +1441,15 @@ const SF = (function () {
         (t.duration_minutes ? '<p><strong>Duration:</strong> ' + t.duration_minutes + ' min</p>' : '') +
         (t.pinned ? '<p class="sf-gantt-popup-pinned"><i class="fa-solid fa-thumbtack"></i> Pinned</p>' : '') +
         '</div>';
+    }
+
+    function createSvgRoot(id) {
+      if (document.createElementNS) {
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.id = id;
+        return svg;
+      }
+      return sf.el('svg', { id: id });
     }
   };
 

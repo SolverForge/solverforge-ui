@@ -180,7 +180,7 @@
       }
 
       chartContainer.textContent = '';
-      chartContainer.appendChild(sf.el('svg', { id: svgId }));
+      chartContainer.appendChild(createSvgRoot(svgId));
 
       ganttChart = new Gantt('#' + svgId, frappeTasks, {
         view_mode: viewSelect.value || 'Quarter Day',
@@ -258,6 +258,15 @@
         (t.duration_minutes ? '<p><strong>Duration:</strong> ' + t.duration_minutes + ' min</p>' : '') +
         (t.pinned ? '<p class="sf-gantt-popup-pinned"><i class="fa-solid fa-thumbtack"></i> Pinned</p>' : '') +
         '</div>';
+    }
+
+    function createSvgRoot(id) {
+      if (document.createElementNS) {
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.id = id;
+        return svg;
+      }
+      return sf.el('svg', { id: id });
     }
   };
 

@@ -64,9 +64,10 @@ class FakeClassList {
 }
 
 class FakeElement extends FakeNode {
-  constructor(tagName) {
+  constructor(tagName, namespaceURI) {
     super();
     this.tagName = String(tagName).toUpperCase();
+    this.namespaceURI = namespaceURI || null;
     this.childNodes = [];
     this.parentNode = null;
     this.ownerDocument = null;
@@ -182,6 +183,12 @@ class FakeDocument {
 
   createElement(tagName) {
     var element = new FakeElement(tagName);
+    element.ownerDocument = this;
+    return element;
+  }
+
+  createElementNS(namespaceURI, tagName) {
+    var element = new FakeElement(tagName, namespaceURI);
     element.ownerDocument = this;
     return element;
   }
