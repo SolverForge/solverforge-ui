@@ -6,6 +6,7 @@ const SF = (function () {
   'use strict';
 
   const sf = { version: '0.1.0' };
+  var uidCounter = 0;
 
   /* ── Utilities ── */
 
@@ -16,6 +17,10 @@ const SF = (function () {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  };
+
+  sf.assert = function (cond, message) {
+    if (!cond) throw new Error('[SolverForge] ' + message);
   };
 
   sf.el = function (tag, attrs) {
@@ -29,7 +34,8 @@ const SF = (function () {
         }
         else if (key.indexOf('on') === 0) el.addEventListener(key.slice(2).toLowerCase(), attrs[key]);
         else if (key === 'dataset') Object.assign(el.dataset, attrs[key]);
-        else if (key === 'html') el.innerHTML = attrs[key];
+        else if (key === 'html') el.textContent = attrs[key];
+        else if (key === 'unsafeHtml') el.innerHTML = attrs[key];
         else el.setAttribute(key, attrs[key]);
       });
     }
@@ -39,6 +45,11 @@ const SF = (function () {
       else if (child instanceof Node) el.appendChild(child);
     });
     return el;
+  };
+
+  sf.uid = function (prefix) {
+    uidCounter += 1;
+    return (prefix || 'sf') + '-' + uidCounter;
   };
 
   if (typeof window !== 'undefined') window.SF = sf;

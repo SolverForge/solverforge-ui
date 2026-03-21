@@ -7,10 +7,40 @@
   'use strict';
 
   sf.createBackend = function (config) {
+    config = config || {};
     var type = config.type || 'axum';
     if (type === 'tauri') return createTauriBackend(config);
     return createHttpBackend(config);
   };
+
+  function resolveJobId(raw) {
+    if (raw == null) return '';
+    if (typeof raw === 'string' || typeof raw === 'number') return String(raw).trim();
+    if (typeof raw !== 'object') return '';
+
+    if (raw.id != null) return String(raw.id).trim();
+    if (raw.jobId != null) return String(raw.jobId).trim();
+    if (raw.job_id != null) return String(raw.job_id).trim();
+    if (raw.scheduleId != null) return String(raw.scheduleId).trim();
+    if (raw.schedule_id != null) return String(raw.schedule_id).trim();
+
+    if (raw.data && typeof raw.data === 'object' && raw.data.id != null) {
+      return String(raw.data.id).trim();
+    }
+    return '';
+  }
+
+  function resolveEventJobId(payload) {
+    if (!payload || typeof payload !== 'object') return '';
+    if (payload.jobId != null) return String(payload.jobId).trim();
+    if (payload.job_id != null) return String(payload.job_id).trim();
+    if (payload.scheduleId != null) return String(payload.scheduleId).trim();
+    if (payload.schedule_id != null) return String(payload.schedule_id).trim();
+    if (payload.id != null) return String(payload.id).trim();
+    if (payload.data && typeof payload.data === 'object' && payload.data.id != null) return String(payload.data.id).trim();
+    if (payload.data && typeof payload.data === 'object' && payload.data.jobId != null) return String(payload.data.jobId).trim();
+    return '';
+  }
 
   /* ── HTTP backend (Axum, Rails, anything) ── */
 
@@ -37,7 +67,7 @@
 
     return {
       createSchedule: function (data) {
-        return request('POST', schedulesPath, data);
+        return request('POST', schedulesPath, data).then(resolveJobId);
       },
       getSchedule: function (id) {
         return request('GET', schedulesPath + '/' + id);
@@ -68,6 +98,10 @@
   /* ── Tauri IPC backend ── */
 
   function createTauriBackend(config) {
+    sf.assert(typeof config === 'object', 'createBackend({}) is required for Tauri adapter');
+    sf.assert(typeof config.invoke === 'function', 'Tauri backend requires config.invoke');
+    sf.assert(typeof config.listen === 'function', 'Tauri backend requires config.listen');
+
     var invoke = config.invoke;
     var listen = config.listen;
     var commands = config.commands || {};
@@ -75,7 +109,7 @@
 
     return {
       createSchedule: function (data) {
-        return invoke(commands.startSolve || 'create_schedule', { request: data });
+        return invoke(commands.startSolve || 'create_schedule', { request: data }).then(resolveJobId);
       },
       getSchedule: function (id) {
         return invoke(commands.getSchedule || 'get_schedule', { id: id });
@@ -93,9 +127,13 @@
         return Promise.resolve([]);
       },
       streamEvents: function (id, onMessage) {
+        var targetId = String(id);
         var unlisten = null;
         listen(eventName, function (event) {
-          onMessage(event.payload);
+          var payload = event && event.payload ? event.payload : {};
+          var payloadId = resolveEventJobId(payload);
+          if (payloadId && payloadId !== targetId) return;
+          onMessage(payload);
         }).then(function (fn) { unlisten = fn; });
         return function close() { if (unlisten) unlisten(); };
       },

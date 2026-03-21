@@ -7,6 +7,16 @@
   'use strict';
 
   sf.createSolver = function (config) {
+    sf.assert(config, 'createSolver(config) requires a configuration object');
+    sf.assert(config.backend, 'createSolver(config.backend) is required');
+    sf.assert(config.backend.createSchedule && typeof config.backend.createSchedule === 'function', 'createSolver(config.backend.createSchedule) must be a function');
+    sf.assert(config.backend.streamEvents && typeof config.backend.streamEvents === 'function', 'createSolver(config.backend.streamEvents) must be a function');
+    sf.assert(config.backend.getSchedule && typeof config.backend.getSchedule === 'function', 'createSolver(config.backend.getSchedule) must be a function');
+    sf.assert(!config.onUpdate || typeof config.onUpdate === 'function', 'createSolver(config.onUpdate) must be a function');
+    sf.assert(!config.onComplete || typeof config.onComplete === 'function', 'createSolver(config.onComplete) must be a function');
+    sf.assert(!config.onAnalysis || typeof config.onAnalysis === 'function', 'createSolver(config.onAnalysis) must be a function');
+    sf.assert(!config.onError || typeof config.onError === 'function', 'createSolver(config.onError) must be a function');
+
     var backend = config.backend;
     var statusBar = config.statusBar;
     var closeStream = null;
@@ -25,8 +35,13 @@
       }
 
       backend.createSchedule(data).then(function (id) {
-        jobId = typeof id === 'string' ? id.trim() : id;
+        if (typeof id !== 'string' || !id.trim()) {
+          throw new Error('Invalid solver backend createSchedule response');
+        }
+        jobId = id;
         closeStream = backend.streamEvents(jobId, function (msg) {
+          if (!isEventForCurrentJob(msg, jobId)) return;
+
           // Solver finished
           if (msg.solverStatus === 'NOT_SOLVING') {
             backend.getSchedule(jobId).then(function (final) {
@@ -86,6 +101,13 @@
     api.getJobId = function () { return jobId; };
 
     return api;
+
+    function isEventForCurrentJob(msg, expectedId) {
+      if (!msg || typeof msg !== 'object') return false;
+      var candidate = msg.jobId || msg.job_id || msg.scheduleId || msg.schedule_id || msg.id || (msg.data && msg.data.id);
+      if (candidate == null) return true;
+      return String(candidate) === String(expectedId);
+    }
   };
 
 })(SF);

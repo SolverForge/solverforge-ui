@@ -6,6 +6,10 @@
   'use strict';
 
   sf.createTable = function (config) {
+    sf.assert(config, 'createTable(config) requires a configuration object');
+    sf.assert(!config.columns || Array.isArray(config.columns), 'createTable(config.columns) must be an array');
+    sf.assert(!config.rows || Array.isArray(config.rows), 'createTable(config.rows) must be an array');
+
     var wrapper = sf.el('div', { className: 'sf-table-container' });
     var table = sf.el('table', { className: 'sf-table' });
 
@@ -34,8 +38,8 @@
             td.textContent = cell;
           } else if (cell instanceof Node) {
             td.appendChild(cell);
-          } else if (cell && cell.html) {
-            td.innerHTML = cell.html;
+          } else if (cell && cell.unsafeHtml) {
+            td.innerHTML = cell.unsafeHtml;
           }
           var col = config.columns && config.columns[colIdx];
           if (col && col.align) td.style.textAlign = col.align;

@@ -9,6 +9,9 @@
   sf.rail = {};
 
   sf.rail.createHeader = function (config) {
+    sf.assert(config, 'createHeader(config) requires a configuration object');
+    sf.assert(!config.columns || Array.isArray(config.columns), 'createHeader(config.columns) expects an array');
+
     var labelWidth = config.labelWidth || 200;
     var columns = config.columns || [];
 
@@ -32,6 +35,8 @@
   };
 
   sf.rail.createCard = function (config) {
+    sf.assert(config, 'createCard(config) requires a configuration object');
+
     var labelWidth = config.labelWidth || 200;
     var card = sf.el('div', { className: 'sf-resource-card' });
 
@@ -136,6 +141,10 @@
   };
 
   sf.rail.addBlock = function (rail, config) {
+    sf.assert(rail, 'addBlock(rail) requires a rail element');
+    sf.assert(config && config.horizon != null, 'addBlock(config.horizon) is required');
+    sf.assert(config.start != null && config.end != null, 'addBlock(config.start/config.end) are required');
+
     var horizon = config.horizon || 1;
     var startPct = (config.start / horizon) * 100;
     var widthPct = ((config.end - config.start) / horizon) * 100;
@@ -175,6 +184,10 @@
   };
 
   sf.rail.addChangeover = function (rail, config) {
+    sf.assert(rail, 'addChangeover(rail) requires a rail element');
+    sf.assert(config && config.horizon != null, 'addChangeover(config.horizon) is required');
+    sf.assert(config.start != null && config.end != null, 'addChangeover(config.start/config.end) are required');
+
     var horizon = config.horizon || 1;
     var startPct = (config.start / horizon) * 100;
     var widthPct = ((config.end - config.start) / horizon) * 100;

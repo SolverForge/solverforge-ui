@@ -15,6 +15,8 @@
   }
 
   sf.showToast = function (config) {
+    sf.assert(config, 'showToast(config) requires a configuration object');
+
     ensureContainer();
 
     var variant = config.variant || 'danger';
@@ -36,9 +38,8 @@
 
     var closeBtn = sf.el('button', {
       className: 'sf-toast-close',
-      html: '&times;',
       onClick: function () { dismiss(); },
-    });
+    }, '×');
     toast.appendChild(closeBtn);
 
     container.appendChild(toast);

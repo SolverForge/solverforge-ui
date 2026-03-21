@@ -44,6 +44,14 @@ alongside the solver. When you scaffold a new SolverForge project with
 ```html
 <body class="sf-app">
 <script>
+  var tabs = SF.createTabs({
+    tabs: [
+      { id: 'plan', content: '<div>Plan view</div>', active: true },
+      { id: 'gantt', content: '<div>Gantt view</div>' },
+    ],
+  });
+  document.body.appendChild(tabs.el);
+
   var backend = SF.createBackend({ type: 'axum' });
 
   var header = SF.createHeader({
@@ -54,7 +62,7 @@ alongside the solver. When you scaffold a new SolverForge project with
       { id: 'plan', label: 'Plan', icon: 'fa-list-check', active: true },
       { id: 'gantt', label: 'Gantt', icon: 'fa-chart-gantt' },
     ],
-    onTabChange: function (id) { SF.showTab(id); },
+    onTabChange: function (id) { tabs.show(id); },
     actions: {
       onSolve: function () { solver.start(); },
       onStop:  function () { solver.stop(); },
@@ -62,7 +70,7 @@ alongside the solver. When you scaffold a new SolverForge project with
   });
   document.body.prepend(header);
 
-  var bar = SF.createStatusBar({ constraints: myConstraints });
+  var bar = SF.createStatusBar({ header: header, constraints: myConstraints });
   header.after(bar.el);
 
   var solver = SF.createSolver({
@@ -81,16 +89,28 @@ alongside the solver. When you scaffold a new SolverForge project with
 | Factory | Returns | Description |
 |---------|---------|-------------|
 | `SF.createHeader(config)` | `HTMLElement` | Sticky header with logo, title, nav tabs, solve/stop/analyze buttons |
-| `SF.createStatusBar(config)` | `{el, updateScore, setSolving, updateMoves, colorDotsFromAnalysis}` | Score display + constraint dot indicators |
+| `SF.createStatusBar(config)` | `{el, bindHeader, updateScore, setSolving, updateMoves, colorDotsFromAnalysis}` | Score display + constraint dot indicators; pass `header` or call `bindHeader()` if it should toggle local solve/stop controls |
 | `SF.createButton(config)` | `HTMLButtonElement` | Button with variant/size/icon/shape modifiers |
 | `SF.createModal(config)` | `{el, body, open, close, setBody}` | Dialog with emerald gradient header, backdrop, Escape key |
 | `SF.createTable(config)` | `HTMLElement` | Data table with headers and row click |
-| `SF.createTabs(config)` | `{el, show}` | Tab panel container |
+| `SF.createTabs(config)` | `{el, show}` | Tab panel container with instance-scoped tab switching |
 | `SF.createFooter(config)` | `HTMLElement` | Footer with links and version |
 | `SF.createApiGuide(config)` | `HTMLElement` | REST API documentation panel |
 | `SF.showToast(config)` | `void` | Toast notification (auto-dismiss) |
 | `SF.showError(title, detail)` | `void` | Danger toast shorthand |
-| `SF.showTab(tabId)` | `void` | Activate a tab panel by ID |
+| `SF.showTab(tabId, root?)` | `void` | Activate matching tab panels in every tab container, or only within `root` when provided |
+
+### Unsafe HTML APIs (opt-in)
+
+Default content is always text-rendered. Use these fields only with trusted HTML:
+
+| Factory | Unsafe HTML field |
+|---------|-------------------|
+| `SF.el(tag, attrs, ...)` | `unsafeHtml` |
+| `SF.createModal(config)` | `unsafeBody` |
+| `SF.createTabs(config)` | `tabs[].content.unsafeHtml` |
+| `SF.createTable(config)` | `cells[].unsafeHtml` |
+| `SF.gantt.create(config)` | `unsafePopupHtml`, `columns[].render(task).unsafeHtml` |
 
 ### Timeline Rail
 
@@ -220,7 +240,9 @@ var gantt = SF.gantt.create({
     { key: 'start', label: 'Start' },
     { key: 'end', label: 'End' },
     { key: 'priority', label: 'P', render: function (t) {
-      return '<span class="sf-priority-badge priority-' + t.priority + '">P' + t.priority + '</span>';
+      return {
+        unsafeHtml: '<span class="sf-priority-badge priority-' + t.priority + '">P' + t.priority + '</span>',
+      };
     }},
   ],
   onTaskClick: function (task) { console.log('clicked', task.id); },
@@ -271,6 +293,11 @@ Expects standard SolverForge REST endpoints:
 - `GET /schedules/{id}/analyze` — constraint analysis
 - `DELETE /schedules/{id}` — stop solving
 - `GET /demo-data/{name}` — load demo dataset
+
+Backend contract expectations:
+- `createSchedule()` must resolve to a plain schedule/job id (string), or an object containing one of `id`, `jobId`, `job_id`, `scheduleId`, or `schedule_id`.
+- Events passed into `streamEvents()` for a job should include one of the same identifiers if multiple solver runs are possible.
+- Tauri payloads are ignored only when they carry a different job id than the active run; id-less single-run updates still pass through.
 
 ### Tauri
 
