@@ -65,6 +65,27 @@
         }
         meta.appendChild(badge);
       }
+      var badges = Array.isArray(config.badges)
+        ? config.badges
+        : config.badges
+          ? [config.badges]
+          : [];
+      if (badges.length) {
+        badges.forEach(function (entry) {
+          if (!entry) return;
+          if (typeof entry === 'string') {
+            meta.appendChild(sf.el('span', { className: 'sf-resource-type-badge' }, entry));
+            return;
+          }
+          var extraBadge = sf.el('span', { className: 'sf-resource-type-badge' }, entry.label || '');
+          if (entry.style) {
+            extraBadge.style.background = entry.style.bg || '';
+            extraBadge.style.color = entry.style.color || '';
+            extraBadge.style.border = entry.style.border || '';
+          }
+          meta.appendChild(extraBadge);
+        });
+      }
       identity.appendChild(meta);
     }
     resHeader.appendChild(identity);
@@ -130,6 +151,7 @@
         horizon: config.heatmap.horizon || 1,
         label: config.heatmap.label,
         segments: config.heatmap.segments,
+        labelWidth: labelWidth,
       };
       heatmapCfg.railConfig = config;
       var heatmap = sf.rail.createHeatmap(heatmapCfg);
@@ -185,6 +207,7 @@
     if (!config || !config.segments || !Array.isArray(config.segments) || config.segments.length === 0) return null;
 
     var heatmap = sf.el('div', { className: 'sf-heatmap' });
+    heatmap.style.gridTemplateColumns = (config.labelWidth || 200) + 'px 1fr';
     var label = sf.el('div', { className: 'sf-heatmap-label' }, config.label || '');
     heatmap.appendChild(label);
 

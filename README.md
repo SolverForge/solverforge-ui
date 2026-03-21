@@ -157,6 +157,7 @@ SF.createButton({ text: 'Stop',     variant: 'danger' })    // red bg, white tex
 SF.createButton({ text: 'Save',     variant: 'primary' })   // emerald-700 bg
 SF.createButton({ text: 'Cancel',   variant: 'default' })   // gray border
 SF.createButton({ icon: 'fa-gear',  variant: 'ghost', circle: true })
+SF.createButton({ text: 'Settings', icon: 'fa-gear', variant: 'ghost', iconOnly: true })
 SF.createButton({ text: 'Submit',   variant: 'primary', pill: true })
 SF.createButton({ text: 'Delete',   variant: 'danger', outline: true })
 SF.createButton({ text: 'Sm',       variant: 'primary', size: 'small' })
@@ -184,6 +185,10 @@ var card = SF.rail.createCard({
   columns: 5,
   type: 'CAMERA',
   typeStyle: { bg: 'rgba(59,130,246,0.15)', color: '#1d4ed8', border: '1px solid rgba(59,130,246,0.3)' },
+  badges: [
+    'TEMPRA',
+    { label: 'HOT', style: { bg: 'rgba(239,68,68,0.12)', color: '#b91c1c', border: '1px solid rgba(239,68,68,0.3)' } },
+  ],
   gauges: [
     { label: 'Temp', pct: 85, style: 'heat', text: '850/1000°C' },
     { label: 'Load', pct: 60, style: 'load', text: '120/200 kg' },
@@ -216,6 +221,7 @@ card.setSolving(true);
 ```
 
 Gauge styles: `heat` (blue→amber→red), `load` (emerald→amber→red), `emerald` (solid green).
+`badges` accepts either strings or `{ label, style }` objects for extra resource metadata.
 
 ## Gantt Chart
 
