@@ -6,9 +6,27 @@ trap 'rm -f "$manifest"' EXIT
 
 cargo package --allow-dirty --list > "$manifest"
 
+if command -v rg >/dev/null 2>&1; then
+  search_exact() {
+    rg -Fxq "$1" "$manifest"
+  }
+
+  search_prefix() {
+    rg -q "^$1" "$manifest"
+  }
+else
+  search_exact() {
+    grep -Fxq "$1" "$manifest"
+  }
+
+  search_prefix() {
+    grep -Eq "^$1" "$manifest"
+  }
+fi
+
 require() {
   local path="$1"
-  if ! rg -Fxq "$path" "$manifest"; then
+  if ! search_exact "$path"; then
     echo "missing packaged file: $path" >&2
     exit 1
   fi
@@ -16,7 +34,7 @@ require() {
 
 reject_prefix() {
   local prefix="$1"
-  if rg -q "^${prefix}" "$manifest"; then
+  if search_prefix "$prefix"; then
     echo "unexpected packaged path matching prefix: $prefix" >&2
     exit 1
   fi
@@ -24,7 +42,7 @@ reject_prefix() {
 
 reject_exact() {
   local path="$1"
-  if rg -Fxq "$path" "$manifest"; then
+  if search_exact "$path"; then
     echo "unexpected packaged file: $path" >&2
     exit 1
   fi
