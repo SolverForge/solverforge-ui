@@ -19,6 +19,10 @@ const SF = (function () {
       .replace(/"/g, '&quot;');
   };
 
+  sf.assert = function (cond, message) {
+    if (!cond) throw new Error('[SolverForge] ' + message);
+  };
+
   sf.el = function (tag, attrs) {
     var children = Array.prototype.slice.call(arguments, 2);
     var el = document.createElement(tag);

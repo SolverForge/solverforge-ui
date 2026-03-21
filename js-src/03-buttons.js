@@ -6,6 +6,8 @@
   'use strict';
 
   sf.createButton = function (config) {
+    sf.assert(config, 'createButton(config) requires a configuration object');
+
     var classes = ['sf-btn'];
 
     if (config.variant) classes.push('sf-btn--' + config.variant);
@@ -22,6 +24,8 @@
     });
 
     if (config.disabled) btn.disabled = true;
+
+    sf.assert(!config.onClick || typeof config.onClick === 'function', 'createButton(onClick) must be a function');
 
     if (config.icon) {
       var icon = sf.el('i', { className: 'fa-solid ' + config.icon });

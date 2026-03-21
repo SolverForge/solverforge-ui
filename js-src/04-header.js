@@ -6,6 +6,8 @@
   'use strict';
 
   sf.createHeader = function (config) {
+    sf.assert(config, 'createHeader(config) requires a configuration object');
+
     var header = sf.el('header', { className: 'sf-header' });
     var controls = {
       actions: null,
@@ -38,9 +40,12 @@
 
     // Nav tabs
     if (config.tabs && config.tabs.length > 0) {
+      sf.assert(Array.isArray(config.tabs), 'createHeader(config.tabs) expects an array');
       var nav = sf.el('nav', { className: 'sf-header-nav' });
       controls.nav = nav;
       config.tabs.forEach(function (tab) {
+        sf.assert(tab && tab.id, 'createHeader tab entries require an id');
+        sf.assert(typeof tab.label === 'string', 'createHeader tab entries require a label');
         var btn = sf.el('button', {
           className: 'sf-nav-btn' + (tab.active ? ' active' : ''),
           dataset: { tab: tab.id },
@@ -61,6 +66,12 @@
 
     // Action buttons
     if (config.actions) {
+      sf.assert(typeof config.actions === 'object', 'createHeader(config.actions) expects an object');
+      sf.assert(!config.actions.onSolve || typeof config.actions.onSolve === 'function', 'createHeader(config.actions.onSolve) must be a function');
+      sf.assert(!config.actions.onStop || typeof config.actions.onStop === 'function', 'createHeader(config.actions.onStop) must be a function');
+      sf.assert(!config.actions.onAnalyze || typeof config.actions.onAnalyze === 'function', 'createHeader(config.actions.onAnalyze) must be a function');
+      sf.assert(!config.onTabChange || typeof config.onTabChange === 'function', 'createHeader(config.onTabChange) must be a function');
+
       var actions = sf.el('div', { className: 'sf-header-actions' });
       controls.actions = actions;
 

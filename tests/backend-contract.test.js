@@ -64,6 +64,31 @@ test('tauri createSchedule normalizes object and numeric ids to strings', async 
   assert.equal(await backendWithNumber.createSchedule({}), '7');
 });
 
+test('non-tauri backend labels still use the generic HTTP adapter', async () => {
+  const fetchCalls = [];
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js'], {
+    fetch(url, opts) {
+      fetchCalls.push({ url, opts });
+      return Promise.resolve({
+        ok: true,
+        headers: { get() { return 'application/json'; } },
+        json() { return Promise.resolve({ id: 'job-9' }); },
+      });
+    },
+  });
+
+  const backend = SF.createBackend({
+    type: 'rails',
+    baseUrl: '/api',
+    schedulesPath: '/jobs',
+  });
+
+  assert.equal(await backend.createSchedule({ foo: 'bar' }), 'job-9');
+  assert.equal(fetchCalls.length, 1);
+  assert.equal(fetchCalls[0].url, '/api/jobs');
+  assert.equal(fetchCalls[0].opts.method, 'POST');
+});
+
 test('tauri streamEvents keeps id-less updates and filters mismatched job ids', async () => {
   let handler = null;
   const received = [];

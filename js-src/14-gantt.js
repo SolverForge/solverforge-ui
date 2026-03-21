@@ -9,6 +9,7 @@
   sf.gantt = {};
 
   sf.gantt.create = function (config) {
+    config = config || {};
     var instanceId = sf.uid('sf-gantt');
     var chartPaneId = config.chartPane || (instanceId + '-chart-pane');
     var gridPaneId = config.gridPane || (instanceId + '-grid-pane');
@@ -78,12 +79,15 @@
     var ctrl = { el: wrapper };
 
     ctrl.mount = function (parent) {
+      sf.assert(parent, 'gantt.mount(parent) requires a mount target');
       var target = typeof parent === 'string' ? document.getElementById(parent) : parent;
+      sf.assert(target, 'gantt.mount(parent) target not found: ' + parent);
       target.appendChild(wrapper);
       initSplit();
     };
 
     ctrl.setTasks = function (newTasks) {
+      sf.assert(Array.isArray(newTasks), 'gantt.setTasks(tasks) expects an array');
       tasks = newTasks;
       renderGrid(newTasks);
       renderChart(newTasks);

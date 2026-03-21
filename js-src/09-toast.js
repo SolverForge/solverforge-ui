@@ -15,6 +15,8 @@
   }
 
   sf.showToast = function (config) {
+    sf.assert(config, 'showToast(config) requires a configuration object');
+
     ensureContainer();
 
     var variant = config.variant || 'danger';

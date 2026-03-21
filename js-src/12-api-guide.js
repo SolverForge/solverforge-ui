@@ -7,8 +7,11 @@
   'use strict';
 
   sf.createApiGuide = function (config) {
+    sf.assert(config, 'createApiGuide(config) requires a configuration object');
+    sf.assert(Array.isArray(config.endpoints), 'createApiGuide(config.endpoints) must be an array');
+
     var guide = sf.el('div', { className: 'sf-api-guide' });
-    var endpoints = config.endpoints || [];
+    var endpoints = config.endpoints;
 
     endpoints.forEach(function (ep) {
       var section = sf.el('div', { className: 'sf-api-section' });
@@ -40,6 +43,8 @@
   };
 
   sf.createFooter = function (config) {
+    sf.assert(config, 'createFooter(config) requires a configuration object');
+
     var footer = sf.el('footer', { className: 'sf-footer' });
     if (config.links) {
       config.links.forEach(function (link, i) {

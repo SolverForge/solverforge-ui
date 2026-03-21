@@ -145,3 +145,16 @@ test('gantt instances get unique generated IDs by default', () => {
   assert.equal(onePanes[1].id === twoPanes[1].id, false);
   assert.equal(oneContainer.id === twoContainer.id, false);
 });
+
+test('gantt.create falls back to built-in defaults when config is omitted', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js']);
+
+  const gantt = SF.gantt.create();
+  const panes = gantt.el.querySelectorAll('.sf-gantt-pane');
+  const chartContainer = gantt.el.querySelector('.sf-gantt-container');
+
+  assert.equal(panes.length, 2);
+  assert.equal(Boolean(panes[0].id), true);
+  assert.equal(Boolean(panes[1].id), true);
+  assert.equal(Boolean(chartContainer.id), true);
+});
