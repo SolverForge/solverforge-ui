@@ -294,6 +294,11 @@ Expects standard SolverForge REST endpoints:
 - `DELETE /schedules/{id}` — stop solving
 - `GET /demo-data/{name}` — load demo dataset
 
+Backend contract expectations:
+- `createSchedule()` must resolve to a plain schedule/job id (string), or an object containing one of `id`, `jobId`, `job_id`, `scheduleId`, or `schedule_id`.
+- Events passed into `streamEvents()` for a job should include one of the same identifiers if multiple solver runs are possible.
+- Tauri payloads are ignored only when they carry a different job id than the active run; id-less single-run updates still pass through.
+
 ### Tauri
 
 ```javascript
