@@ -490,11 +490,15 @@ cargo build
 
 Consumer integration stays npm-free. Maintainer release automation does not.
 
+- Keep `CHANGELOG.md` current as work lands.
+- Use `RELEASE.md` as the source of truth when preparing a public release.
+- Run `make pre-release` before tagging.
 - Runtime and application integration use only the bundled static assets and the Rust crate.
 - Version bump targets in `Makefile` currently use `npx commit-and-tag-version`.
+- The GitHub and Forgejo release workflows trigger only after the generated `v*` tag is pushed.
 - Release and publish validation otherwise run through Cargo and GitHub Actions.
 
-If you are cutting a release locally, make sure Node.js with `npx` is available before using the `bump-*` targets.
+If you are cutting a release locally, make sure Node.js with `npx` is available before using the `bump-*` targets. After the bump completes, push the release commit and tag with `git push --follow-tags` or an equivalent tag-push command so the release automation actually starts.
 
 ## Acknowledgments
 
