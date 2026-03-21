@@ -158,3 +158,108 @@ test('gantt.create falls back to built-in defaults when config is omitted', () =
   assert.equal(Boolean(panes[1].id), true);
   assert.equal(Boolean(chartContainer.id), true);
 });
+
+test('gantt remount recreates the chart and preserves refresh behavior', () => {
+  const splitCalls = [];
+  const refreshCalls = [];
+  let ganttInstanceCount = 0;
+
+  const { SF, document } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js'], {
+    Split: function (targets, options) {
+      splitCalls.push({ targets, options });
+      return {
+        destroy() {},
+      };
+    },
+    Gantt: function () {
+      ganttInstanceCount++;
+      return {
+        change_view_mode() {},
+        refresh(tasks) {
+          refreshCalls.push(tasks);
+        },
+      };
+    },
+  });
+
+  const mountOne = document.createElement('div');
+  const mountTwo = document.createElement('div');
+  document.body.appendChild(mountOne);
+  document.body.appendChild(mountTwo);
+
+  const gantt = SF.gantt.create({});
+  gantt.setTasks([{ id: 'task-1', start: '2026-03-21', end: '2026-03-22' }]);
+  gantt.mount(mountOne);
+  gantt.mount(mountTwo);
+  gantt.refresh();
+
+  assert.equal(ganttInstanceCount >= 2, true);
+  assert.equal(mountOne.childNodes.includes(gantt.el), false);
+  assert.equal(mountTwo.childNodes.includes(gantt.el), true);
+  assert.notEqual(gantt.getChart(), null);
+  assert.equal(refreshCalls.length, 1);
+  assert.equal(splitCalls.length, 2);
+});
+
+test('failed gantt remount keeps the existing mounted chart intact', () => {
+  let destroyCount = 0;
+
+  const { SF, document } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js'], {
+    Split: function () {
+      return {
+        destroy() {
+          destroyCount++;
+        },
+      };
+    },
+    Gantt: function () {
+      return {
+        change_view_mode() {},
+        refresh() {},
+      };
+    },
+  });
+
+  const validMount = document.createElement('div');
+  const hiddenMount = document.createElement('div');
+  hiddenMount.clientWidth = 0;
+  hiddenMount.clientHeight = 0;
+  hiddenMount.offsetWidth = 0;
+  hiddenMount.offsetHeight = 0;
+  document.body.appendChild(validMount);
+  document.body.appendChild(hiddenMount);
+
+  const gantt = SF.gantt.create({});
+  gantt.setTasks([{ id: 'task-1', start: '2026-03-21', end: '2026-03-22' }]);
+  gantt.mount(validMount);
+
+  assert.throws(function () {
+    gantt.mount(hiddenMount);
+  }, /target is not laid out yet/);
+  assert.equal(validMount.childNodes.includes(gantt.el), true);
+  assert.equal(hiddenMount.childNodes.includes(gantt.el), false);
+  assert.equal(destroyCount, 0);
+});
+
+test('gantt initSplit keeps accepting scalar splitMinSize values', () => {
+  const splitCalls = [];
+
+  const { SF, document } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js'], {
+    Split: function (targets, options) {
+      splitCalls.push({ targets, options });
+      return {
+        destroy() {},
+      };
+    },
+  });
+
+  const mount = document.createElement('div');
+  document.body.appendChild(mount);
+
+  const gantt = SF.gantt.create({ splitMinSize: 160 });
+  gantt.mount(mount);
+
+  assert.equal(splitCalls.length, 1);
+  assert.equal(splitCalls[0].options.minSize[0], 160);
+  assert.equal(splitCalls[0].options.minSize[1], 160);
+});

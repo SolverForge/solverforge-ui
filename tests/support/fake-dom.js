@@ -79,6 +79,10 @@ class FakeElement extends FakeNode {
     this._className = '';
     this._id = '';
     this._innerHTML = '';
+    this.clientWidth = 1024;
+    this.clientHeight = 768;
+    this.offsetWidth = 1024;
+    this.offsetHeight = 768;
   }
 
   _syncClassName() {
@@ -173,6 +177,17 @@ class FakeElement extends FakeNode {
       if (node instanceof FakeElement && matchesSelector(node, selector)) matches.push(node);
     });
     return matches;
+  }
+
+  getBoundingClientRect() {
+    return {
+      width: this.clientWidth,
+      height: this.clientHeight,
+      top: 0,
+      left: 0,
+      right: this.clientWidth,
+      bottom: this.clientHeight,
+    };
   }
 }
 

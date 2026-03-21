@@ -17,6 +17,9 @@
     var svgId = config.svgId || (instanceId + '-svg');
     var ganttChart = null;
     var splitInstance = null;
+    var mounted = false;
+    var mountTarget = null;
+    var resizeObserver = null;
     var tasks = [];
 
     // ── Build DOM ──
@@ -82,8 +85,21 @@
       sf.assert(parent, 'gantt.mount(parent) requires a mount target');
       var target = typeof parent === 'string' ? document.getElementById(parent) : parent;
       sf.assert(target, 'gantt.mount(parent) target not found: ' + parent);
+      validateMountTarget(target);
+
+      if (mounted && mountTarget === target && wrapper.parentNode === target) {
+        return;
+      }
+      if (mounted) ctrl.destroy();
       target.appendChild(wrapper);
+      mounted = true;
+      mountTarget = target;
+      if (tasks.length > 0 || grid.firstChild || chartContainer.firstChild) {
+        renderGrid(tasks);
+        renderChart(tasks);
+      }
       initSplit();
+      bindResizeObserver();
     };
 
     ctrl.setTasks = function (newTasks) {
@@ -124,8 +140,14 @@
     };
 
     ctrl.destroy = function () {
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+        resizeObserver = null;
+      }
       if (splitInstance) { splitInstance.destroy(); splitInstance = null; }
       ganttChart = null;
+      mounted = false;
+      mountTarget = null;
       if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
     };
 
@@ -135,10 +157,18 @@
 
     function initSplit() {
       if (typeof Split !== 'function') return;
+      if (splitInstance) {
+        splitInstance.destroy();
+        splitInstance = null;
+      }
+
+      var splitSizes = normalizePair(config.splitSizes, [40, 60]);
+      var splitMinSize = normalizePair(config.splitMinSize, [200, 300]);
+
       splitInstance = Split(['#' + gridPaneId, '#' + chartPaneId], {
         direction: 'vertical',
-        sizes: config.splitSizes || [40, 60],
-        minSize: config.splitMinSize || [200, 300],
+        sizes: splitSizes,
+        minSize: splitMinSize,
         snapOffset: 30,
         gutterSize: 4,
         cursor: 'col-resize',
@@ -148,6 +178,46 @@
           }
         },
       });
+    }
+
+    function bindResizeObserver() {
+      if (typeof ResizeObserver !== 'function') return;
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      resizeObserver = new ResizeObserver(function () {
+        if (!ganttChart) return;
+        setTimeout(function () { ganttChart.refresh(tasksToFrappe(tasks)); }, 0);
+      });
+      if (wrapper.parentNode) resizeObserver.observe(wrapper.parentNode);
+    }
+
+    function normalizePair(value, fallback) {
+      if (typeof value === 'number' && isFinite(value)) return [value, value];
+      if (!Array.isArray(value) || value.length !== 2) return fallback.slice();
+      var n0 = Number(value[0]);
+      var n1 = Number(value[1]);
+      if (!isFinite(n0) || !isFinite(n1)) return fallback.slice();
+      return [n0, n1];
+    }
+
+    function validateMountTarget(target) {
+      sf.assert(target && typeof target.appendChild === 'function', 'gantt.mount(parent) requires a valid DOM container');
+      sf.assert(getElementSize(target, 'Width') > 0 && getElementSize(target, 'Height') > 0, 'gantt.mount(parent) target is not laid out yet');
+    }
+
+    function getElementSize(target, axis) {
+      var clientKey = 'client' + axis;
+      var offsetKey = 'offset' + axis;
+      var rectKey = axis === 'Width' ? 'width' : 'height';
+
+      if (typeof target[clientKey] === 'number') return target[clientKey];
+      if (typeof target[offsetKey] === 'number') return target[offsetKey];
+      if (typeof target.getBoundingClientRect === 'function') {
+        var rect = target.getBoundingClientRect();
+        if (rect && typeof rect[rectKey] === 'number') return rect[rectKey];
+      }
+      return 0;
     }
 
     function tasksToFrappe(taskList) {
