@@ -32,6 +32,11 @@ This repository keeps both shipped UI code and design exploration in the same tr
 - Planned or exploratory ideas may appear in CSS or wireframes before the public API is finished. Those should not be treated as supported integration surface until they are wired into a shipped asset and described in the README API reference.
 - When adding new surface area, update the JavaScript API, README, and runnable examples in the same change so the public contract stays explicit.
 
+For production caching, versioned bundle filenames are also emitted as
+`/sf/sf.<crate-version>.css` and `/sf/sf.<crate-version>.js`. Those versioned
+files are served with immutable caching, while the stable `sf.css` and `sf.js`
+paths remain available for compatibility.
+
 ## Screenshots
 
 **Planner123** — Gantt chart with split panes, project-colored bars, and constraint scoring:
@@ -505,6 +510,10 @@ If you are cutting a release locally, make sure Node.js with `npx` is available 
 Use `make package-verify` to inspect the exact crate contents that would be published.
 
 The verification step checks that required bundled assets and crate metadata are present, and that development-only sources such as `css-src/`, `js-src/`, `scripts/`, and screenshots are not shipped in the published crate.
+
+Bundling writes both stable compatibility assets (`static/sf/sf.css`,
+`static/sf/sf.js`) and versioned assets (`static/sf/sf.<version>.css`,
+`static/sf/sf.<version>.js`).
 
 ## Acknowledgments
 

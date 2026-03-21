@@ -35,7 +35,7 @@ jobs:
         run: |
           make clean
           make assets
-          git diff --exit-code static/sf/sf.css static/sf/sf.js
+          git diff --exit-code static/sf/sf.css static/sf/sf.js static/sf/sf.*.css static/sf/sf.*.js
 
       - name: Check formatting
         run: cargo fmt --all -- --check
