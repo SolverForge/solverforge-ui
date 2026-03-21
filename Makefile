@@ -158,6 +158,8 @@ ci-local: banner
 	@printf "$(GREEN)$(BOLD)╚══════════════════════════════════════════════════════════╝$(RESET)\n\n"
 
 # ============== Version Management ==============
+# Maintainer note: version bump targets require Node.js + npx because they use
+# commit-and-tag-version. The library runtime path itself remains npm-free.
 
 version:
 	@printf "$(CYAN)Current version:$(RESET) $(YELLOW)$(BOLD)$(VERSION)$(RESET)\n"
