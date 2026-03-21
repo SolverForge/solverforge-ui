@@ -36,6 +36,7 @@
     if (payload.scheduleId != null) return String(payload.scheduleId).trim();
     if (payload.schedule_id != null) return String(payload.schedule_id).trim();
     if (payload.id != null) return String(payload.id).trim();
+    if (payload.data && typeof payload.data === 'object' && payload.data.id != null) return String(payload.data.id).trim();
     if (payload.data && typeof payload.data === 'object' && payload.data.jobId != null) return String(payload.data.jobId).trim();
     return '';
   }
@@ -103,7 +104,7 @@
 
     return {
       createSchedule: function (data) {
-        return invoke(commands.startSolve || 'create_schedule', { request: data });
+        return invoke(commands.startSolve || 'create_schedule', { request: data }).then(resolveJobId);
       },
       getSchedule: function (id) {
         return invoke(commands.getSchedule || 'get_schedule', { id: id });
@@ -125,7 +126,8 @@
         var unlisten = null;
         listen(eventName, function (event) {
           var payload = event && event.payload ? event.payload : {};
-          if (resolveEventJobId(payload) !== targetId) return;
+          var payloadId = resolveEventJobId(payload);
+          if (payloadId && payloadId !== targetId) return;
           onMessage(payload);
         }).then(function (fn) { unlisten = fn; });
         return function close() { if (unlisten) unlisten(); };
