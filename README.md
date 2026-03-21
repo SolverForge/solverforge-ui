@@ -44,6 +44,14 @@ alongside the solver. When you scaffold a new SolverForge project with
 ```html
 <body class="sf-app">
 <script>
+  var tabs = SF.createTabs({
+    tabs: [
+      { id: 'plan', content: '<div>Plan view</div>', active: true },
+      { id: 'gantt', content: '<div>Gantt view</div>' },
+    ],
+  });
+  document.body.appendChild(tabs.el);
+
   var backend = SF.createBackend({ type: 'axum' });
 
   var header = SF.createHeader({
@@ -54,7 +62,7 @@ alongside the solver. When you scaffold a new SolverForge project with
       { id: 'plan', label: 'Plan', icon: 'fa-list-check', active: true },
       { id: 'gantt', label: 'Gantt', icon: 'fa-chart-gantt' },
     ],
-    onTabChange: function (id) { SF.showTab(id); },
+    onTabChange: function (id) { tabs.show(id); },
     actions: {
       onSolve: function () { solver.start(); },
       onStop:  function () { solver.stop(); },
@@ -62,7 +70,7 @@ alongside the solver. When you scaffold a new SolverForge project with
   });
   document.body.prepend(header);
 
-  var bar = SF.createStatusBar({ constraints: myConstraints });
+  var bar = SF.createStatusBar({ header: header, constraints: myConstraints });
   header.after(bar.el);
 
   var solver = SF.createSolver({
@@ -81,16 +89,16 @@ alongside the solver. When you scaffold a new SolverForge project with
 | Factory | Returns | Description |
 |---------|---------|-------------|
 | `SF.createHeader(config)` | `HTMLElement` | Sticky header with logo, title, nav tabs, solve/stop/analyze buttons |
-| `SF.createStatusBar(config)` | `{el, updateScore, setSolving, updateMoves, colorDotsFromAnalysis}` | Score display + constraint dot indicators |
+| `SF.createStatusBar(config)` | `{el, bindHeader, updateScore, setSolving, updateMoves, colorDotsFromAnalysis}` | Score display + constraint dot indicators; pass `header` or call `bindHeader()` if it should toggle local solve/stop controls |
 | `SF.createButton(config)` | `HTMLButtonElement` | Button with variant/size/icon/shape modifiers |
 | `SF.createModal(config)` | `{el, body, open, close, setBody}` | Dialog with emerald gradient header, backdrop, Escape key |
 | `SF.createTable(config)` | `HTMLElement` | Data table with headers and row click |
-| `SF.createTabs(config)` | `{el, show}` | Tab panel container |
+| `SF.createTabs(config)` | `{el, show}` | Tab panel container with instance-scoped tab switching |
 | `SF.createFooter(config)` | `HTMLElement` | Footer with links and version |
 | `SF.createApiGuide(config)` | `HTMLElement` | REST API documentation panel |
 | `SF.showToast(config)` | `void` | Toast notification (auto-dismiss) |
 | `SF.showError(title, detail)` | `void` | Danger toast shorthand |
-| `SF.showTab(tabId)` | `void` | Activate a tab panel by ID |
+| `SF.showTab(tabId, root?)` | `void` | Activate matching tab panels in every tab container, or only within `root` when provided |
 
 ### Timeline Rail
 
