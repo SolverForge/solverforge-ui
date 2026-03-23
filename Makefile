@@ -27,7 +27,7 @@ VERSIONED_CSS := static/sf/sf.$(VERSION).css
 VERSIONED_JS := static/sf/sf.$(VERSION).js
 
 # ============== Phony Targets ==============
-.PHONY: banner help assets build build-release test test-quick test-doc test-unit test-one \
+.PHONY: banner help assets build build-release test test-quick test-doc test-unit test-frontend test-one \
         lint fmt fmt-check clippy ci-local pre-release version package-verify \
         bump-patch bump-minor bump-major bump-dry demo-serve \
         publish-dry publish clean watch
@@ -84,6 +84,7 @@ test: banner
 	@printf "$(CYAN)$(BOLD)╚══════════════════════════════════════╝$(RESET)\n\n"
 	@printf "$(ARROW) $(BOLD)Running all tests...$(RESET)\n"
 	@cargo test && \
+		node --test tests/*.test.js && \
 		printf "\n$(GREEN)$(CHECK) All tests passed$(RESET)\n\n" || \
 		(printf "\n$(RED)$(CROSS) Tests failed$(RESET)\n\n" && exit 1)
 
@@ -99,6 +100,10 @@ test-quick: banner
 	@cargo test --lib --quiet && \
 		printf "$(GREEN)$(CHECK) Unit tests passed$(RESET)\n\n" || \
 		(printf "$(RED)$(CROSS) Unit tests failed$(RESET)\n\n" && exit 1)
+	@printf "$(PROGRESS) Running frontend tests...\n"
+	@node --test tests/*.test.js && \
+		printf "$(GREEN)$(CHECK) Frontend tests passed$(RESET)\n\n" || \
+		(printf "$(RED)$(CROSS) Frontend tests failed$(RESET)\n\n" && exit 1)
 
 test-doc:
 	@printf "$(PROGRESS) Running doctests...\n"
@@ -111,6 +116,12 @@ test-unit:
 	@cargo test --lib && \
 		printf "$(GREEN)$(CHECK) Unit tests passed$(RESET)\n" || \
 		(printf "$(RED)$(CROSS) Unit tests failed$(RESET)\n" && exit 1)
+
+test-frontend:
+	@printf "$(PROGRESS) Running frontend tests...\n"
+	@node --test tests/*.test.js && \
+		printf "$(GREEN)$(CHECK) Frontend tests passed$(RESET)\n" || \
+		(printf "$(RED)$(CROSS) Frontend tests failed$(RESET)\n" && exit 1)
 
 test-one:
 	@printf "$(PROGRESS) Running test: $(YELLOW)$(TEST)$(RESET)\n"
@@ -155,8 +166,10 @@ ci-local: banner
 	@$(MAKE) clippy --no-print-directory
 	@printf "$(PROGRESS) Step 5/6: Doctests...\n"
 	@cargo test --doc --quiet && printf "$(GREEN)$(CHECK) Doctests passed$(RESET)\n"
-	@printf "$(PROGRESS) Step 6/6: Unit tests...\n"
+	@printf "$(PROGRESS) Step 6/7: Unit tests...\n"
 	@cargo test --lib --quiet && printf "$(GREEN)$(CHECK) Unit tests passed$(RESET)\n"
+	@printf "$(PROGRESS) Step 7/7: Frontend tests...\n"
+	@node --test tests/*.test.js && printf "$(GREEN)$(CHECK) Frontend tests passed$(RESET)\n"
 	@printf "\n$(GREEN)$(BOLD)╔══════════════════════════════════════════════════════════╗$(RESET)\n"
 	@printf "$(GREEN)$(BOLD)║              $(CHECK) CI SIMULATION PASSED                      ║$(RESET)\n"
 	@printf "$(GREEN)$(BOLD)╚══════════════════════════════════════════════════════════╝$(RESET)\n\n"
@@ -196,7 +209,7 @@ pre-release: banner
 	@$(MAKE) fmt-check --no-print-directory
 	@$(MAKE) clippy --no-print-directory
 	@printf "$(PROGRESS) Running full test suite...\n"
-	@cargo test --quiet && printf "$(GREEN)$(CHECK) All tests passed$(RESET)\n"
+	@cargo test --quiet && node --test tests/*.test.js && printf "$(GREEN)$(CHECK) All tests passed$(RESET)\n"
 	@printf "$(PROGRESS) Dry-run publish...\n"
 	@cargo publish --dry-run 2>&1 | tail -1
 	@printf "$(PROGRESS) Verifying packaged contents...\n"
@@ -273,6 +286,7 @@ help: banner
 	@/bin/echo -e "  $(GREEN)make test-quick$(RESET)     - Run doctests + unit tests (fast)"
 	@/bin/echo -e "  $(GREEN)make test-doc$(RESET)       - Run doctests only"
 	@/bin/echo -e "  $(GREEN)make test-unit$(RESET)      - Run unit tests only"
+	@/bin/echo -e "  $(GREEN)make test-frontend$(RESET)  - Run frontend Node tests"
 	@/bin/echo -e "  $(GREEN)make test-one TEST=name$(RESET) - Run specific test with output"
 	@/bin/echo -e ""
 	@/bin/echo -e "$(CYAN)$(BOLD)Lint & Format:$(RESET)"

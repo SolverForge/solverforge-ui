@@ -192,4 +192,93 @@ mod tests {
 
         assert_eq!(missing_resp.status(), StatusCode::NOT_FOUND);
     }
+
+    #[tokio::test]
+    async fn serves_top_level_assets_with_short_cache_and_expected_mime() {
+        let response = routes()
+            .oneshot(
+                Request::builder()
+                    .uri("/sf/sf.css")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get(header::CONTENT_TYPE).unwrap(),
+            "text/css; charset=utf-8"
+        );
+        assert_eq!(
+            response.headers().get(header::CACHE_CONTROL).unwrap(),
+            "public, max-age=3600"
+        );
+
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let css = String::from_utf8(body.to_vec()).unwrap();
+        assert!(css.contains("--sf-emerald-50"));
+        assert!(css.contains(".sf-gantt-split"));
+    }
+
+    #[tokio::test]
+    async fn serves_immutable_assets_with_long_cache_and_expected_mime() {
+        let image = routes()
+            .oneshot(
+                Request::builder()
+                    .method(Method::GET)
+                    .uri("/sf/img/ouroboros.svg")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(image.status(), StatusCode::OK);
+        assert_eq!(
+            image.headers().get(header::CONTENT_TYPE).unwrap(),
+            "image/svg+xml"
+        );
+        assert_eq!(
+            image.headers().get(header::CACHE_CONTROL).unwrap(),
+            "public, max-age=31536000, immutable"
+        );
+
+        let vendor = routes()
+            .oneshot(
+                Request::builder()
+                    .method(Method::GET)
+                    .uri("/sf/vendor/frappe-gantt/frappe-gantt.min.js")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(vendor.status(), StatusCode::OK);
+        assert_eq!(
+            vendor.headers().get(header::CONTENT_TYPE).unwrap(),
+            "application/javascript; charset=utf-8"
+        );
+        assert_eq!(
+            vendor.headers().get(header::CACHE_CONTROL).unwrap(),
+            "public, max-age=31536000, immutable"
+        );
+    }
+
+    #[tokio::test]
+    async fn returns_not_found_for_missing_assets() {
+        let response = routes()
+            .oneshot(
+                Request::builder()
+                    .method(Method::GET)
+                    .uri("/sf/does-not-exist.js")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
 }

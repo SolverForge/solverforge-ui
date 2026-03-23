@@ -4,6 +4,8 @@ class FakeTextNode extends FakeNode {
   constructor(text) {
     super();
     this.parentNode = null;
+    this.ownerDocument = null;
+    this.nodeType = 3;
     this._text = String(text);
   }
 
@@ -23,7 +25,9 @@ class FakeClassList {
   }
 
   add(...tokens) {
-    tokens.forEach((token) => token && this.values.add(token));
+    tokens.forEach((token) => {
+      if (token) this.values.add(token);
+    });
     this.owner._syncClassName();
   }
 
@@ -115,6 +119,18 @@ class FakeElement extends FakeNode {
     this.childNodes = [];
   }
 
+  get children() {
+    return this.childNodes.filter((child) => child instanceof FakeElement);
+  }
+
+  get firstChild() {
+    return this.childNodes[0] || null;
+  }
+
+  get lastChild() {
+    return this.childNodes[this.childNodes.length - 1] || null;
+  }
+
   get textContent() {
     if (this.childNodes.length === 0) return '';
     return this.childNodes.map((child) => child.textContent).join('');
@@ -127,9 +143,9 @@ class FakeElement extends FakeNode {
   }
 
   appendChild(child) {
-    if (!child) return child;
+    if (child == null) return child;
     child.parentNode = this;
-    if (child instanceof FakeElement) child.ownerDocument = this.ownerDocument;
+    child.ownerDocument = this.ownerDocument;
     this.childNodes.push(child);
     this._innerHTML = '';
     return child;
@@ -197,13 +213,13 @@ class FakeDocument {
   }
 
   createElement(tagName) {
-    var element = new FakeElement(tagName);
+    const element = new FakeElement(tagName);
     element.ownerDocument = this;
     return element;
   }
 
   createElementNS(namespaceURI, tagName) {
-    var element = new FakeElement(tagName, namespaceURI);
+    const element = new FakeElement(tagName, namespaceURI);
     element.ownerDocument = this;
     return element;
   }
@@ -226,7 +242,7 @@ class FakeDocument {
 }
 
 function walk(node, visit) {
-  node.childNodes.forEach(function (child) {
+  node.childNodes.forEach((child) => {
     visit(child);
     if (child instanceof FakeElement) walk(child, visit);
   });
@@ -237,8 +253,8 @@ function matchesSelector(node, selector) {
   if (dataMatch) {
     return node.dataset[toCamel(dataMatch[1])] === dataMatch[2];
   }
-  if (selector.charAt(0) === '.') return node.classList.contains(selector.slice(1));
-  if (selector.charAt(0) === '#') return node.id === selector.slice(1);
+  if (selector.startsWith('.')) return node.classList.contains(selector.slice(1));
+  if (selector.startsWith('#')) return node.id === selector.slice(1);
   return node.tagName.toLowerCase() === selector.toLowerCase();
 }
 
@@ -249,8 +265,8 @@ function toCamel(value) {
 }
 
 function createDom() {
-  var document = new FakeDocument();
-  return { document: document, window: { document: document }, Node: FakeNode };
+  const document = new FakeDocument();
+  return { document, window: { document }, Node: FakeNode };
 }
 
-module.exports = { createDom, FakeElement, FakeNode };
+module.exports = { createDom, FakeElement, FakeNode, FakeTextNode };

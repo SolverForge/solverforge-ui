@@ -53,6 +53,14 @@ Every backend element has a corresponding UI element. The library grows
 alongside the solver. When you scaffold a new SolverForge project with
 `solverforge new`, it's already wired in.
 
+## Testing
+
+Repository coverage now includes the embedded Rust asset routes plus Node-based
+frontend tests for backend adapters, solver lifecycle transitions, and core
+component rendering. Use `make test` for the full suite, `make test-quick` for
+Rust doctests and unit tests plus frontend coverage, or `make test-frontend`
+when you only want the JavaScript suite.
+
 ## Quick Start
 
 ```html
