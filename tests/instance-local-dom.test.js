@@ -265,7 +265,14 @@ test('gantt initSplit keeps accepting scalar splitMinSize values', () => {
 });
 
 test('gantt sortable columns render and reorder grid rows without throwing', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js']);
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js'], {
+    Gantt: function () {
+      return {
+        change_view_mode() {},
+        refresh() {},
+      };
+    },
+  });
 
   const gantt = SF.gantt.create({
     columns: [

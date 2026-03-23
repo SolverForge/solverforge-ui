@@ -48,7 +48,9 @@ jobs:
         run: cargo build --release
 
       - name: Run tests
-        run: cargo test
+        run: |
+          cargo test
+          node --test tests/*.test.js
 
   create-release:
     name: Create GitHub Release
