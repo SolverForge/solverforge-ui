@@ -22,21 +22,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        run: |
+          rm -rf .git
+          git init .
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          git fetch --depth=1 origin "${{ github.sha }}"
+          git checkout --detach FETCH_HEAD
 
       - name: Install Rust
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -58,9 +55,14 @@ jobs:
     needs: [test]
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Checkout repository
+        run: |
+          rm -rf .git
+          git init .
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          git fetch --force --tags origin "+refs/heads/*:refs/remotes/origin/*"
+          git fetch --force origin "${{ github.sha }}"
+          git checkout --detach FETCH_HEAD
 
       - name: Get version
         id: version
@@ -89,19 +91,32 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          name: v${{ steps.version.outputs.version }}
-          body: |
-            ## What's Changed
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          cat <<'EOF' > release-notes.md
+          ## What's Changed
 
-            ${{ steps.changelog.outputs.changelog }}
+          ${{ steps.changelog.outputs.changelog }}
 
-            ## Installation
+          ## Installation
 
-            ```toml
-            [dependencies]
-            solverforge-ui = "${{ steps.version.outputs.version }}"
-            ```
-          draft: false
-          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+          ```toml
+          [dependencies]
+          solverforge-ui = "${{ steps.version.outputs.version }}"
+          ```
+          EOF
+
+          release_args=(
+            "v${{ steps.version.outputs.version }}"
+            --target "${{ github.sha }}"
+            --title "v${{ steps.version.outputs.version }}"
+            --notes-file release-notes.md
+            --verify-tag
+          )
+
+          if [[ "${{ steps.version.outputs.version }}" == *-* ]]; then
+            release_args+=(--prerelease)
+          fi
+
+          gh release create "${release_args[@]}"
