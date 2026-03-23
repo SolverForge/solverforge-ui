@@ -136,7 +136,7 @@ test-browser:
 
 browser-setup:
 	@printf "$(PROGRESS) Installing browser test dependencies...\n"
-	@npm ci && npx playwright install chromium && \
+	@npm ci && npx playwright install --with-deps chromium && \
 		printf "$(GREEN)$(CHECK) Browser test dependencies installed$(RESET)\n" || \
 		(printf "$(RED)$(CROSS) Browser test dependency setup failed$(RESET)\n" && exit 1)
 
