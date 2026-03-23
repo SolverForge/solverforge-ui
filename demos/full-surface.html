@@ -100,35 +100,11 @@
       return card.el;
     }
 
-    function buildGantt() {
+    function createGanttPanel() {
       var mount = document.createElement('div');
       mount.className = 'demo-gantt';
-
-      var gantt = SF.gantt.create({
-        gridTitle: 'Tasks',
-        chartTitle: 'Schedule',
-        viewMode: 'Half Day',
-        splitSizes: [38, 62],
-        columns: [
-          { key: 'name', label: 'Task' },
-          { key: 'start', label: 'Start' },
-          { key: 'end', label: 'End' },
-          { key: 'priority', label: 'P', render: function (task) {
-            return '<span class="sf-priority-badge priority-' + task.priority + '">P' + task.priority + '</span>';
-          } }
-        ],
-        onTaskClick: function (task) {
-          SF.showToast({
-            title: 'Gantt task',
-            message: task.name,
-            variant: 'success',
-            delay: 1800
-          });
-        }
-      });
-
-      gantt.mount(mount);
-      gantt.setTasks([
+      var mounted = false;
+      var tasks = [
         {
           id: 'task-1',
           name: 'Design review',
@@ -156,9 +132,41 @@
           custom_class: 'project-color-2 priority-3',
           dependencies: 'task-2'
         }
-      ]);
+      ];
 
-      return mount;
+      var gantt = SF.gantt.create({
+        gridTitle: 'Tasks',
+        chartTitle: 'Schedule',
+        viewMode: 'Half Day',
+        splitSizes: [38, 62],
+        columns: [
+          { key: 'name', label: 'Task' },
+          { key: 'start', label: 'Start' },
+          { key: 'end', label: 'End' },
+          { key: 'priority', label: 'P', render: function (task) {
+            return '<span class="sf-priority-badge priority-' + task.priority + '">P' + task.priority + '</span>';
+          } }
+        ],
+        onTaskClick: function (task) {
+          SF.showToast({
+            title: 'Gantt task',
+            message: task.name,
+            variant: 'success',
+            delay: 1800
+          });
+        }
+      });
+
+      return {
+        mountIfNeeded: function () {
+          if (mounted) return;
+          if (!mount.isConnected || mount.offsetWidth === 0 || mount.offsetHeight === 0) return;
+          gantt.mount(mount);
+          gantt.setTasks(tasks);
+          mounted = true;
+        },
+        el: mount
+      };
     }
 
     function buildApiGuide() {
@@ -186,6 +194,8 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+      var ganttPanel = createGanttPanel();
+
       var header = SF.createHeader({
         logo: '../static/sf/img/ouroboros.svg',
         title: 'Planner123',
@@ -195,7 +205,14 @@
           { id: 'gantt', label: 'Gantt', icon: 'fa-chart-gantt' },
           { id: 'api', label: 'API', icon: 'fa-plug' }
         ],
-        onTabChange: function (id) { SF.showTab(id); },
+        onTabChange: function (id) {
+          SF.showTab(id);
+          if (id === 'gantt') {
+            requestAnimationFrame(function () {
+              ganttPanel.mountIfNeeded();
+            });
+          }
+        },
         actions: {
           onSolve: function () {
             statusBar.setSolving(true);
@@ -280,7 +297,7 @@
               var panel = document.createElement('section');
               panel.className = 'demo-card';
               panel.innerHTML = '<h2>Gantt</h2>';
-              panel.appendChild(buildGantt());
+              panel.appendChild(ganttPanel.el);
               return panel;
             })()
           },
@@ -301,6 +318,10 @@
       main.className = 'sf-main';
       main.appendChild(tabs.el);
       document.body.appendChild(main);
+
+      requestAnimationFrame(function () {
+        ganttPanel.mountIfNeeded();
+      });
 
       document.body.appendChild(SF.createFooter({
         links: [

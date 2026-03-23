@@ -27,8 +27,8 @@ VERSIONED_CSS := static/sf/sf.$(VERSION).css
 VERSIONED_JS := static/sf/sf.$(VERSION).js
 
 # ============== Phony Targets ==============
-.PHONY: banner help assets build build-release test test-quick test-doc test-unit test-frontend test-one \
-        lint fmt fmt-check clippy ci-local pre-release version package-verify \
+.PHONY: banner help assets build build-release test test-quick test-doc test-unit test-frontend test-browser test-one \
+        lint fmt fmt-check clippy ci-local pre-release version package-verify browser-setup \
         bump-patch bump-minor bump-major bump-dry demo-serve \
         publish-dry publish clean watch
 
@@ -85,6 +85,7 @@ test: banner
 	@printf "$(ARROW) $(BOLD)Running all tests...$(RESET)\n"
 	@cargo test && \
 		node --test tests/*.test.js && \
+		node tests/demo-browser-check.js && \
 		printf "\n$(GREEN)$(CHECK) All tests passed$(RESET)\n\n" || \
 		(printf "\n$(RED)$(CROSS) Tests failed$(RESET)\n\n" && exit 1)
 
@@ -104,6 +105,10 @@ test-quick: banner
 	@node --test tests/*.test.js && \
 		printf "$(GREEN)$(CHECK) Frontend tests passed$(RESET)\n\n" || \
 		(printf "$(RED)$(CROSS) Frontend tests failed$(RESET)\n\n" && exit 1)
+	@printf "$(PROGRESS) Running browser demo smoke tests...\n"
+	@node tests/demo-browser-check.js && \
+		printf "$(GREEN)$(CHECK) Browser smoke tests passed$(RESET)\n\n" || \
+		(printf "$(RED)$(CROSS) Browser smoke tests failed$(RESET)\n\n" && exit 1)
 
 test-doc:
 	@printf "$(PROGRESS) Running doctests...\n"
@@ -122,6 +127,18 @@ test-frontend:
 	@node --test tests/*.test.js && \
 		printf "$(GREEN)$(CHECK) Frontend tests passed$(RESET)\n" || \
 		(printf "$(RED)$(CROSS) Frontend tests failed$(RESET)\n" && exit 1)
+
+test-browser:
+	@printf "$(PROGRESS) Running browser demo smoke tests...\n"
+	@node tests/demo-browser-check.js && \
+		printf "$(GREEN)$(CHECK) Browser smoke tests passed$(RESET)\n" || \
+		(printf "$(RED)$(CROSS) Browser smoke tests failed$(RESET)\n" && exit 1)
+
+browser-setup:
+	@printf "$(PROGRESS) Installing browser test dependencies...\n"
+	@npm ci && npx playwright install chromium && \
+		printf "$(GREEN)$(CHECK) Browser test dependencies installed$(RESET)\n" || \
+		(printf "$(RED)$(CROSS) Browser test dependency setup failed$(RESET)\n" && exit 1)
 
 test-one:
 	@printf "$(PROGRESS) Running test: $(YELLOW)$(TEST)$(RESET)\n"
@@ -156,20 +173,22 @@ ci-local: banner
 	@printf "$(CYAN)$(BOLD)║              Local CI Simulation                         ║$(RESET)\n"
 	@printf "$(CYAN)$(BOLD)╚══════════════════════════════════════════════════════════╝$(RESET)\n\n"
 	@printf "$(ARROW) $(BOLD)Simulating GitHub Actions CI workflow locally...$(RESET)\n\n"
-	@printf "$(PROGRESS) Step 1/6: Asset freshness check...\n"
+	@printf "$(PROGRESS) Step 1/8: Asset freshness check...\n"
 	@$(MAKE) assets --no-print-directory
-	@printf "$(PROGRESS) Step 2/6: Format check...\n"
+	@printf "$(PROGRESS) Step 2/8: Format check...\n"
 	@$(MAKE) fmt-check --no-print-directory
-	@printf "$(PROGRESS) Step 3/6: Build...\n"
+	@printf "$(PROGRESS) Step 3/8: Build...\n"
 	@cargo build --quiet && printf "$(GREEN)$(CHECK) Build passed$(RESET)\n"
-	@printf "$(PROGRESS) Step 4/6: Clippy...\n"
+	@printf "$(PROGRESS) Step 4/8: Clippy...\n"
 	@$(MAKE) clippy --no-print-directory
-	@printf "$(PROGRESS) Step 5/6: Doctests...\n"
+	@printf "$(PROGRESS) Step 5/8: Doctests...\n"
 	@cargo test --doc --quiet && printf "$(GREEN)$(CHECK) Doctests passed$(RESET)\n"
-	@printf "$(PROGRESS) Step 6/7: Unit tests...\n"
+	@printf "$(PROGRESS) Step 6/8: Unit tests...\n"
 	@cargo test --lib --quiet && printf "$(GREEN)$(CHECK) Unit tests passed$(RESET)\n"
-	@printf "$(PROGRESS) Step 7/7: Frontend tests...\n"
+	@printf "$(PROGRESS) Step 7/8: Frontend tests...\n"
 	@node --test tests/*.test.js && printf "$(GREEN)$(CHECK) Frontend tests passed$(RESET)\n"
+	@printf "$(PROGRESS) Step 8/8: Browser smoke tests...\n"
+	@node tests/demo-browser-check.js && printf "$(GREEN)$(CHECK) Browser smoke tests passed$(RESET)\n"
 	@printf "\n$(GREEN)$(BOLD)╔══════════════════════════════════════════════════════════╗$(RESET)\n"
 	@printf "$(GREEN)$(BOLD)║              $(CHECK) CI SIMULATION PASSED                      ║$(RESET)\n"
 	@printf "$(GREEN)$(BOLD)╚══════════════════════════════════════════════════════════╝$(RESET)\n\n"
@@ -209,7 +228,7 @@ pre-release: banner
 	@$(MAKE) fmt-check --no-print-directory
 	@$(MAKE) clippy --no-print-directory
 	@printf "$(PROGRESS) Running full test suite...\n"
-	@cargo test --quiet && node --test tests/*.test.js && printf "$(GREEN)$(CHECK) All tests passed$(RESET)\n"
+	@cargo test --quiet && node --test tests/*.test.js && node tests/demo-browser-check.js && printf "$(GREEN)$(CHECK) All tests passed$(RESET)\n"
 	@printf "$(PROGRESS) Dry-run publish...\n"
 	@cargo publish --dry-run 2>&1 | tail -1
 	@printf "$(PROGRESS) Verifying packaged contents...\n"
@@ -266,7 +285,7 @@ watch:
 
 demo-serve: assets
 	@printf "$(ARROW) Serving demos at http://localhost:8000/demos/\n"
-	@python3 -m http.server 8000
+	@python3 scripts/demo_server.py
 
 # ============== Help ==============
 

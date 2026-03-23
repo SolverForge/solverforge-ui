@@ -16,6 +16,22 @@ Then open:
 - `http://localhost:8000/demos/full-surface.html`
 - `http://localhost:8000/demos/rail.html`
 
+## Automated browser verification
+
+Install the browser-test dependency and Chromium once:
+
+```bash
+make browser-setup
+```
+
+Then run the smoke checks:
+
+```bash
+make test-browser
+```
+
+The automated check serves the repository locally, opens both runnable demo fixtures in Chromium, fails on page or script errors, and verifies that the primary shipped UI surfaces mount successfully.
+
 ## Coverage
 
 - `full-surface.html`: header, status bar, tabs, buttons, modal, toast, table, rail, Gantt, API guide, and footer

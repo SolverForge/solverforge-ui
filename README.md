@@ -531,6 +531,8 @@ Runnable demo fixtures live in `demos/`.
 - `demos/full-surface.html` exercises the primary shipped component surface together.
 - `demos/rail.html` focuses on resource cards, blocks, gauges, and changeovers.
 - `make demo-serve` serves the repository at `http://localhost:8000/demos/` for local validation.
+- `make test-browser` runs browser-level smoke tests against both demo fixtures.
+- Run `make browser-setup` once on a machine to install the Playwright test dependency and Chromium.
 
 ## Acknowledgments
 
