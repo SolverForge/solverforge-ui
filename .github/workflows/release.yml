@@ -119,4 +119,8 @@ jobs:
             release_args+=(--prerelease)
           fi
 
-          gh release create "${release_args[@]}"
+          if gh release view "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            gh release edit "${release_args[@]}"
+          else
+            gh release create "${release_args[@]}"
+          fi
