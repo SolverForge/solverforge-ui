@@ -28,6 +28,11 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
+      - name: Install browser test dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
       - name: Verify assets are up to date
         run: |
           make clean
@@ -47,6 +52,7 @@ jobs:
         run: |
           cargo test
           node --test tests/*.test.js
+          node tests/demo-browser-check.js
 
       - name: Verify package contents
         run: ./scripts/verify-package.sh

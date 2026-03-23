@@ -1,0 +1,10 @@
+{
+  "name": "solverforge-ui",
+  "private": true,
+  "scripts": {
+    "test:browser": "node tests/demo-browser-check.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.58.2"
+  }
+}
