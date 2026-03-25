@@ -77,8 +77,9 @@ jobs:
         id: changelog
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          SECTION=$(awk "/^## ${VERSION//./\\.} /{flag=1; next} /^## /{flag=0} flag" CHANGELOG.md)
-          if ! grep -q "^## ${VERSION//./\\.} " CHANGELOG.md; then
+          CHANGELOG_RE="^## (\\[)?${VERSION//./\\.}(\\]| )"
+          SECTION=$(awk "/${CHANGELOG_RE}/{flag=1; next} /^## /{flag=0} flag" CHANGELOG.md)
+          if ! grep -qE "${CHANGELOG_RE}" CHANGELOG.md; then
             echo "Missing CHANGELOG.md entry for version $VERSION" >&2
             exit 1
           fi
