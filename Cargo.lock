@@ -392,7 +392,7 @@ dependencies = [
 
 [[package]]
 name = "solverforge-ui"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "axum",
  "include_dir",
