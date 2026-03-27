@@ -60,7 +60,7 @@ require "static/sf/vendor/frappe-gantt/frappe-gantt.min.js"
 require "static/sf/vendor/split/split.min.js"
 require "static/sf/fonts/space-grotesk.woff2"
 require "static/sf/fonts/jetbrains-mono.woff2"
-require "static/sf/img/solverforge-logo.svg"
+require "static/sf/img/ouroboros.svg"
 
 reject_prefix "css-src/"
 reject_prefix "js-src/"

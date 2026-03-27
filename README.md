@@ -459,7 +459,7 @@ solverforge-ui/
 └── static/sf/              # Embedded assets (include_dir!)
     ├── sf.css              # concatenated from css-src/
     ├── sf.js               # concatenated from js-src/
-    ├── img/                # SVG logos (ouroboros, favicon, brand)
+    ├── img/                # SVG logo asset (ouroboros)
     ├── fonts/              # Space Grotesk + JetBrains Mono WOFF2
     ├── modules/            # optional: sf-map.js/css
     └── vendor/             # FontAwesome 6.5, Leaflet 1.9, Frappe Gantt, Split.js

@@ -1,21 +1,60 @@
-<svg width="48" height="48" viewBox="-20 -20 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="400" height="400" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="og" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#22c55e"/>
-      <stop offset="50%" style="stop-color:#10b981"/>
-      <stop offset="100%" style="stop-color:#059669"/>
+    <linearGradient id="snakeGradientV2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22c55e;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
     </linearGradient>
   </defs>
-  <path d="M0 -16 L11 -8 L13 0 L11 11 L0 16 L-11 11 L-13 0 L-11 -8 Z"
-    stroke="url(#og)" stroke-width="3" fill="none" stroke-linejoin="miter"/>
-  <path d="M0 -16 L-2 -19 L-1 -18 L0 -19 L1 -18 L2 -19 Z"
-    fill="url(#og)" stroke="#000000" stroke-width="0.3"/>
-  <circle cx="-0.6" cy="-18" r="0.4" fill="#000000"/>
-  <circle cx="0.6" cy="-18" r="0.4" fill="#000000"/>
-  <path d="M0 -16 L0 -10" stroke="url(#og)" stroke-width="2.2"/>
-  <path d="M-4 0 L-2 0 M4 0 L2 0 M0 -4 L0 -2 M0 4 L0 2" stroke="#FFFFFF" stroke-width="0.6" stroke-linecap="round"/>
-  <circle cx="0" cy="0" r="1.5" fill="none" stroke="#FFFFFF" stroke-width="0.6"/>
-  <circle cx="0" cy="0" r="0.8" fill="#22c55e"/>
-  <path d="M-3 -3 L-3.5 -3 L-3.5 -3.5 M3 -3 L3.5 -3 L3.5 -3.5 M3 3 L3.5 3 L3.5 3.5 M-3 3 L-3.5 3 L-3.5 3.5"
-    stroke="#22c55e" stroke-width="0.5" stroke-linecap="round"/>
+
+  <!-- Hexagonal outer body -->
+  <path d="M100 25 L150 50 L165 95 L150 150 L100 175 L50 150 L35 95 L50 50 Z"
+    stroke="url(#snakeGradientV2)" stroke-width="14" fill="none" stroke-linejoin="miter"/>
+
+  <!-- Angular snake head at top -->
+  <g transform="translate(100, 25)">
+    <path d="M0 0 L-10 -12 L-5 -6 L0 -10 L5 -6 L10 -12 Z"
+      fill="url(#snakeGradientV2)" stroke="#000000" stroke-width="1"/>
+    <!-- Eyes -->
+    <circle cx="-3" cy="-8" r="1.5" fill="#000000"/>
+    <circle cx="3" cy="-8" r="1.5" fill="#000000"/>
+  </g>
+
+  <!-- Geometric tail segments leading to head -->
+  <path d="M100 25 L100 40" stroke="url(#snakeGradientV2)" stroke-width="10" stroke-linecap="butt"/>
+
+  <!-- Inner hexagon pattern -->
+  <path d="M100 55 L130 70 L140 95 L130 120 L100 135 L70 120 L60 95 L70 70 Z"
+    stroke="#10b981" stroke-width="2" fill="none" opacity="0.4"/>
+
+  <!-- Geometric accent points at vertices -->
+  <circle cx="100" cy="25" r="5" fill="#10b981" opacity="0.3"/>
+  <circle cx="150" cy="50" r="5" fill="#10b981" opacity="0.3"/>
+  <circle cx="165" cy="95" r="5" fill="#10b981" opacity="0.3"/>
+  <circle cx="150" cy="150" r="5" fill="#10b981" opacity="0.3"/>
+  <circle cx="100" cy="175" r="5" fill="#10b981" opacity="0.3"/>
+  <circle cx="50" cy="150" r="5" fill="#10b981" opacity="0.3"/>
+  <circle cx="35" cy="95" r="5" fill="#10b981" opacity="0.3"/>
+  <circle cx="50" cy="50" r="5" fill="#10b981" opacity="0.3"/>
+
+  <!-- Center optimization node - geometric star -->
+  <g transform="translate(100, 100)">
+    <!-- Crosshair/target -->
+    <path d="M-20 0 L-8 0 M20 0 L8 0 M0 -20 L0 -8 M0 20 L0 8"
+      stroke="#000000" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="0" cy="0" r="6" fill="none" stroke="#000000" stroke-width="2.5"/>
+    <circle cx="0" cy="0" r="3" fill="#10b981"/>
+
+    <!-- Corner brackets -->
+    <path d="M-12 -12 L-15 -12 L-15 -15 M12 -12 L15 -12 L15 -15 M12 12 L15 12 L15 15 M-12 12 L-15 12 L-15 15"
+      stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
+  </g>
+
+  <!-- Additional geometric detail - small squares at midpoints -->
+  <rect x="123" y="47" width="4" height="4" fill="#000000" opacity="0.6"/>
+  <rect x="155" y="92" width="4" height="4" fill="#000000" opacity="0.6"/>
+  <rect x="123" y="148" width="4" height="4" fill="#000000" opacity="0.6"/>
+  <rect x="73" y="148" width="4" height="4" fill="#000000" opacity="0.6"/>
+  <rect x="41" y="92" width="4" height="4" fill="#000000" opacity="0.6"/>
+  <rect x="73" y="47" width="4" height="4" fill="#000000" opacity="0.6"/>
 </svg>

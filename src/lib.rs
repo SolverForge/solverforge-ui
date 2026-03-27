@@ -108,7 +108,7 @@ mod tests {
 
         assert!(is_immutable("fonts/jetbrains-mono.woff2"));
         assert!(is_immutable("vendor/leaflet/leaflet.js"));
-        assert!(is_immutable("img/solverforge-logo.svg"));
+        assert!(is_immutable("img/ouroboros.svg"));
         assert!(is_immutable("sf.0.3.0.css"));
         assert!(is_immutable("sf.0.3.0+build.7.js"));
         assert!(!is_immutable("sf.css"));
