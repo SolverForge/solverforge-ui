@@ -84,13 +84,23 @@
       listDemoData: function () {
         return request('GET', demoDataPath);
       },
-      streamEvents: function (id, onMessage) {
+      streamEvents: function (id, onMessage, onError) {
         var url = baseUrl + schedulesPath + '/' + id + '/events';
         var es = new EventSource(url);
+        var closed = false;
         es.onmessage = function (e) {
           try { onMessage(JSON.parse(e.data)); } catch (_) {}
         };
-        return function close() { es.close(); };
+        es.onerror = function () {
+          if (closed || !onError) return;
+          onError(new Error('Event stream failed for ' + url));
+        };
+        return function close() {
+          closed = true;
+          es.onmessage = null;
+          es.onerror = null;
+          es.close();
+        };
       },
     };
   }

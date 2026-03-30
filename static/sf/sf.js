@@ -923,13 +923,23 @@ const SF = (function () {
       listDemoData: function () {
         return request('GET', demoDataPath);
       },
-      streamEvents: function (id, onMessage) {
+      streamEvents: function (id, onMessage, onError) {
         var url = baseUrl + schedulesPath + '/' + id + '/events';
         var es = new EventSource(url);
+        var closed = false;
         es.onmessage = function (e) {
           try { onMessage(JSON.parse(e.data)); } catch (_) {}
         };
-        return function close() { es.close(); };
+        es.onerror = function () {
+          if (closed || !onError) return;
+          onError(new Error('Event stream failed for ' + url));
+        };
+        return function close() {
+          closed = true;
+          es.onmessage = null;
+          es.onerror = null;
+          es.close();
+        };
       },
     };
   }
@@ -1003,37 +1013,60 @@ const SF = (function () {
     var statusBar = config.statusBar;
     var closeStream = null;
     var jobId = null;
-    var running = false;
+    var phase = 'idle';
+    var runToken = 0;
+    var canceledToken = null;
+    var suppressStreamErrors = false;
 
     var api = {};
 
     api.start = function (data) {
-      if (running) return;
-      running = true;
+      if (phase !== 'idle') return;
+      phase = 'starting';
+      runToken += 1;
+      suppressStreamErrors = false;
+      jobId = null;
 
       if (statusBar) {
         statusBar.setSolving(true);
         statusBar.updateMoves(null);
       }
 
+      var token = runToken;
       backend.createSchedule(data).then(function (id) {
+        if (token !== runToken) {
+          if (isValidJobId(id)) backend.deleteSchedule(id).catch(function () {});
+          return;
+        }
         if (typeof id !== 'string' || !id.trim()) {
           throw new Error('Invalid solver backend createSchedule response');
         }
+
+        if (canceledToken === token) {
+          canceledToken = null;
+          backend.deleteSchedule(id).catch(function () {});
+          return;
+        }
+
+        phase = 'running';
         jobId = id;
         closeStream = backend.streamEvents(jobId, function (msg) {
-          if (!isEventForCurrentJob(msg, jobId)) return;
+          if (token !== runToken || canceledToken === token) return;
+          if (!isEventForCurrentJob(msg, id)) return;
 
           // Solver finished
           if (msg.solverStatus === 'NOT_SOLVING') {
-            backend.getSchedule(jobId).then(function (final) {
+            backend.getSchedule(id).then(function (final) {
+              if (token !== runToken || canceledToken === token) return;
               if (config.onComplete) config.onComplete(final);
               if (statusBar) {
                 statusBar.updateScore(final.score);
                 statusBar.updateMoves(null);
               }
+            }).catch(function (err) {
+              handleError(token, err);
             });
-            api._cleanup(false);
+            api._cleanup(token);
             return;
           }
 
@@ -1043,20 +1076,34 @@ const SF = (function () {
             statusBar.updateMoves(msg.movesPerSecond);
           }
           if (config.onUpdate) config.onUpdate(msg);
+        }, function (err) {
+          if (suppressStreamErrors || token !== runToken || canceledToken === token) return;
+          handleError(token, err);
         });
       }).catch(function (err) {
-        running = false;
-        if (statusBar) statusBar.setSolving(false);
-        if (config.onError) config.onError(err.message || String(err));
+        handleError(token, err);
       });
     };
 
     api.stop = function () {
-      if (!running || !jobId) return;
+      if (phase === 'idle') return;
+      var token = runToken;
+      canceledToken = token;
+
+      if (phase === 'starting' && !jobId) {
+        api._cleanup(token);
+        return;
+      }
+
       var stoppedId = jobId;
+      if (!stoppedId) {
+        api._cleanup(token);
+        return;
+      }
 
       // Fetch analysis before deleting
       backend.analyze(stoppedId).then(function (analysis) {
+        if (token !== runToken) return;
         if (statusBar && analysis && analysis.constraints) {
           statusBar.colorDotsFromAnalysis(analysis.constraints);
         }
@@ -1065,12 +1112,14 @@ const SF = (function () {
         backend.deleteSchedule(stoppedId).catch(function () {});
       });
 
-      api._cleanup(true);
+      api._cleanup(token);
     };
 
-    api._cleanup = function (stopped) {
+    api._cleanup = function (token) {
+      if (token != null && token !== runToken) return;
+      suppressStreamErrors = true;
       if (closeStream) { closeStream(); closeStream = null; }
-      running = false;
+      phase = 'idle';
       jobId = null;
       if (statusBar) {
         statusBar.setSolving(false);
@@ -1078,11 +1127,21 @@ const SF = (function () {
       }
     };
 
-    api.isRunning = function () { return running; };
+    api.isRunning = function () { return phase !== 'idle'; };
 
     api.getJobId = function () { return jobId; };
 
     return api;
+
+    function handleError(token, err) {
+      if (token !== runToken) return;
+      api._cleanup(token);
+      if (config.onError) config.onError(err.message || String(err));
+    }
+
+    function isValidJobId(id) {
+      return typeof id === 'string' && !!id.trim();
+    }
 
     function isEventForCurrentJob(msg, expectedId) {
       if (!msg || typeof msg !== 'object') return false;

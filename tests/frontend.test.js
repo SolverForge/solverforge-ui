@@ -42,6 +42,7 @@ test('HTTP backend uses configured paths, headers, and event stream parsing', as
       this.url = url;
       this.closed = false;
       this.onmessage = null;
+      this.onerror = null;
       streams.push(this);
     }
 
@@ -105,13 +106,18 @@ test('HTTP backend uses configured paths, headers, and event stream parsing', as
   assert.equal(requests[1].options.method, 'GET');
 
   let streamed = null;
+  let streamError = null;
   const close = backend.streamEvents('job-7', (payload) => {
     streamed = payload;
+  }, (error) => {
+    streamError = error;
   });
   assert.equal(typeof close, 'function');
   assert.equal(streams[0].url, '/api/jobs/job-7/events');
   streams[0].onmessage({ data: JSON.stringify({ score: '0hard/-1soft' }) });
   assert.equal(streamed.score, '0hard/-1soft');
+  streams[0].onerror();
+  assert.equal(streamError.message, 'Event stream failed for /api/jobs/job-7/events');
   close();
   assert.equal(streams[0].closed, true);
 });
@@ -207,6 +213,85 @@ test('solver lifecycle updates status callbacks during start, streaming, complet
     ['updateMoves', null],
     ['colorDotsFromAnalysis', [{ name: 'hard-1', type: 'hard', score: '-1hard' }]],
     ['deleteSchedule', 'job-42'],
+  ]);
+});
+
+test('solver stop cancels a pending start and retires the eventual job id', async () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js']);
+  const calls = [];
+  let resolveCreate;
+  const backend = {
+    createSchedule() {
+      calls.push(['createSchedule']);
+      return new Promise((resolve) => {
+        resolveCreate = resolve;
+      });
+    },
+    streamEvents() {
+      calls.push(['streamEvents']);
+      return function () {};
+    },
+    getSchedule: async () => ({ id: 'job-late', score: '0hard/0soft' }),
+    analyze: async () => ({ constraints: [] }),
+    deleteSchedule: async (id) => {
+      calls.push(['deleteSchedule', id]);
+    },
+  };
+
+  const solver = SF.createSolver({ backend });
+  solver.start({ demand: 1 });
+  solver.stop();
+  resolveCreate('job-late');
+  await flush();
+
+  assert.equal(solver.isRunning(), false);
+  assert.equal(solver.getJobId(), null);
+  assert.deepEqual(calls, [
+    ['createSchedule'],
+    ['deleteSchedule', 'job-late'],
+  ]);
+});
+
+test('solver surfaces stream errors and resets the lifecycle', async () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js']);
+  let onMessage;
+  let onStreamError;
+  const calls = [];
+  const backend = {
+    createSchedule: async () => 'job-55',
+    streamEvents(id, callback, errorCallback) {
+      calls.push(['streamEvents', id]);
+      onMessage = callback;
+      onStreamError = errorCallback;
+      return () => {
+        calls.push(['closeStream']);
+      };
+    },
+    getSchedule: async () => ({ id: 'job-55', score: '0hard/-1soft' }),
+    analyze: async () => ({ constraints: [] }),
+    deleteSchedule: async () => {},
+  };
+
+  const errors = [];
+  const solver = SF.createSolver({
+    backend,
+    onError(message) {
+      errors.push(message);
+    },
+  });
+
+  solver.start({});
+  await flush();
+  onMessage({ score: '0hard/-2soft', movesPerSecond: 18 });
+  onStreamError(new Error('stream broke'));
+  await flush();
+
+  assert.equal(solver.isRunning(), false);
+  assert.equal(solver.getJobId(), null);
+  assert.deepEqual(errors, ['stream broke']);
+  assert.deepEqual(calls, [
+    ['streamEvents', 'job-55'],
+    ['closeStream'],
   ]);
 });
 
