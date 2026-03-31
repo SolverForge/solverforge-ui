@@ -19,6 +19,7 @@ PROGRESS := →
 # ============== Project Metadata ==============
 VERSION := $(shell grep -m1 '^version' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
 RUST_VERSION := 1.75+
+SEMVER_RE := '^[0-9]+\.[0-9]+\.[0-9]+$$'
 
 # ============== Asset Sources ==============
 CSS_SRC := $(sort $(wildcard css-src/*.css))
@@ -29,7 +30,7 @@ VERSIONED_JS := static/sf/sf.$(VERSION).js
 # ============== Phony Targets ==============
 .PHONY: banner help assets build build-release test test-quick test-doc test-unit test-frontend test-browser test-one \
         lint fmt fmt-check clippy ci-local pre-release version package-verify browser-setup \
-        bump-patch bump-minor bump-major bump-dry demo-serve \
+        bump-version bump-patch bump-minor bump-major bump-dry release-tag demo-serve \
         publish-dry publish clean watch
 
 # ============== Default Target ==============
@@ -200,23 +201,49 @@ ci-local: banner
 version:
 	@printf "$(CYAN)Current version:$(RESET) $(YELLOW)$(BOLD)$(VERSION)$(RESET)\n"
 
+bump-version: banner
+	@CURRENT_VERSION=$$(grep -m1 '^version' Cargo.toml | sed 's/version = "\(.*\)"/\1/'); \
+	if [ -z "$(VERSION)" ]; then \
+		printf "$(RED)$(CROSS) VERSION=x.y.z is required$(RESET)\n"; \
+		exit 1; \
+	fi; \
+	if ! printf '%s\n' "$(VERSION)" | grep -Eq $(SEMVER_RE); then \
+		printf "$(RED)$(CROSS) VERSION must use semver x.y.z$(RESET)\n"; \
+		exit 1; \
+	fi; \
+	if [ "$$CURRENT_VERSION" = "$(VERSION)" ]; then \
+		printf "$(YELLOW)Version already set to v$(VERSION)$(RESET)\n"; \
+		exit 0; \
+	fi; \
+	printf "$(ARROW) Syncing version surfaces: v$$CURRENT_VERSION -> v$(VERSION)\n"; \
+	python3 scripts/sync-version.py "$$CURRENT_VERSION" "$(VERSION)"; \
+	rm -f "static/sf/sf.$$CURRENT_VERSION.css" "static/sf/sf.$$CURRENT_VERSION.js"; \
+	$(MAKE) assets --no-print-directory; \
+	printf "$(GREEN)$(CHECK) Version updated to v$(VERSION)$(RESET)\n"; \
+	printf "$(GRAY)Changelog unchanged. Run 'make release-tag' separately when ready.$(RESET)\n"
+
 bump-patch: banner
 	@printf "$(ARROW) Bumping patch version...\n"
-	@npx commit-and-tag-version --release-as patch --no-verify
-	@printf "$(GREEN)$(CHECK) Version bumped$(RESET)\n"
+	@NEXT_VERSION=$$(python3 -c "major, minor, patch = map(int, '$(VERSION)'.split('.')); print(f'{major}.{minor}.{patch + 1}')"); \
+	$(MAKE) bump-version VERSION=$$NEXT_VERSION --no-print-directory
 
 bump-minor: banner
 	@printf "$(ARROW) Bumping minor version...\n"
-	@npx commit-and-tag-version --release-as minor --no-verify
-	@printf "$(GREEN)$(CHECK) Version bumped$(RESET)\n"
+	@NEXT_VERSION=$$(python3 -c "major, minor, patch = map(int, '$(VERSION)'.split('.')); print(f'{major}.{minor + 1}.0')"); \
+	$(MAKE) bump-version VERSION=$$NEXT_VERSION --no-print-directory
 
 bump-major: banner
 	@printf "$(ARROW) Bumping major version...\n"
-	@npx commit-and-tag-version --release-as major --no-verify
-	@printf "$(GREEN)$(CHECK) Version bumped$(RESET)\n"
+	@NEXT_VERSION=$$(python3 -c "major, minor, patch = map(int, '$(VERSION)'.split('.')); print(f'{major + 1}.0.0')"); \
+	$(MAKE) bump-version VERSION=$$NEXT_VERSION --no-print-directory
 
 bump-dry:
-	@npx commit-and-tag-version --dry-run
+	@python3 -c "major, minor, patch = map(int, '$(VERSION)'.split('.')); print('patch -> ' + f'{major}.{minor}.{patch + 1}'); print('minor -> ' + f'{major}.{minor + 1}.0'); print('major -> ' + f'{major + 1}.0.0')"
+
+release-tag: banner
+	@printf "$(ARROW) Generating changelog + release commit/tag for v$(VERSION)...\n"
+	@npx commit-and-tag-version --skip.bump --no-verify
+	@printf "$(GREEN)$(CHECK) Release changelog, commit, and tag created$(RESET)\n"
 
 # ============== Pre-Release Validation ==============
 
@@ -320,10 +347,12 @@ help: banner
 	@/bin/echo -e ""
 	@/bin/echo -e "$(CYAN)$(BOLD)Version Management:$(RESET)"
 	@/bin/echo -e "  $(GREEN)make version$(RESET)        - Show current version"
+	@/bin/echo -e "  $(GREEN)make bump-version VERSION=x.y.z$(RESET) - Sync version surfaces only"
 	@/bin/echo -e "  $(GREEN)make bump-patch$(RESET)     - Bump patch version (0.1.$(YELLOW)x$(RESET))"
 	@/bin/echo -e "  $(GREEN)make bump-minor$(RESET)     - Bump minor version (0.$(YELLOW)x$(RESET).0)"
 	@/bin/echo -e "  $(GREEN)make bump-major$(RESET)     - Bump major version ($(YELLOW)x$(RESET).0.0)"
-	@/bin/echo -e "  $(GREEN)make bump-dry$(RESET)       - Preview version bump"
+	@/bin/echo -e "  $(GREEN)make bump-dry$(RESET)       - Preview next patch/minor/major versions"
+	@/bin/echo -e "  $(GREEN)make release-tag$(RESET)    - Generate changelog + release commit/tag with commit-and-tag-version"
 	@/bin/echo -e ""
 	@/bin/echo -e "$(CYAN)$(BOLD)Publishing:$(RESET)"
 	@/bin/echo -e "  $(GREEN)make publish-dry$(RESET)    - Dry-run publish to crates.io"

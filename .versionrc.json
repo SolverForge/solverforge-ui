@@ -10,8 +10,5 @@
       "filename": "Cargo.toml",
       "updater": "scripts/cargo-version.js"
     }
-  ],
-  "scripts": {
-    "postbump": "make clean assets && git add -A static/sf"
-  }
+  ]
 }

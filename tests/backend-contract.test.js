@@ -89,7 +89,7 @@ test('non-tauri backend labels still use the generic HTTP adapter', async () => 
   assert.equal(fetchCalls[0].opts.method, 'POST');
 });
 
-test('tauri streamEvents keeps id-less updates and filters mismatched job ids', async () => {
+test('tauri streamEvents keeps id-less typed updates and filters mismatched job ids', async () => {
   let handler = null;
   const received = [];
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js']);
@@ -111,11 +111,12 @@ test('tauri streamEvents keeps id-less updates and filters mismatched job ids', 
 
   await Promise.resolve();
 
-  handler({ payload: { score: '0hard/0soft' } });
-  handler({ payload: { data: { id: 'job-1' }, solverStatus: 'SOLVING_ACTIVE' } });
-  handler({ payload: { jobId: 'job-2', solverStatus: 'NOT_SOLVING' } });
+  handler({ payload: { eventType: 'progress', currentScore: '0hard/0soft', bestScore: '0hard/0soft', movesPerSecond: 12 } });
+  handler({ payload: { data: { id: 'job-1' }, eventType: 'best_solution', currentScore: '0hard/-1soft', bestScore: '0hard/-1soft', solution: { id: 'job-1', score: '0hard/-1soft' } } });
+  handler({ payload: { jobId: 'job-2', eventType: 'finished', currentScore: '0hard/0soft', bestScore: '0hard/0soft', solution: { id: 'job-2', score: '0hard/0soft' } } });
 
   assert.equal(received.length, 2);
-  assert.equal(received[0].score, '0hard/0soft');
+  assert.equal(received[0].eventType, 'progress');
+  assert.equal(received[0].currentScore, '0hard/0soft');
   assert.equal(received[1].data.id, 'job-1');
 });

@@ -5,7 +5,7 @@
 const SF = (function () {
   'use strict';
 
-  const sf = { version: '0.3.1' };
+  const sf = { version: '0.4.0' };
   var uidCounter = 0;
 
   /* ── Utilities ── */
@@ -1003,8 +1003,8 @@ const SF = (function () {
     sf.assert(config.backend, 'createSolver(config.backend) is required');
     sf.assert(config.backend.createSchedule && typeof config.backend.createSchedule === 'function', 'createSolver(config.backend.createSchedule) must be a function');
     sf.assert(config.backend.streamEvents && typeof config.backend.streamEvents === 'function', 'createSolver(config.backend.streamEvents) must be a function');
-    sf.assert(config.backend.getSchedule && typeof config.backend.getSchedule === 'function', 'createSolver(config.backend.getSchedule) must be a function');
-    sf.assert(!config.onUpdate || typeof config.onUpdate === 'function', 'createSolver(config.onUpdate) must be a function');
+    sf.assert(!config.onProgress || typeof config.onProgress === 'function', 'createSolver(config.onProgress) must be a function');
+    sf.assert(!config.onSolution || typeof config.onSolution === 'function', 'createSolver(config.onSolution) must be a function');
     sf.assert(!config.onComplete || typeof config.onComplete === 'function', 'createSolver(config.onComplete) must be a function');
     sf.assert(!config.onAnalysis || typeof config.onAnalysis === 'function', 'createSolver(config.onAnalysis) must be a function');
     sf.assert(!config.onError || typeof config.onError === 'function', 'createSolver(config.onError) must be a function');
@@ -1053,29 +1053,43 @@ const SF = (function () {
         closeStream = backend.streamEvents(jobId, function (msg) {
           if (token !== runToken || canceledToken === token) return;
           if (!isEventForCurrentJob(msg, id)) return;
+          if (!msg || typeof msg !== 'object') return;
 
-          // Solver finished
-          if (msg.solverStatus === 'NOT_SOLVING') {
-            backend.getSchedule(id).then(function (final) {
-              if (token !== runToken || canceledToken === token) return;
-              if (config.onComplete) config.onComplete(final);
-              if (statusBar) {
-                statusBar.updateScore(final.score);
-                statusBar.updateMoves(null);
-              }
-            }).catch(function (err) {
-              handleError(token, err);
-            });
-            api._cleanup(token);
+          if (typeof msg.eventType !== 'string' || !msg.eventType) return;
+
+          var eventType = msg.eventType;
+          if (eventType !== 'progress' && eventType !== 'best_solution' && eventType !== 'finished') return;
+
+          var meta = {
+            id: id,
+            eventType: eventType,
+            solverStatus: msg.solverStatus || null,
+            currentScore: msg.currentScore || null,
+            bestScore: msg.bestScore || null,
+            movesPerSecond: msg.movesPerSecond || null
+          };
+
+          if (eventType === 'progress') {
+            if (!meta.currentScore) return;
+            updateStatus(meta);
+            if (config.onProgress) config.onProgress(meta);
             return;
           }
 
-          // Live update
-          if (statusBar) {
-            statusBar.updateScore(msg.score);
-            statusBar.updateMoves(msg.movesPerSecond);
+          if (eventType === 'best_solution') {
+            if (!msg.solution || !meta.currentScore) return;
+            updateStatus(meta);
+            if (config.onSolution && msg.solution) config.onSolution(msg.solution, meta);
+            return;
           }
-          if (config.onUpdate) config.onUpdate(msg);
+
+          if (eventType === 'finished') {
+            if (!msg.solution || !meta.currentScore) return;
+            updateStatus(meta);
+            if (config.onComplete && msg.solution) config.onComplete(msg.solution, meta);
+            api._cleanup(token);
+            return;
+          }
         }, function (err) {
           if (suppressStreamErrors || token !== runToken || canceledToken === token) return;
           handleError(token, err);
@@ -1148,6 +1162,12 @@ const SF = (function () {
       var candidate = msg.jobId || msg.job_id || msg.scheduleId || msg.schedule_id || msg.id || (msg.data && msg.data.id);
       if (candidate == null) return true;
       return String(candidate) === String(expectedId);
+    }
+
+    function updateStatus(meta) {
+      if (!statusBar) return;
+      statusBar.updateScore(meta.currentScore || null);
+      statusBar.updateMoves(meta.movesPerSecond);
     }
   };
 

@@ -98,7 +98,14 @@ when you only want the JavaScript suite.
   var solver = SF.createSolver({
     backend: backend,
     statusBar: bar,
-    onUpdate: function (schedule) { render(schedule); },
+    onProgress: function (meta) {
+      console.log('progress', meta.currentScore, meta.bestScore, meta.movesPerSecond);
+    },
+    onSolution: function (schedule) { render(schedule); },
+    onComplete: function (schedule, meta) {
+      console.log('finished', meta.currentScore);
+      render(schedule);
+    },
   });
 </script>
 </body>
@@ -154,7 +161,50 @@ Default content is always text-rendered. Use these fields only with trusted HTML
 | Factory | Returns | Description |
 |---------|---------|-------------|
 | `SF.createBackend(config)` | Backend adapter | HTTP or Tauri IPC transport |
-| `SF.createSolver(config)` | `{start, stop, isRunning, getJobId}` | SSE state machine with auto status bar updates |
+| `SF.createSolver(config)` | `{start, stop, isRunning, getJobId}` | SSE state machine with typed `progress`, `best_solution`, and `finished` events; use `onProgress(meta)`, `onSolution(solution, meta)`, and `onComplete(solution, meta)` |
+
+Canonical stream payloads:
+
+```json
+{
+  "eventType": "progress",
+  "currentScore": "0hard/-2soft",
+  "bestScore": "0hard/-3soft",
+  "movesPerSecond": 12,
+  "solverStatus": "SOLVING",
+  "id": "job-42"
+}
+```
+
+```json
+{
+  "eventType": "best_solution",
+  "currentScore": "0hard/-1soft",
+  "bestScore": "0hard/-1soft",
+  "movesPerSecond": 15,
+  "solverStatus": "SOLVING",
+  "id": "job-42",
+  "solution": { "id": "job-42", "score": "0hard/-1soft" }
+}
+```
+
+```json
+{
+  "eventType": "finished",
+  "currentScore": "0hard/-1soft",
+  "bestScore": "0hard/-1soft",
+  "movesPerSecond": 0,
+  "solverStatus": "NOT_SOLVING",
+  "id": "job-42",
+  "solution": { "id": "job-42", "score": "0hard/-1soft" }
+}
+```
+
+Runtime rules:
+- `progress` is metadata-only. It must not carry the solution payload.
+- `best_solution` and `finished` must include `solution`.
+- The status bar uses `currentScore` as the live score during solving.
+- Missing or malformed typed lifecycle fields are ignored; they are not silently normalized into the contract.
 
 ### Utilities
 
@@ -330,6 +380,9 @@ Backend contract expectations:
 - `createSchedule()` must resolve to a plain schedule/job id (string), or an object containing one of `id`, `jobId`, `job_id`, `scheduleId`, or `schedule_id`.
 - Events passed into `streamEvents()` for a job should include one of the same identifiers if multiple solver runs are possible.
 - Tauri payloads are ignored only when they carry a different job id than the active run; id-less single-run updates still pass through.
+- Solver lifecycle events are canonical camelCase only: `eventType`, `currentScore`, `bestScore`, `movesPerSecond`, `solverStatus`, and `solution` where required.
+- `eventType` must be explicit. Supported values are `progress`, `best_solution`, and `finished`.
+- Raw `score`-only progress payloads and implicit `solverStatus === NOT_SOLVING` completion messages are not part of the supported stream contract.
 
 ### Tauri
 
@@ -504,7 +557,7 @@ cargo build
 
 Consumer integration stays npm-free. Maintainer release automation does not.
 
-- Current crate release: `0.3.1`.
+- Current crate release: `0.4.0`.
 - Keep `CHANGELOG.md` current as work lands.
 - Use `RELEASE.md` as the source of truth when preparing a public release.
 - Run `make pre-release` before tagging.

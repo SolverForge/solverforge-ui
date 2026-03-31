@@ -114,8 +114,10 @@ test('HTTP backend uses configured paths, headers, and event stream parsing', as
   });
   assert.equal(typeof close, 'function');
   assert.equal(streams[0].url, '/api/jobs/job-7/events');
-  streams[0].onmessage({ data: JSON.stringify({ score: '0hard/-1soft' }) });
-  assert.equal(streamed.score, '0hard/-1soft');
+  streams[0].onmessage({ data: JSON.stringify({ eventType: 'progress', currentScore: '0hard/-1soft', bestScore: '0hard/-2soft', movesPerSecond: 14 }) });
+  assert.equal(streamed.eventType, 'progress');
+  assert.equal(streamed.currentScore, '0hard/-1soft');
+  assert.equal(streamed.bestScore, '0hard/-2soft');
   streams[0].onerror();
   assert.equal(streamError.message, 'Event stream failed for /api/jobs/job-7/events');
   close();
@@ -151,21 +153,24 @@ test('solver lifecycle updates status callbacks during start, streaming, complet
         streamClosed = true;
       };
     },
-    getSchedule: async () => ({ id: 'job-42', score: '0hard/-1soft' }),
     analyze: async () => ({ constraints: [{ name: 'hard-1', type: 'hard', score: '-1hard' }] }),
     deleteSchedule: async (id) => {
       calls.push(['deleteSchedule', id]);
     },
   };
 
-  const updates = [];
+  const progressUpdates = [];
+  const solutionUpdates = [];
   const completions = [];
   const analyses = [];
   const solver = SF.createSolver({
     backend,
     statusBar,
-    onUpdate(schedule) {
-      updates.push(schedule);
+    onProgress(meta) {
+      progressUpdates.push(meta);
+    },
+    onSolution(schedule, meta) {
+      solutionUpdates.push([schedule, meta]);
     },
     onComplete(schedule) {
       completions.push(schedule);
@@ -186,19 +191,57 @@ test('solver lifecycle updates status callbacks during start, streaming, complet
     ['streamEvents', 'job-42'],
   ]);
 
-  onMessage({ score: '0hard/-2soft', movesPerSecond: 12 });
+  onMessage({
+    eventType: 'progress',
+    currentScore: '0hard/-2soft',
+    bestScore: '0hard/-3soft',
+    movesPerSecond: 12
+  });
   await flush();
-  assert.equal(updates.length, 1);
-  assert.equal(updates[0].score, '0hard/-2soft');
-  assert.equal(updates[0].movesPerSecond, 12);
+  assert.equal(progressUpdates.length, 1);
+  assert.equal(progressUpdates[0].currentScore, '0hard/-2soft');
+  assert.equal(progressUpdates[0].bestScore, '0hard/-3soft');
+  assert.equal(progressUpdates[0].movesPerSecond, 12);
+  assert.deepEqual(calls.slice(3, 5), [
+    ['updateScore', '0hard/-2soft'],
+    ['updateMoves', 12],
+  ]);
 
-  onMessage({ solverStatus: 'NOT_SOLVING' });
+  onMessage({
+    eventType: 'best_solution',
+    currentScore: '0hard/-1soft',
+    bestScore: '0hard/-1soft',
+    movesPerSecond: 15,
+    solution: { id: 'job-42', score: '0hard/-1soft' }
+  });
+  await flush();
+  assert.equal(solutionUpdates.length, 1);
+  assert.deepEqual(solutionUpdates[0][0], { id: 'job-42', score: '0hard/-1soft' });
+  assert.equal(solutionUpdates[0][1].bestScore, '0hard/-1soft');
+  assert.deepEqual(calls.slice(5, 7), [
+    ['updateScore', '0hard/-1soft'],
+    ['updateMoves', 15],
+  ]);
+
+  onMessage({
+    eventType: 'finished',
+    solverStatus: 'NOT_SOLVING',
+    currentScore: '0hard/-1soft',
+    bestScore: '0hard/-1soft',
+    solution: { id: 'job-42', score: '0hard/-1soft' }
+  });
   await flush();
   assert.equal(streamClosed, true);
   assert.equal(solver.isRunning(), false);
   assert.equal(solver.getJobId(), null);
   assert.equal(completions.length, 1);
   assert.deepEqual(completions[0], { id: 'job-42', score: '0hard/-1soft' });
+  assert.deepEqual(calls.slice(7, 11), [
+    ['updateScore', '0hard/-1soft'],
+    ['updateMoves', null],
+    ['setSolving', false],
+    ['updateMoves', null],
+  ]);
 
   solver.start({});
   await flush();
@@ -231,7 +274,6 @@ test('solver stop cancels a pending start and retires the eventual job id', asyn
       calls.push(['streamEvents']);
       return function () {};
     },
-    getSchedule: async () => ({ id: 'job-late', score: '0hard/0soft' }),
     analyze: async () => ({ constraints: [] }),
     deleteSchedule: async (id) => {
       calls.push(['deleteSchedule', id]);
@@ -267,7 +309,6 @@ test('solver surfaces stream errors and resets the lifecycle', async () => {
         calls.push(['closeStream']);
       };
     },
-    getSchedule: async () => ({ id: 'job-55', score: '0hard/-1soft' }),
     analyze: async () => ({ constraints: [] }),
     deleteSchedule: async () => {},
   };
@@ -282,7 +323,7 @@ test('solver surfaces stream errors and resets the lifecycle', async () => {
 
   solver.start({});
   await flush();
-  onMessage({ score: '0hard/-2soft', movesPerSecond: 18 });
+  onMessage({ eventType: 'progress', currentScore: '0hard/-2soft', bestScore: '0hard/-2soft', movesPerSecond: 18 });
   onStreamError(new Error('stream broke'));
   await flush();
 
@@ -292,6 +333,72 @@ test('solver surfaces stream errors and resets the lifecycle', async () => {
   assert.deepEqual(calls, [
     ['streamEvents', 'job-55'],
     ['closeStream'],
+  ]);
+});
+
+test('solver ignores malformed and mismatched typed events without corrupting state', async () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js']);
+  const calls = [];
+  const statusBar = {
+    setSolving(value) {
+      calls.push(['setSolving', value]);
+    },
+    updateMoves(value) {
+      calls.push(['updateMoves', value]);
+    },
+    updateScore(value) {
+      calls.push(['updateScore', value]);
+    },
+  };
+
+  let onMessage;
+  const progressUpdates = [];
+  const solutionUpdates = [];
+  const completions = [];
+  const backend = {
+    createSchedule: async () => 'job-77',
+    streamEvents(_id, callback) {
+      onMessage = callback;
+      return function () {};
+    },
+    analyze: async () => ({ constraints: [] }),
+    deleteSchedule: async () => {},
+  };
+
+  const solver = SF.createSolver({
+    backend,
+    statusBar,
+    onProgress(meta) {
+      progressUpdates.push(meta);
+    },
+    onSolution(solution) {
+      solutionUpdates.push(solution);
+    },
+    onComplete(solution) {
+      completions.push(solution);
+    },
+  });
+
+  solver.start({});
+  await flush();
+
+  onMessage({ eventType: 'progress', currentScore: '0hard/-4soft', bestScore: '0hard/-5soft', movesPerSecond: 21 });
+  onMessage({ currentScore: '0hard/-3soft', bestScore: '0hard/-3soft', movesPerSecond: 22 });
+  onMessage({ eventType: 'progress', bestScore: '0hard/-2soft', movesPerSecond: 23 });
+  onMessage({ jobId: 'job-other', eventType: 'progress', currentScore: '0hard/-1soft', bestScore: '0hard/-1soft', movesPerSecond: 24 });
+  onMessage({ eventType: 'best_solution', currentScore: '0hard/-1soft', bestScore: '0hard/-1soft', movesPerSecond: 25 });
+  onMessage({ eventType: 'unknown', currentScore: '0hard/0soft', bestScore: '0hard/0soft', movesPerSecond: 26 });
+  await flush();
+
+  assert.equal(progressUpdates.length, 1);
+  assert.equal(solutionUpdates.length, 0);
+  assert.equal(completions.length, 0);
+  assert.equal(solver.isRunning(), true);
+  assert.deepEqual(calls, [
+    ['setSolving', true],
+    ['updateMoves', null],
+    ['updateScore', '0hard/-4soft'],
+    ['updateMoves', 21],
   ]);
 });
 
