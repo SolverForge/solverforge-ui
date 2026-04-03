@@ -3,6 +3,7 @@
 
 # ============== Colors & Symbols ==============
 GREEN := \033[92m
+EMERALD := \033[38;2;16;185;129m
 CYAN := \033[96m
 YELLOW := \033[93m
 MAGENTA := \033[95m
@@ -38,8 +39,8 @@ VERSIONED_JS := static/sf/sf.$(VERSION).js
 
 # ============== Banner ==============
 banner:
-	@printf "$(CYAN)$(BOLD)  SolverForge UI$(RESET)\n"
-	@printf "  $(GRAY)v$(VERSION)$(RESET) $(CYAN)Component Library$(RESET)\n\n"
+	@printf "$(EMERALD)$(BOLD)  SolverForge UI$(RESET)\n"
+	@printf "  $(GRAY)v$(VERSION)$(RESET) $(EMERALD)Component Library$(RESET)\n\n"
 
 # ============== Asset Targets ==============
 
