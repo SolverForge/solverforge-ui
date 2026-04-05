@@ -55,11 +55,21 @@
       return h;
     }
 
+    function createRequestError(method, path, res) {
+      var err = new Error(res.status + ' ' + res.statusText);
+      err.status = res.status;
+      err.statusText = res.statusText;
+      err.method = method;
+      err.path = path;
+      err.url = baseUrl + path;
+      return err;
+    }
+
     function request(method, path, body) {
       var opts = { method: method, headers: headers() };
       if (body !== undefined) opts.body = JSON.stringify(body);
       return fetch(baseUrl + path, opts).then(function (res) {
-        if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
+        if (!res.ok) throw createRequestError(method, path, res);
         var ct = res.headers.get('content-type') || '';
         return ct.indexOf('json') !== -1 ? res.json() : res.text();
       });
@@ -71,6 +81,12 @@
       },
       getSchedule: function (id) {
         return request('GET', schedulesPath + '/' + id);
+      },
+      getScheduleStatus: function (id) {
+        return request('GET', schedulesPath + '/' + id + '/status');
+      },
+      stopSchedule: function (id) {
+        return request('POST', schedulesPath + '/' + id + '/stop');
       },
       deleteSchedule: function (id) {
         return request('DELETE', schedulesPath + '/' + id);
@@ -124,8 +140,11 @@
       getSchedule: function (id) {
         return invoke(commands.getSchedule || 'get_schedule', { id: id });
       },
+      stopSchedule: function (id) {
+        return invoke(commands.stopSolve || 'stop_solve', { id: id });
+      },
       deleteSchedule: function (id) {
-        return invoke(commands.stopSolve || 'delete_schedule', { id: id });
+        return invoke(commands.deleteSchedule || commands.stopSolve || 'delete_schedule', { id: id });
       },
       analyze: function (id) {
         return invoke(commands.analyze || 'score_schedule', { id: id });

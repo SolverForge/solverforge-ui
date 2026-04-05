@@ -161,7 +161,7 @@ Default content is always text-rendered. Use these fields only with trusted HTML
 | Factory | Returns | Description |
 |---------|---------|-------------|
 | `SF.createBackend(config)` | Backend adapter | HTTP or Tauri IPC transport |
-| `SF.createSolver(config)` | `{start, stop, isRunning, getJobId}` | SSE state machine with typed `progress`, `best_solution`, and `finished` events; use `onProgress(meta)`, `onSolution(solution, meta)`, and `onComplete(solution, meta)` |
+| `SF.createSolver(config)` | `{start, stop, isRunning, getJobId}` | SSE state machine with typed `progress`, `best_solution`, and `finished` events; `stop()` preserves the retained schedule when supported by the backend, and `getJobId()` returns the current or last retained schedule id for analysis/resume flows |
 
 Canonical stream payloads:
 
@@ -370,14 +370,19 @@ var backend = SF.createBackend({ type: 'axum', baseUrl: '' });
 
 Expects standard SolverForge REST endpoints:
 - `POST /schedules` — start solving
+- `POST /schedules/{id}/stop` — stop solving and retain the latest checkpoint
 - `GET /schedules/{id}` — get solution
+- `GET /schedules/{id}/status` — get solver status
 - `GET /schedules/{id}/events` — SSE stream
 - `GET /schedules/{id}/analyze` — constraint analysis
-- `DELETE /schedules/{id}` — stop solving
+- `DELETE /schedules/{id}` — delete a retained schedule
 - `GET /demo-data/{name}` — load demo dataset
 
 Backend contract expectations:
 - `createSchedule()` must resolve to a plain schedule/job id (string), or an object containing one of `id`, `jobId`, `job_id`, `scheduleId`, or `schedule_id`.
+- `stopSchedule()` should resolve only after the stopped schedule can be fetched again from `getSchedule()`. `SF.createSolver().stop()` will sync the retained checkpoint and analysis before returning.
+- For legacy backends without `/schedules/{id}/stop`, `SF.createSolver().stop()` falls back to `DELETE /schedules/{id}`. Post-stop analysis/resume remains available only if that backend still leaves the schedule readable through `GET /schedules/{id}`.
+- When `stopSchedule()` returns `404`, `GET /schedules/{id}/status` or terminal status on `GET /schedules/{id}` is used to distinguish an already-finished retained schedule from a legacy delete-to-stop backend.
 - Events passed into `streamEvents()` for a job should include one of the same identifiers if multiple solver runs are possible.
 - Tauri payloads are ignored only when they carry a different job id than the active run; id-less single-run updates still pass through.
 - Solver lifecycle events are canonical camelCase only: `eventType`, `currentScore`, `bestScore`, `movesPerSecond`, `solverStatus`, and `solution` where required.
@@ -557,7 +562,7 @@ cargo build
 
 Consumer integration stays npm-free. Maintainer release automation does not.
 
-- Current crate release: `0.4.0`.
+- Current crate release: `0.4.1`.
 - Keep `CHANGELOG.md` current as work lands.
 - Use `RELEASE.md` as the source of truth when preparing a public release.
 - Run `make pre-release` before tagging.

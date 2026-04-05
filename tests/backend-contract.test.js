@@ -64,6 +64,31 @@ test('tauri createSchedule normalizes object and numeric ids to strings', async 
   assert.equal(await backendWithNumber.createSchedule({}), '7');
 });
 
+test('tauri stopSchedule uses the stop command while deleteSchedule stays separately addressable', async () => {
+  const calls = [];
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js']);
+
+  const backend = SF.createBackend({
+    type: 'tauri',
+    invoke(command, payload) {
+      calls.push({ command, payload });
+      return Promise.resolve(null);
+    },
+    listen() {
+      return Promise.resolve(function () {});
+    },
+  });
+
+  await backend.stopSchedule('job-3');
+  await backend.deleteSchedule('job-3');
+
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].command, 'stop_solve');
+  assert.equal(calls[0].payload.id, 'job-3');
+  assert.equal(calls[1].command, 'delete_schedule');
+  assert.equal(calls[1].payload.id, 'job-3');
+});
+
 test('non-tauri backend labels still use the generic HTTP adapter', async () => {
   const fetchCalls = [];
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js'], {
