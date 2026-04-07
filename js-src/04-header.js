@@ -13,7 +13,9 @@
       actions: null,
       spinner: null,
       solveBtn: null,
-      stopBtn: null,
+      pauseBtn: null,
+      resumeBtn: null,
+      cancelBtn: null,
       analyzeBtn: null,
       nav: null,
     };
@@ -84,7 +86,9 @@
     if (config.actions) {
       sf.assert(typeof config.actions === 'object', 'createHeader(config.actions) expects an object');
       sf.assert(!config.actions.onSolve || typeof config.actions.onSolve === 'function', 'createHeader(config.actions.onSolve) must be a function');
-      sf.assert(!config.actions.onStop || typeof config.actions.onStop === 'function', 'createHeader(config.actions.onStop) must be a function');
+      sf.assert(!config.actions.onPause || typeof config.actions.onPause === 'function', 'createHeader(config.actions.onPause) must be a function');
+      sf.assert(!config.actions.onResume || typeof config.actions.onResume === 'function', 'createHeader(config.actions.onResume) must be a function');
+      sf.assert(!config.actions.onCancel || typeof config.actions.onCancel === 'function', 'createHeader(config.actions.onCancel) must be a function');
       sf.assert(!config.actions.onAnalyze || typeof config.actions.onAnalyze === 'function', 'createHeader(config.actions.onAnalyze) must be a function');
       sf.assert(!config.onTabChange || typeof config.onTabChange === 'function', 'createHeader(config.onTabChange) must be a function');
 
@@ -107,16 +111,40 @@
         actions.appendChild(solveBtn);
       }
 
-      if (config.actions.onStop) {
-        var stopBtn = sf.createButton({
-          text: 'Stop',
-          variant: 'danger',
-          icon: 'fa-stop',
-          onClick: config.actions.onStop,
+      if (config.actions.onPause) {
+        var pauseBtn = sf.createButton({
+          text: 'Pause',
+          variant: 'default',
+          icon: 'fa-pause',
+          onClick: config.actions.onPause,
         });
-        stopBtn.style.display = 'none';
-        controls.stopBtn = stopBtn;
-        actions.appendChild(stopBtn);
+        pauseBtn.style.display = 'none';
+        controls.pauseBtn = pauseBtn;
+        actions.appendChild(pauseBtn);
+      }
+
+      if (config.actions.onResume) {
+        var resumeBtn = sf.createButton({
+          text: 'Resume',
+          variant: 'primary',
+          icon: 'fa-play',
+          onClick: config.actions.onResume,
+        });
+        resumeBtn.style.display = 'none';
+        controls.resumeBtn = resumeBtn;
+        actions.appendChild(resumeBtn);
+      }
+
+      if (config.actions.onCancel) {
+        var cancelBtn = sf.createButton({
+          text: 'Cancel',
+          variant: 'danger',
+          icon: 'fa-ban',
+          onClick: config.actions.onCancel,
+        });
+        cancelBtn.style.display = 'none';
+        controls.cancelBtn = cancelBtn;
+        actions.appendChild(cancelBtn);
       }
 
       if (config.actions.onAnalyze) {

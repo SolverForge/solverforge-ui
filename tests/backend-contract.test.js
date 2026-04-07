@@ -29,7 +29,7 @@ function loadSf(files, overrides = {}) {
   return { SF: context.window.SF, document };
 }
 
-test('tauri createSchedule normalizes object and numeric ids to strings', async () => {
+test('tauri createJob normalizes object and numeric ids to strings', async () => {
   const calls = [];
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js'], {
     fetch() {
@@ -48,8 +48,8 @@ test('tauri createSchedule normalizes object and numeric ids to strings', async 
     },
   });
 
-  assert.equal(await backendWithObject.createSchedule({ foo: 'bar' }), '42');
-  assert.equal(calls[0].command, 'create_schedule');
+  assert.equal(await backendWithObject.createJob({ foo: 'bar' }), '42');
+  assert.equal(calls[0].command, 'create_job');
 
   const backendWithNumber = SF.createBackend({
     type: 'tauri',
@@ -61,10 +61,10 @@ test('tauri createSchedule normalizes object and numeric ids to strings', async 
     },
   });
 
-  assert.equal(await backendWithNumber.createSchedule({}), '7');
+  assert.equal(await backendWithNumber.createJob({}), '7');
 });
 
-test('tauri stopSchedule uses the stop command while deleteSchedule stays separately addressable', async () => {
+test('tauri backend uses neutral job lifecycle command names', async () => {
   const calls = [];
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js']);
 
@@ -79,25 +79,34 @@ test('tauri stopSchedule uses the stop command while deleteSchedule stays separa
     },
   });
 
-  await backend.stopSchedule('job-3');
-  await backend.deleteSchedule('job-3');
+  await backend.pauseJob('job-3');
+  await backend.resumeJob('job-3');
+  await backend.cancelJob('job-3');
+  await backend.deleteJob('job-3');
+  await backend.getSnapshot('job-3', 5);
+  await backend.analyzeSnapshot('job-3', 5);
 
-  assert.equal(calls.length, 2);
-  assert.equal(calls[0].command, 'stop_solve');
-  assert.equal(calls[0].payload.id, 'job-3');
-  assert.equal(calls[1].command, 'delete_schedule');
-  assert.equal(calls[1].payload.id, 'job-3');
+  assert.deepEqual(calls.map((entry) => entry.command), [
+    'pause_job',
+    'resume_job',
+    'cancel_job',
+    'delete_job',
+    'get_snapshot',
+    'analyze_snapshot',
+  ]);
+  assert.equal(calls[4].payload.snapshotRevision, 5);
+  assert.equal(calls[5].payload.snapshotRevision, 5);
 });
 
-test('non-tauri backend labels still use the generic HTTP adapter', async () => {
-  const fetchCalls = [];
+test('HTTP backend uses configured job paths and snapshot revision query parameters', async () => {
+  const requests = [];
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js'], {
     fetch(url, opts) {
-      fetchCalls.push({ url, opts });
+      requests.push({ url, opts });
       return Promise.resolve({
         ok: true,
         headers: { get() { return 'application/json'; } },
-        json() { return Promise.resolve({ id: 'job-9' }); },
+        json() { return Promise.resolve({ id: 'job-9', ok: true, url: url }); },
       });
     },
   });
@@ -105,16 +114,29 @@ test('non-tauri backend labels still use the generic HTTP adapter', async () => 
   const backend = SF.createBackend({
     type: 'rails',
     baseUrl: '/api',
-    schedulesPath: '/jobs',
+    jobsPath: '/jobs',
   });
 
-  assert.equal(await backend.createSchedule({ foo: 'bar' }), 'job-9');
-  assert.equal(fetchCalls.length, 1);
-  assert.equal(fetchCalls[0].url, '/api/jobs');
-  assert.equal(fetchCalls[0].opts.method, 'POST');
+  assert.equal(await backend.createJob({ foo: 'bar' }), 'job-9');
+  await backend.getSnapshot('job-9', 12);
+  await backend.analyzeSnapshot('job-9', 12);
+  await backend.pauseJob('job-9');
+  await backend.resumeJob('job-9');
+  await backend.cancelJob('job-9');
+  await backend.deleteJob('job-9');
+
+  assert.equal(requests[0].url, '/api/jobs');
+  assert.equal(requests[0].opts.method, 'POST');
+  assert.equal(requests[1].url, '/api/jobs/job-9/snapshot?snapshot_revision=12');
+  assert.equal(requests[2].url, '/api/jobs/job-9/analysis?snapshot_revision=12');
+  assert.equal(requests[3].url, '/api/jobs/job-9/pause');
+  assert.equal(requests[4].url, '/api/jobs/job-9/resume');
+  assert.equal(requests[5].url, '/api/jobs/job-9/cancel');
+  assert.equal(requests[6].url, '/api/jobs/job-9');
+  assert.equal(requests[6].opts.method, 'DELETE');
 });
 
-test('tauri streamEvents keeps id-less typed updates and filters mismatched job ids', async () => {
+test('tauri streamJobEvents keeps id-less updates and filters mismatched job ids', async () => {
   let handler = null;
   const received = [];
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js']);
@@ -130,18 +152,17 @@ test('tauri streamEvents keeps id-less typed updates and filters mismatched job 
     },
   });
 
-  backend.streamEvents('job-1', function (payload) {
+  backend.streamJobEvents('job-1', function (payload) {
     received.push(payload);
   });
 
   await Promise.resolve();
 
-  handler({ payload: { eventType: 'progress', currentScore: '0hard/0soft', bestScore: '0hard/0soft', movesPerSecond: 12 } });
-  handler({ payload: { data: { id: 'job-1' }, eventType: 'best_solution', currentScore: '0hard/-1soft', bestScore: '0hard/-1soft', solution: { id: 'job-1', score: '0hard/-1soft' } } });
-  handler({ payload: { jobId: 'job-2', eventType: 'finished', currentScore: '0hard/0soft', bestScore: '0hard/0soft', solution: { id: 'job-2', score: '0hard/0soft' } } });
+  handler({ payload: { eventType: 'progress', currentScore: '0hard/0soft', bestScore: '0hard/0soft' } });
+  handler({ payload: { data: { id: 'job-1' }, eventType: 'paused', snapshotRevision: 2 } });
+  handler({ payload: { jobId: 'job-2', eventType: 'completed', snapshotRevision: 3 } });
 
   assert.equal(received.length, 2);
   assert.equal(received[0].eventType, 'progress');
-  assert.equal(received[0].currentScore, '0hard/0soft');
   assert.equal(received[1].data.id, 'job-1');
 });

@@ -34,135 +34,12 @@ async function flush() {
   await Promise.resolve();
 }
 
-test('HTTP backend uses configured paths, headers, and event stream parsing', async () => {
-  const requests = [];
-  const streams = [];
-  class FakeEventSource {
-    constructor(url) {
-      this.url = url;
-      this.closed = false;
-      this.onmessage = null;
-      this.onerror = null;
-      streams.push(this);
-    }
-
-    close() {
-      this.closed = true;
-    }
-  }
-
-  const fetch = async (url, options) => {
-    requests.push({ url, options });
-    if (url === '/api/jobs') {
-      return {
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        headers: {
-          get(name) {
-            return name === 'content-type' ? 'application/json' : null;
-          },
-        },
-        json: async () => ({ id: 'job-7' }),
-        text: async () => 'ignored',
-      };
-    }
-    return {
-      ok: true,
-      status: 200,
-      statusText: 'OK',
-      headers: {
-        get(name) {
-          return name === 'content-type' ? 'application/json' : null;
-        },
-      },
-      json: async () => ({ ok: true, url }),
-      text: async () => 'ignored',
-    };
-  };
-
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js'], {
-    EventSource: FakeEventSource,
-    fetch,
-  });
-
-  const backend = SF.createBackend({
-    type: 'axum',
-    baseUrl: '/api',
-    schedulesPath: '/jobs',
-    demoDataPath: '/fixtures',
-    headers: { Authorization: 'Bearer token' },
-  });
-
-  const created = await backend.createSchedule({ plan: 1 });
-  const listed = await backend.listDemoData();
-  await backend.stopSchedule('job-7');
-
-  assert.equal(created, 'job-7');
-  assert.deepEqual(listed, { ok: true, url: '/api/fixtures' });
-  assert.equal(requests[0].options.method, 'POST');
-  assert.equal(requests[0].options.headers['Content-Type'], 'application/json');
-  assert.equal(requests[0].options.headers.Authorization, 'Bearer token');
-  assert.equal(requests[0].options.body, JSON.stringify({ plan: 1 }));
-  assert.equal(requests[1].options.method, 'GET');
-  assert.equal(requests[2].url, '/api/jobs/job-7/stop');
-  assert.equal(requests[2].options.method, 'POST');
-
-  let streamed = null;
-  let streamError = null;
-  const close = backend.streamEvents('job-7', (payload) => {
-    streamed = payload;
-  }, (error) => {
-    streamError = error;
-  });
-  assert.equal(typeof close, 'function');
-  assert.equal(streams[0].url, '/api/jobs/job-7/events');
-  streams[0].onmessage({ data: JSON.stringify({ eventType: 'progress', currentScore: '0hard/-1soft', bestScore: '0hard/-2soft', movesPerSecond: 14 }) });
-  assert.equal(streamed.eventType, 'progress');
-  assert.equal(streamed.currentScore, '0hard/-1soft');
-  assert.equal(streamed.bestScore, '0hard/-2soft');
-  streams[0].onerror();
-  assert.equal(streamError.message, 'Event stream failed for /api/jobs/job-7/events');
-  close();
-  assert.equal(streams[0].closed, true);
-});
-
-test('HTTP backend request failures preserve status metadata', async () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js'], {
-    fetch: async () => ({
-      ok: false,
-      status: 404,
-      statusText: 'Not Found',
-      headers: {
-        get() {
-          return null;
-        },
-      },
-    }),
-  });
-
-  const backend = SF.createBackend({
-    type: 'axum',
-    baseUrl: '/api',
-    schedulesPath: '/jobs',
-  });
-
-  await assert.rejects(backend.stopSchedule('job-404'), function (err) {
-    assert.equal(err.status, 404);
-    assert.equal(err.statusText, 'Not Found');
-    assert.equal(err.method, 'POST');
-    assert.equal(err.path, '/jobs/job-404/stop');
-    assert.equal(err.url, '/api/jobs/job-404/stop');
-    return true;
-  });
-});
-
-test('solver lifecycle updates status callbacks during start, streaming, completion, and stop', async () => {
+test('solver lifecycle handles progress, pause, resume, completion, and snapshot-bound analysis', async () => {
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js']);
   const calls = [];
   const statusBar = {
-    setSolving(value) {
-      calls.push(['setSolving', value]);
+    setLifecycleState(value) {
+      calls.push(['setLifecycleState', value]);
     },
     updateMoves(value) {
       calls.push(['updateMoves', value]);
@@ -178,48 +55,83 @@ test('solver lifecycle updates status callbacks during start, streaming, complet
   let onMessage;
   let streamClosed = false;
   const backend = {
-    createSchedule: async () => 'job-42',
-    streamEvents(id, callback) {
-      calls.push(['streamEvents', id]);
+    createJob: async () => 'job-42',
+    streamJobEvents(id, callback) {
+      calls.push(['streamJobEvents', id]);
       onMessage = callback;
       return () => {
         streamClosed = true;
       };
     },
-    getSchedule: async (id) => {
-      calls.push(['getSchedule', id]);
-      return { id: id, score: '0hard/-1soft', retained: true };
+    getSnapshot: async (id, revision) => {
+      calls.push(['getSnapshot', id, revision]);
+      return {
+        id: id,
+        snapshotRevision: revision,
+        lifecycleState: revision === 2 ? 'PAUSED' : 'COMPLETED',
+        currentScore: revision === 2 ? '0hard/-1soft' : '0hard/0soft',
+        bestScore: revision === 2 ? '0hard/-1soft' : '0hard/0soft',
+        telemetry: { movesPerSecond: revision === 2 ? 0 : 1 },
+        solution: { id: id, revision: revision, score: revision === 2 ? '0hard/-1soft' : '0hard/0soft' },
+      };
     },
-    analyze: async (id) => {
-      calls.push(['analyze', id]);
-      return { constraints: [{ name: 'hard-1', type: 'hard', score: '-1hard' }] };
+    analyzeSnapshot: async (id, revision) => {
+      calls.push(['analyzeSnapshot', id, revision]);
+      return {
+        jobId: id,
+        snapshotRevision: revision,
+        analysis: {
+          score: revision === 2 ? '0hard/-1soft' : '0hard/0soft',
+          constraints: [{ name: 'hard-1', type: 'hard', score: revision === 2 ? '-1hard' : '0hard' }],
+        },
+      };
     },
-    stopSchedule: async (id) => {
-      calls.push(['stopSchedule', id]);
+    pauseJob: async (id) => {
+      calls.push(['pauseJob', id]);
     },
-    deleteSchedule: async (id) => {
-      calls.push(['deleteSchedule', id]);
+    resumeJob: async (id) => {
+      calls.push(['resumeJob', id]);
+    },
+    cancelJob: async (id) => {
+      calls.push(['cancelJob', id]);
     },
   };
 
   const progressUpdates = [];
-  const solutionUpdates = [];
-  const completions = [];
+  const solutionSnapshots = [];
+  const pauseRequests = [];
+  const pausedSnapshots = [];
+  const resumedUpdates = [];
+  const completedSnapshots = [];
   const analyses = [];
+  let resolveCompleted;
+  const completedReady = new Promise((resolve) => {
+    resolveCompleted = resolve;
+  });
   const solver = SF.createSolver({
     backend,
     statusBar,
     onProgress(meta) {
       progressUpdates.push(meta);
     },
-    onSolution(schedule, meta) {
-      solutionUpdates.push([schedule, meta]);
+    onSolution(snapshot, meta) {
+      solutionSnapshots.push([snapshot, meta]);
     },
-    onComplete(schedule) {
-      completions.push(schedule);
+    onPauseRequested(meta) {
+      pauseRequests.push(meta);
     },
-    onAnalysis(analysis) {
-      analyses.push(analysis);
+    onPaused(snapshot, meta) {
+      pausedSnapshots.push([snapshot, meta]);
+    },
+    onResumed(meta) {
+      resumedUpdates.push(meta);
+    },
+    onComplete(snapshot, meta) {
+      completedSnapshots.push([snapshot, meta]);
+      resolveCompleted();
+    },
+    onAnalysis(analysis, meta) {
+      analyses.push([analysis, meta]);
     },
   });
 
@@ -228,165 +140,499 @@ test('solver lifecycle updates status callbacks during start, streaming, complet
 
   assert.equal(solver.isRunning(), true);
   assert.equal(solver.getJobId(), 'job-42');
-  assert.deepEqual(calls.slice(0, 3), [
-    ['setSolving', true],
+  assert.deepEqual(calls.slice(0, 4), [
+    ['setLifecycleState', 'STARTING'],
     ['updateMoves', null],
-    ['streamEvents', 'job-42'],
+    ['setLifecycleState', 'SOLVING'],
+    ['streamJobEvents', 'job-42'],
   ]);
 
   onMessage({
     eventType: 'progress',
+    eventSequence: 1,
+    lifecycleState: 'SOLVING',
+    telemetry: { movesPerSecond: 12 },
     currentScore: '0hard/-2soft',
     bestScore: '0hard/-3soft',
-    movesPerSecond: 12
   });
   await flush();
+
   assert.equal(progressUpdates.length, 1);
+  assert.equal(progressUpdates[0].eventSequence, 1);
   assert.equal(progressUpdates[0].currentScore, '0hard/-2soft');
   assert.equal(progressUpdates[0].bestScore, '0hard/-3soft');
-  assert.equal(progressUpdates[0].movesPerSecond, 12);
-  assert.deepEqual(calls.slice(3, 5), [
-    ['updateScore', '0hard/-2soft'],
-    ['updateMoves', 12],
-  ]);
 
   onMessage({
     eventType: 'best_solution',
+    eventSequence: 2,
+    lifecycleState: 'SOLVING',
+    snapshotRevision: 1,
+    telemetry: { movesPerSecond: 15 },
     currentScore: '0hard/-1soft',
     bestScore: '0hard/-1soft',
-    movesPerSecond: 15,
-    solution: { id: 'job-42', score: '0hard/-1soft' }
+    solution: { id: 'job-42', score: '0hard/-1soft' },
   });
   await flush();
-  assert.equal(solutionUpdates.length, 1);
-  assert.deepEqual(solutionUpdates[0][0], { id: 'job-42', score: '0hard/-1soft' });
-  assert.equal(solutionUpdates[0][1].bestScore, '0hard/-1soft');
-  assert.deepEqual(calls.slice(5, 7), [
-    ['updateScore', '0hard/-1soft'],
-    ['updateMoves', 15],
-  ]);
+
+  assert.equal(solutionSnapshots.length, 1);
+  assert.equal(solutionSnapshots[0][0].snapshotRevision, 1);
+  assert.equal(solutionSnapshots[0][0].solution.score, '0hard/-1soft');
+
+  const pausePromise = solver.pause();
+  assert.equal(typeof pausePromise.then, 'function');
+  await flush();
+  assert.deepEqual(calls.filter((entry) => entry[0] === 'pauseJob'), [['pauseJob', 'job-42']]);
 
   onMessage({
-    eventType: 'finished',
-    solverStatus: 'NOT_SOLVING',
+    eventType: 'pause_requested',
+    eventSequence: 3,
+    lifecycleState: 'PAUSE_REQUESTED',
+    telemetry: { movesPerSecond: 8 },
     currentScore: '0hard/-1soft',
     bestScore: '0hard/-1soft',
-    solution: { id: 'job-42', score: '0hard/-1soft' }
   });
   await flush();
+
+  assert.equal(pauseRequests.length, 1);
+  assert.equal(pauseRequests[0].lifecycleState, 'PAUSE_REQUESTED');
+
+  onMessage({
+    eventType: 'paused',
+    eventSequence: 4,
+    lifecycleState: 'PAUSED',
+    snapshotRevision: 2,
+    telemetry: { movesPerSecond: 0 },
+    currentScore: '0hard/-1soft',
+    bestScore: '0hard/-1soft',
+  });
+  await pausePromise;
+
+  assert.equal(solver.isRunning(), false);
+  assert.equal(solver.getLifecycleState(), 'PAUSED');
+  assert.equal(solver.getSnapshotRevision(), 2);
+  assert.equal(pausedSnapshots.length, 1);
+  assert.equal(pausedSnapshots[0][0].snapshotRevision, 2);
+  assert.equal(pausedSnapshots[0][0].solution.revision, 2);
+  assert.equal(analyses.length, 1);
+  assert.equal(analyses[0][0].snapshotRevision, 2);
+
+  const resumePromise = solver.resume();
+  await flush();
+  assert.deepEqual(calls.filter((entry) => entry[0] === 'resumeJob'), [['resumeJob', 'job-42']]);
+
+  onMessage({
+    eventType: 'resumed',
+    eventSequence: 5,
+    lifecycleState: 'SOLVING',
+    telemetry: { movesPerSecond: 11 },
+    currentScore: '0hard/-1soft',
+    bestScore: '0hard/-1soft',
+  });
+  await resumePromise;
+
+  assert.equal(resumedUpdates.length, 1);
+  assert.equal(solver.isRunning(), true);
+  assert.equal(solver.getLifecycleState(), 'SOLVING');
+
+  onMessage({
+    eventType: 'completed',
+    eventSequence: 6,
+    lifecycleState: 'COMPLETED',
+    snapshotRevision: 3,
+    telemetry: { movesPerSecond: 0 },
+    currentScore: '0hard/0soft',
+    bestScore: '0hard/0soft',
+  });
+  await completedReady;
+
   assert.equal(streamClosed, true);
   assert.equal(solver.isRunning(), false);
-  assert.equal(solver.getJobId(), 'job-42');
-  assert.equal(completions.length, 1);
-  assert.deepEqual(completions[0], { id: 'job-42', score: '0hard/-1soft' });
-  assert.deepEqual(calls.slice(7, 11), [
-    ['updateScore', '0hard/-1soft'],
-    ['updateMoves', null],
-    ['setSolving', false],
-    ['updateMoves', null],
-  ]);
+  assert.equal(solver.getLifecycleState(), 'COMPLETED');
+  assert.equal(completedSnapshots.length, 1);
+  assert.equal(completedSnapshots[0][0].snapshotRevision, 3);
+  assert.equal(completedSnapshots[0][0].solution.revision, 3);
+  assert.equal(analyses.length, 2);
+  assert.equal(analyses[1][0].snapshotRevision, 3);
 
-  solver.start({});
-  await flush();
-  await solver.stop();
-
-  assert.equal(solver.isRunning(), false);
-  assert.equal(solver.getJobId(), 'job-42');
-  assert.equal(analyses.length, 1);
-  assert.equal(analyses[0].constraints.length, 1);
-  assert.equal(completions.length, 2);
-  assert.deepEqual(completions[1], { id: 'job-42', score: '0hard/-1soft', retained: true });
-  assert.deepEqual(calls.slice(-8), [
-    ['stopSchedule', 'job-42'],
-    ['getSchedule', 'job-42'],
-    ['analyze', 'job-42'],
-    ['updateScore', '0hard/-1soft'],
-    ['updateMoves', null],
-    ['colorDotsFromAnalysis', [{ name: 'hard-1', type: 'hard', score: '-1hard' }]],
-    ['setSolving', false],
-    ['updateMoves', null],
-  ]);
-  assert.equal(calls.some((entry) => entry[0] === 'deleteSchedule'), false);
+  const latestAnalysis = await solver.analyzeSnapshot();
+  assert.equal(latestAnalysis.snapshotRevision, 3);
+  assert.equal(latestAnalysis.analysis.score, '0hard/0soft');
 });
 
-test('solver stop cancels a pending start and retains the eventual job id', async () => {
+test('solver queues pause during startup until the job exists', async () => {
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js']);
   const calls = [];
   let resolveCreate;
+  let onMessage;
   const backend = {
-    createSchedule() {
-      calls.push(['createSchedule']);
+    createJob() {
+      calls.push(['createJob']);
       return new Promise((resolve) => {
         resolveCreate = resolve;
       });
     },
-    streamEvents() {
-      calls.push(['streamEvents']);
+    streamJobEvents(id, callback) {
+      calls.push(['streamJobEvents', id]);
+      onMessage = callback;
       return function () {};
     },
-    getSchedule: async (id) => {
-      calls.push(['getSchedule', id]);
-      return { id: id, score: '0hard/0soft' };
+    getSnapshot: async (id, revision) => {
+      calls.push(['getSnapshot', id, revision]);
+      return {
+        id: id,
+        snapshotRevision: revision,
+        lifecycleState: 'PAUSED',
+        solution: { id: id, revision: revision },
+      };
     },
-    analyze: async (id) => {
-      calls.push(['analyze', id]);
-      return { constraints: [] };
+    analyzeSnapshot: async (id, revision) => {
+      calls.push(['analyzeSnapshot', id, revision]);
+      return {
+        jobId: id,
+        snapshotRevision: revision,
+        analysis: { score: '0hard/-1soft', constraints: [] },
+      };
     },
-    stopSchedule: async (id) => {
-      calls.push(['stopSchedule', id]);
+    pauseJob: async (id) => {
+      calls.push(['pauseJob', id]);
     },
-    deleteSchedule: async (id) => {
-      calls.push(['deleteSchedule', id]);
+    resumeJob: async () => {},
+    cancelJob: async () => {},
+  };
+
+  const paused = [];
+  const solver = SF.createSolver({
+    backend,
+    onPaused(snapshot) {
+      paused.push(snapshot);
+    },
+    onAnalysis() {},
+  });
+
+  solver.start({});
+  const pausePromise = solver.pause();
+  resolveCreate('job-late');
+  await flush();
+
+  assert.deepEqual(calls.slice(0, 3), [
+    ['createJob'],
+    ['streamJobEvents', 'job-late'],
+    ['pauseJob', 'job-late'],
+  ]);
+
+  onMessage({
+    eventType: 'pause_requested',
+    lifecycleState: 'PAUSE_REQUESTED',
+  });
+  onMessage({
+    eventType: 'paused',
+    lifecycleState: 'PAUSED',
+    snapshotRevision: 2,
+  });
+
+  await pausePromise;
+
+  assert.equal(solver.getJobId(), 'job-late');
+  assert.equal(solver.getLifecycleState(), 'PAUSED');
+  assert.equal(paused.length, 1);
+  assert.equal(paused[0].snapshotRevision, 2);
+});
+
+test('solver queues cancel during startup and settles on the terminal cancelled event', async () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js']);
+  const calls = [];
+  let resolveCreate;
+  let onMessage;
+  const backend = {
+    createJob() {
+      calls.push(['createJob']);
+      return new Promise((resolve) => {
+        resolveCreate = resolve;
+      });
+    },
+    streamJobEvents(id, callback) {
+      calls.push(['streamJobEvents', id]);
+      onMessage = callback;
+      return function () {};
+    },
+    getSnapshot: async (id, revision) => {
+      calls.push(['getSnapshot', id, revision]);
+      return {
+        id: id,
+        snapshotRevision: revision,
+        lifecycleState: 'CANCELLED',
+        solution: { id: id, revision: revision },
+      };
+    },
+    analyzeSnapshot: async (id, revision) => {
+      calls.push(['analyzeSnapshot', id, revision]);
+      return {
+        jobId: id,
+        snapshotRevision: revision,
+        analysis: { score: '0hard/-4soft', constraints: [] },
+      };
+    },
+    pauseJob: async () => {},
+    resumeJob: async () => {},
+    cancelJob: async (id) => {
+      calls.push(['cancelJob', id]);
     },
   };
 
-  const completions = [];
-  let resolveCompletion;
-  const completionReady = new Promise((resolve) => {
-    resolveCompletion = resolve;
+  const cancellations = [];
+  const solver = SF.createSolver({
+    backend,
+    onCancelled(snapshot) {
+      cancellations.push(snapshot);
+    },
+    onAnalysis() {},
+  });
+
+  solver.start({});
+  const cancelPromise = solver.cancel();
+  resolveCreate('job-cancelled');
+  await flush();
+
+  onMessage({
+    eventType: 'cancelled',
+    lifecycleState: 'CANCELLED',
+    snapshotRevision: 4,
+  });
+
+  await cancelPromise;
+
+  assert.equal(solver.isRunning(), false);
+  assert.equal(solver.getLifecycleState(), 'CANCELLED');
+  assert.equal(cancellations.length, 1);
+  assert.equal(cancellations[0].snapshotRevision, 4);
+  assert.deepEqual(calls.slice(0, 5), [
+    ['createJob'],
+    ['streamJobEvents', 'job-cancelled'],
+    ['cancelJob', 'job-cancelled'],
+    ['getSnapshot', 'job-cancelled', 4],
+    ['analyzeSnapshot', 'job-cancelled', 4],
+  ]);
+});
+
+test('solver ignores stale paused snapshot work after a newer cancelled event', async () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js']);
+  let onMessage;
+  let resolvePausedSnapshot;
+  let snapshotCallCount = 0;
+  const backend = {
+    createJob: async () => 'job-race',
+    streamJobEvents(_id, callback) {
+      onMessage = callback;
+      return function () {};
+    },
+    getSnapshot: async (id, revision) => {
+      snapshotCallCount += 1;
+      if (snapshotCallCount === 1) {
+        return new Promise((resolve) => {
+          resolvePausedSnapshot = () => resolve({
+            id: id,
+            snapshotRevision: revision,
+            lifecycleState: 'PAUSED',
+            solution: { id: id, revision: revision },
+          });
+        });
+      }
+      throw new Error('snapshot no longer available');
+    },
+    analyzeSnapshot: async () => {
+      throw new Error('analysis should not run in this test');
+    },
+    pauseJob: async () => {},
+    resumeJob: async () => {},
+    cancelJob: async () => {},
+  };
+
+  const paused = [];
+  const cancelled = [];
+  const solver = SF.createSolver({
+    backend,
+    onPaused(snapshot) {
+      paused.push(snapshot);
+    },
+    onCancelled(snapshot, meta) {
+      cancelled.push([snapshot, meta]);
+    },
+  });
+
+  await solver.start({});
+  const pausePromise = solver.pause();
+  await flush();
+
+  onMessage({
+    eventType: 'paused',
+    eventSequence: 2,
+    lifecycleState: 'PAUSED',
+    snapshotRevision: 2,
+  });
+  await flush();
+
+  onMessage({
+    eventType: 'cancelled',
+    eventSequence: 3,
+    lifecycleState: 'CANCELLED',
+    snapshotRevision: 2,
+    terminalReason: 'cancelled',
+  });
+  await flush();
+
+  await assert.rejects(pausePromise, /Job terminated before pause settled/);
+  assert.equal(solver.getLifecycleState(), 'CANCELLED');
+  assert.equal(cancelled.length, 1);
+  assert.equal(cancelled[0][1].lifecycleState, 'CANCELLED');
+
+  resolvePausedSnapshot();
+  await flush();
+
+  assert.equal(solver.getLifecycleState(), 'CANCELLED');
+  assert.equal(paused.length, 0);
+  assert.equal(cancelled.length, 1);
+});
+
+test('solver keeps terminal lifecycle metadata when retained snapshots are pause-bound', async () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js']);
+  let onMessage;
+  const backend = {
+    createJob: async () => 'job-terminal-meta',
+    streamJobEvents(_id, callback) {
+      onMessage = callback;
+      return function () {};
+    },
+    getSnapshot: async (id, revision) => ({
+      id: id,
+      snapshotRevision: revision,
+      lifecycleState: 'PAUSED',
+      terminalReason: null,
+      solution: { id: id, revision: revision },
+    }),
+    analyzeSnapshot: async (id, revision) => ({
+      jobId: id,
+      snapshotRevision: revision,
+      lifecycleState: 'PAUSED',
+      terminalReason: null,
+      analysis: { score: '0hard/-1soft', constraints: [] },
+    }),
+    pauseJob: async () => {},
+    resumeJob: async () => {},
+    cancelJob: async () => {},
+  };
+
+  const cancelled = [];
+  const analyses = [];
+  let resolveCancelled;
+  const cancelledReady = new Promise((resolve) => {
+    resolveCancelled = resolve;
   });
   const solver = SF.createSolver({
     backend,
-    onComplete(schedule) {
-      completions.push(schedule);
-      resolveCompletion();
+    onCancelled(snapshot, meta) {
+      cancelled.push([snapshot, meta]);
+      resolveCancelled();
+    },
+    onAnalysis(analysis, meta) {
+      analyses.push([analysis, meta]);
     },
   });
-  solver.start({ demand: 1 });
-  solver.stop();
-  resolveCreate('job-late');
-  await completionReady;
 
-  assert.equal(solver.isRunning(), false);
-  assert.equal(solver.getJobId(), 'job-late');
-  assert.equal(completions.length, 1);
-  assert.equal(completions[0].id, 'job-late');
-  assert.equal(completions[0].score, '0hard/0soft');
-  assert.deepEqual(calls, [
-    ['createSchedule'],
-    ['stopSchedule', 'job-late'],
-    ['getSchedule', 'job-late'],
-    ['analyze', 'job-late'],
-  ]);
+  await solver.start({});
+  onMessage({
+    eventType: 'cancelled',
+    eventSequence: 7,
+    lifecycleState: 'CANCELLED',
+    terminalReason: 'cancelled',
+    snapshotRevision: 2,
+  });
+  await cancelledReady;
+
+  assert.equal(solver.getLifecycleState(), 'CANCELLED');
+  assert.equal(cancelled.length, 1);
+  assert.equal(cancelled[0][0].lifecycleState, 'PAUSED');
+  assert.equal(cancelled[0][1].lifecycleState, 'CANCELLED');
+  assert.equal(cancelled[0][1].terminalReason, 'cancelled');
+  assert.equal(analyses.length, 1);
+  assert.equal(analyses[0][1].lifecycleState, 'CANCELLED');
+  assert.equal(analyses[0][1].terminalReason, 'cancelled');
+});
+
+test('solver delete clears the retained job after terminal completion', async () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js']);
+  let onMessage;
+  const calls = [];
+  const backend = {
+    createJob: async () => 'job-delete',
+    streamJobEvents(_id, callback) {
+      onMessage = callback;
+      return function () {};
+    },
+    getSnapshot: async (id, revision) => ({
+      id: id,
+      snapshotRevision: revision,
+      lifecycleState: 'COMPLETED',
+      solution: { id: id, revision: revision },
+    }),
+    analyzeSnapshot: async (id, revision) => ({
+      jobId: id,
+      snapshotRevision: revision,
+      analysis: { score: '0hard/0soft', constraints: [] },
+    }),
+    pauseJob: async () => {},
+    resumeJob: async () => {},
+    cancelJob: async () => {},
+    deleteJob: async (id) => {
+      calls.push(['deleteJob', id]);
+    },
+  };
+
+  let resolveCompleted;
+  const completedReady = new Promise((resolve) => {
+    resolveCompleted = resolve;
+  });
+  const solver = SF.createSolver({
+    backend,
+    onComplete() {
+      resolveCompleted();
+    },
+    onAnalysis() {},
+  });
+
+  await solver.start({});
+  onMessage({
+    eventType: 'completed',
+    lifecycleState: 'COMPLETED',
+    snapshotRevision: 7,
+  });
+  await completedReady;
+
+  assert.equal(solver.getJobId(), 'job-delete');
+  await solver.delete();
+
+  assert.equal(solver.getJobId(), null);
+  assert.equal(solver.getLifecycleState(), 'IDLE');
+  assert.deepEqual(calls, [['deleteJob', 'job-delete']]);
 });
 
 test('solver surfaces stream errors and resets the lifecycle', async () => {
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js']);
-  let onMessage;
   let onStreamError;
   const calls = [];
   const backend = {
-    createSchedule: async () => 'job-55',
-    streamEvents(id, callback, errorCallback) {
-      calls.push(['streamEvents', id]);
-      onMessage = callback;
+    createJob: async () => 'job-55',
+    streamJobEvents(id, _callback, errorCallback) {
+      calls.push(['streamJobEvents', id]);
       onStreamError = errorCallback;
       return () => {
         calls.push(['closeStream']);
       };
     },
-    analyze: async () => ({ constraints: [] }),
-    deleteSchedule: async () => {},
+    getSnapshot: async () => null,
+    analyzeSnapshot: async () => null,
+    pauseJob: async () => {},
+    resumeJob: async () => {},
+    cancelJob: async () => {},
   };
 
   const errors = [];
@@ -399,7 +645,6 @@ test('solver surfaces stream errors and resets the lifecycle', async () => {
 
   solver.start({});
   await flush();
-  onMessage({ eventType: 'progress', currentScore: '0hard/-2soft', bestScore: '0hard/-2soft', movesPerSecond: 18 });
   onStreamError(new Error('stream broke'));
   await flush();
 
@@ -407,244 +652,17 @@ test('solver surfaces stream errors and resets the lifecycle', async () => {
   assert.equal(solver.getJobId(), 'job-55');
   assert.deepEqual(errors, ['stream broke']);
   assert.deepEqual(calls, [
-    ['streamEvents', 'job-55'],
+    ['streamJobEvents', 'job-55'],
     ['closeStream'],
   ]);
 });
 
-test('solver stop retries retained schedule fetches until the stopped snapshot is ready', async () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js']);
-  const calls = [];
-  let scheduleFetches = 0;
-  const completions = [];
-  const backend = {
-    createSchedule: async () => 'job-race',
-    streamEvents() {
-      return function () {};
-    },
-    stopSchedule: async (id) => {
-      calls.push(['stopSchedule', id]);
-    },
-    getSchedule: async (id) => {
-      calls.push(['getSchedule', id]);
-      scheduleFetches += 1;
-      if (scheduleFetches < 3) throw new Error('not ready yet');
-      return { id: 'job-race', score: '0hard/-3soft' };
-    },
-    analyze: async (id) => {
-      calls.push(['analyze', id]);
-      return { constraints: [] };
-    },
-    deleteSchedule: async () => {},
-  };
-
-  const solver = SF.createSolver({
-    backend,
-    onComplete(schedule) {
-      completions.push(schedule);
-    },
-  });
-
-  await solver.start({});
-  await solver.stop();
-
-  assert.equal(scheduleFetches, 3);
-  assert.equal(solver.isRunning(), false);
-  assert.equal(solver.getJobId(), 'job-race');
-  assert.equal(completions.length, 1);
-  assert.equal(completions[0].id, 'job-race');
-  assert.equal(completions[0].score, '0hard/-3soft');
-  assert.deepEqual(calls, [
-    ['stopSchedule', 'job-race'],
-    ['getSchedule', 'job-race'],
-    ['getSchedule', 'job-race'],
-    ['getSchedule', 'job-race'],
-    ['analyze', 'job-race'],
-  ]);
-});
-
-test('solver stop is idempotent while retained shutdown is in progress', async () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js']);
-  const calls = [];
-  let resolveStop;
-  const completions = [];
-  const analyses = [];
-  const backend = {
-    createSchedule: async () => 'job-stop-once',
-    streamEvents() {
-      return function () {};
-    },
-    stopSchedule: (id) => {
-      calls.push(['stopSchedule', id]);
-      return new Promise((resolve) => {
-        resolveStop = resolve;
-      });
-    },
-    getSchedule: async (id) => {
-      calls.push(['getSchedule', id]);
-      return { id: id, score: '0hard/-1soft', retained: true };
-    },
-    analyze: async (id) => {
-      calls.push(['analyze', id]);
-      return { constraints: [] };
-    },
-    deleteSchedule: async (id) => {
-      calls.push(['deleteSchedule', id]);
-    },
-  };
-
-  const solver = SF.createSolver({
-    backend,
-    onComplete(schedule) {
-      completions.push(schedule);
-    },
-    onAnalysis(analysis) {
-      analyses.push(analysis);
-    },
-  });
-
-  await solver.start({});
-  const firstStop = solver.stop();
-  const secondStop = solver.stop();
-
-  assert.equal(firstStop, secondStop);
-
-  resolveStop();
-  await Promise.all([firstStop, secondStop]);
-
-  assert.equal(solver.isRunning(), false);
-  assert.equal(completions.length, 1);
-  assert.equal(analyses.length, 1);
-  assert.deepEqual(calls, [
-    ['stopSchedule', 'job-stop-once'],
-    ['getSchedule', 'job-stop-once'],
-    ['analyze', 'job-stop-once'],
-  ]);
-});
-
-test('solver stop keeps a finished retained schedule when stopSchedule returns 404', async () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js']);
-  const calls = [];
-  const completions = [];
-  const analyses = [];
-  const backend = {
-    createSchedule: async () => 'job-finished',
-    streamEvents() {
-      return function () {};
-    },
-    stopSchedule: async (id) => {
-      calls.push(['stopSchedule', id]);
-      const err = new Error('404 Not Found');
-      err.status = 404;
-      throw err;
-    },
-    getScheduleStatus: async (id) => {
-      calls.push(['getScheduleStatus', id]);
-      return { solverStatus: 'SOLVING' };
-    },
-    getSchedule: async (id) => {
-      calls.push(['getSchedule', id]);
-      return { id: id, score: '0hard/-2soft', solverStatus: 'NOT_SOLVING' };
-    },
-    analyze: async (id) => {
-      calls.push(['analyze', id]);
-      return { constraints: [] };
-    },
-    deleteSchedule: async (id) => {
-      calls.push(['deleteSchedule', id]);
-    },
-  };
-
-  const solver = SF.createSolver({
-    backend,
-    onComplete(schedule) {
-      completions.push(schedule);
-    },
-    onAnalysis(analysis) {
-      analyses.push(analysis);
-    },
-  });
-
-  await solver.start({});
-  await solver.stop();
-
-  assert.equal(solver.isRunning(), false);
-  assert.equal(solver.getJobId(), 'job-finished');
-  assert.equal(completions.length, 1);
-  assert.equal(analyses.length, 1);
-  assert.equal(calls.some((entry) => entry[0] === 'deleteSchedule'), false);
-  assert.deepEqual(calls, [
-    ['stopSchedule', 'job-finished'],
-    ['getScheduleStatus', 'job-finished'],
-    ['getSchedule', 'job-finished'],
-    ['getSchedule', 'job-finished'],
-    ['analyze', 'job-finished'],
-  ]);
-});
-
-test('solver stop falls back to delete for legacy backends when a 404 stop still reports SOLVING', async () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js']);
-  const calls = [];
-  const completions = [];
-  const backend = {
-    createSchedule: async () => 'job-compat',
-    streamEvents() {
-      return function () {};
-    },
-    stopSchedule: async (id) => {
-      calls.push(['stopSchedule', id]);
-      const err = new Error('404 Not Found');
-      err.status = 404;
-      throw err;
-    },
-    getScheduleStatus: async (id) => {
-      calls.push(['getScheduleStatus', id]);
-      return { solverStatus: 'SOLVING' };
-    },
-    deleteSchedule: async (id) => {
-      calls.push(['deleteSchedule', id]);
-    },
-    getSchedule: async (id) => {
-      calls.push(['getSchedule', id]);
-      return { id: id, score: '0hard/-2soft' };
-    },
-    analyze: async (id) => {
-      calls.push(['analyze', id]);
-      return { constraints: [] };
-    },
-  };
-
-  const solver = SF.createSolver({
-    backend,
-    onComplete(schedule) {
-      completions.push(schedule);
-    },
-  });
-
-  await solver.start({});
-  await solver.stop();
-
-  assert.equal(solver.isRunning(), false);
-  assert.equal(solver.getJobId(), 'job-compat');
-  assert.equal(completions.length, 1);
-  assert.equal(completions[0].id, 'job-compat');
-  assert.equal(completions[0].score, '0hard/-2soft');
-  assert.deepEqual(calls, [
-    ['stopSchedule', 'job-compat'],
-    ['getScheduleStatus', 'job-compat'],
-    ['getSchedule', 'job-compat'],
-    ['deleteSchedule', 'job-compat'],
-    ['getSchedule', 'job-compat'],
-    ['analyze', 'job-compat'],
-  ]);
-});
-
-test('solver ignores malformed and mismatched typed events without corrupting state', async () => {
+test('solver ignores malformed and mismatched lifecycle events without corrupting state', async () => {
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js']);
   const calls = [];
   const statusBar = {
-    setSolving(value) {
-      calls.push(['setSolving', value]);
+    setLifecycleState(value) {
+      calls.push(['setLifecycleState', value]);
     },
     updateMoves(value) {
       calls.push(['updateMoves', value]);
@@ -659,13 +677,16 @@ test('solver ignores malformed and mismatched typed events without corrupting st
   const solutionUpdates = [];
   const completions = [];
   const backend = {
-    createSchedule: async () => 'job-77',
-    streamEvents(_id, callback) {
+    createJob: async () => 'job-77',
+    streamJobEvents(_id, callback) {
       onMessage = callback;
       return function () {};
     },
-    analyze: async () => ({ constraints: [] }),
-    deleteSchedule: async () => {},
+    getSnapshot: async () => null,
+    analyzeSnapshot: async () => null,
+    pauseJob: async () => {},
+    resumeJob: async () => {},
+    cancelJob: async () => {},
   };
 
   const solver = SF.createSolver({
@@ -674,34 +695,35 @@ test('solver ignores malformed and mismatched typed events without corrupting st
     onProgress(meta) {
       progressUpdates.push(meta);
     },
-    onSolution(solution) {
-      solutionUpdates.push(solution);
+    onSolution(snapshot) {
+      solutionUpdates.push(snapshot);
     },
-    onComplete(solution) {
-      completions.push(solution);
+    onComplete(snapshot) {
+      completions.push(snapshot);
     },
   });
 
   solver.start({});
   await flush();
 
-  onMessage({ eventType: 'progress', currentScore: '0hard/-4soft', bestScore: '0hard/-5soft', movesPerSecond: 21 });
-  onMessage({ currentScore: '0hard/-3soft', bestScore: '0hard/-3soft', movesPerSecond: 22 });
-  onMessage({ eventType: 'progress', bestScore: '0hard/-2soft', movesPerSecond: 23 });
-  onMessage({ jobId: 'job-other', eventType: 'progress', currentScore: '0hard/-1soft', bestScore: '0hard/-1soft', movesPerSecond: 24 });
-  onMessage({ eventType: 'best_solution', currentScore: '0hard/-1soft', bestScore: '0hard/-1soft', movesPerSecond: 25 });
-  onMessage({ eventType: 'unknown', currentScore: '0hard/0soft', bestScore: '0hard/0soft', movesPerSecond: 26 });
+  onMessage({ eventType: 'progress', currentScore: '0hard/-4soft', bestScore: '0hard/-5soft', telemetry: { movesPerSecond: 21 } });
+  onMessage({ currentScore: '0hard/-3soft', bestScore: '0hard/-3soft' });
+  onMessage({ eventType: 'progress', bestScore: '0hard/-2soft' });
+  onMessage({ jobId: 'job-other', eventType: 'progress', currentScore: '0hard/-1soft', bestScore: '0hard/-1soft' });
+  onMessage({ eventType: 'best_solution', currentScore: '0hard/-1soft', bestScore: '0hard/-1soft' });
+  onMessage({ eventType: 'unknown', currentScore: '0hard/0soft', bestScore: '0hard/0soft' });
   await flush();
 
   assert.equal(progressUpdates.length, 1);
   assert.equal(solutionUpdates.length, 0);
   assert.equal(completions.length, 0);
   assert.equal(solver.isRunning(), true);
-  assert.deepEqual(calls, [
-    ['setSolving', true],
+  assert.deepEqual(calls.slice(0, 5), [
+    ['setLifecycleState', 'STARTING'],
     ['updateMoves', null],
+    ['setLifecycleState', 'SOLVING'],
+    ['setLifecycleState', 'SOLVING'],
     ['updateScore', '0hard/-4soft'],
-    ['updateMoves', 21],
   ]);
 });
 

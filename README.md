@@ -87,7 +87,9 @@ when you only want the JavaScript suite.
     onTabChange: function (id) { tabs.show(id); },
     actions: {
       onSolve: function () { solver.start(); },
-      onStop:  function () { solver.stop(); },
+      onPause: function () { solver.pause(); },
+      onResume: function () { solver.resume(); },
+      onCancel: function () { solver.cancel(); },
     },
   });
   document.body.prepend(header);
@@ -99,12 +101,18 @@ when you only want the JavaScript suite.
     backend: backend,
     statusBar: bar,
     onProgress: function (meta) {
-      console.log('progress', meta.currentScore, meta.bestScore, meta.movesPerSecond);
+      console.log('progress', meta.currentScore, meta.bestScore, meta.telemetry && meta.telemetry.movesPerSecond);
     },
-    onSolution: function (schedule) { render(schedule); },
-    onComplete: function (schedule, meta) {
-      console.log('finished', meta.currentScore);
-      render(schedule);
+    onSolution: function (snapshot) {
+      render(snapshot.solution);
+    },
+    onPaused: function (snapshot, meta) {
+      console.log('paused at snapshot', meta.snapshotRevision);
+      render(snapshot.solution);
+    },
+    onComplete: function (snapshot, meta) {
+      console.log('completed', meta.currentScore);
+      render(snapshot.solution);
     },
   });
 </script>
@@ -117,7 +125,7 @@ when you only want the JavaScript suite.
 
 | Factory | Returns | Description |
 |---------|---------|-------------|
-| `SF.createHeader(config)` | `HTMLElement` | Sticky header with logo, title, nav tabs, solve/stop/analyze buttons |
+| `SF.createHeader(config)` | `HTMLElement` | Sticky header with logo, title, nav tabs, and optional solve/pause/resume/cancel/analyze actions |
 | `SF.createStatusBar(config)` | `{el, bindHeader, updateScore, setSolving, updateMoves, colorDotsFromAnalysis}` | Score display + constraint dot indicators; pass `header` or call `bindHeader()` if it should toggle local solve/stop controls |
 | `SF.createButton(config)` | `HTMLButtonElement` | Button with variant/size/icon/shape modifiers |
 | `SF.createModal(config)` | `{el, body, open, close, setBody}` | Dialog with emerald gradient header, backdrop, Escape key |
@@ -161,48 +169,54 @@ Default content is always text-rendered. Use these fields only with trusted HTML
 | Factory | Returns | Description |
 |---------|---------|-------------|
 | `SF.createBackend(config)` | Backend adapter | HTTP or Tauri IPC transport |
-| `SF.createSolver(config)` | `{start, stop, isRunning, getJobId}` | SSE state machine with typed `progress`, `best_solution`, and `finished` events; `stop()` preserves the retained schedule when supported by the backend, and `getJobId()` returns the current or last retained schedule id for analysis/resume flows |
+| `SF.createSolver(config)` | `{start, pause, resume, cancel, delete, getSnapshot, analyzeSnapshot, isRunning, getJobId, getLifecycleState, getSnapshotRevision}` | Shared job lifecycle orchestration around typed runtime events, exact paused snapshots, retained analysis, and terminal cleanup |
 
 Canonical stream payloads:
 
 ```json
 {
   "eventType": "progress",
+  "jobId": "job-42",
+  "eventSequence": 1,
+  "lifecycleState": "SOLVING",
   "currentScore": "0hard/-2soft",
   "bestScore": "0hard/-3soft",
-  "movesPerSecond": 12,
-  "solverStatus": "SOLVING",
-  "id": "job-42"
+  "telemetry": { "movesPerSecond": 12, "stepCount": 3200 }
+}
+```
+
+```json
+{
+  "eventType": "paused",
+  "jobId": "job-42",
+  "eventSequence": 4,
+  "lifecycleState": "PAUSED",
+  "snapshotRevision": 2,
+  "currentScore": "0hard/-1soft",
+  "bestScore": "0hard/-1soft",
+  "telemetry": { "movesPerSecond": 0, "stepCount": 6400 }
 }
 ```
 
 ```json
 {
   "eventType": "best_solution",
+  "jobId": "job-42",
+  "eventSequence": 2,
+  "lifecycleState": "SOLVING",
+  "snapshotRevision": 1,
   "currentScore": "0hard/-1soft",
   "bestScore": "0hard/-1soft",
-  "movesPerSecond": 15,
-  "solverStatus": "SOLVING",
-  "id": "job-42",
-  "solution": { "id": "job-42", "score": "0hard/-1soft" }
-}
-```
-
-```json
-{
-  "eventType": "finished",
-  "currentScore": "0hard/-1soft",
-  "bestScore": "0hard/-1soft",
-  "movesPerSecond": 0,
-  "solverStatus": "NOT_SOLVING",
-  "id": "job-42",
+  "telemetry": { "movesPerSecond": 15, "stepCount": 4200 },
   "solution": { "id": "job-42", "score": "0hard/-1soft" }
 }
 ```
 
 Runtime rules:
 - `progress` is metadata-only. It must not carry the solution payload.
-- `best_solution` and `finished` must include `solution`.
+- `best_solution` must include `solution` and `snapshotRevision`.
+- `pause_requested` does not imply that a checkpoint is ready yet.
+- `paused`, `completed`, `cancelled`, and `failed` are authoritative lifecycle events. `SF.createSolver()` syncs the retained snapshot before firing the corresponding callbacks.
 - The status bar uses `currentScore` as the live score during solving.
 - Missing or malformed typed lifecycle fields are ignored; they are not silently normalized into the contract.
 
@@ -369,25 +383,30 @@ var backend = SF.createBackend({ type: 'axum', baseUrl: '' });
 ```
 
 Expects standard SolverForge REST endpoints:
-- `POST /schedules` — start solving
-- `POST /schedules/{id}/stop` — stop solving and retain the latest checkpoint
-- `GET /schedules/{id}` — get solution
-- `GET /schedules/{id}/status` — get solver status
-- `GET /schedules/{id}/events` — SSE stream
-- `GET /schedules/{id}/analyze` — constraint analysis
-- `DELETE /schedules/{id}` — delete a retained schedule
+- `POST /jobs` — create a retained job
+- `GET /jobs/{id}` — get job summary/status
+- `GET /jobs/{id}/status` — get job status summary
+- `GET /jobs/{id}/snapshot` — get the latest or requested retained snapshot
+- `GET /jobs/{id}/analysis` — analyze the latest or requested retained snapshot
+- `POST /jobs/{id}/pause` — request an exact runtime-managed pause
+- `POST /jobs/{id}/resume` — resume from the retained checkpoint
+- `POST /jobs/{id}/cancel` — cancel a live or paused job
+- `DELETE /jobs/{id}` — delete a terminal retained job
+- `GET /jobs/{id}/events` — SSE stream
 - `GET /demo-data/{name}` — load demo dataset
 
 Backend contract expectations:
-- `createSchedule()` must resolve to a plain schedule/job id (string), or an object containing one of `id`, `jobId`, `job_id`, `scheduleId`, or `schedule_id`.
-- `stopSchedule()` should resolve only after the stopped schedule can be fetched again from `getSchedule()`. `SF.createSolver().stop()` will sync the retained checkpoint and analysis before returning.
-- For legacy backends without `/schedules/{id}/stop`, `SF.createSolver().stop()` falls back to `DELETE /schedules/{id}`. Post-stop analysis/resume remains available only if that backend still leaves the schedule readable through `GET /schedules/{id}`.
-- When `stopSchedule()` returns `404`, `GET /schedules/{id}/status` or terminal status on `GET /schedules/{id}` is used to distinguish an already-finished retained schedule from a legacy delete-to-stop backend.
-- Events passed into `streamEvents()` for a job should include one of the same identifiers if multiple solver runs are possible.
+- `createJob()` must resolve to a plain job id (string), or an object containing one of `id`, `jobId`, or `job_id`.
+- `getSnapshot()` and `analyzeSnapshot()` accept an optional `snapshotRevision`. `SF.createSolver()` uses the exact revision from paused and terminal events when it syncs the retained state.
+- `pauseJob()` requests a pause. `SF.createSolver().pause()` resolves only after the authoritative `paused` event and snapshot sync complete.
+- `resumeJob()` resolves through the runtime event stream. `SF.createSolver().resume()` settles on the authoritative `resumed` event.
+- `cancelJob()` settles through the runtime event stream. `SF.createSolver().cancel()` resolves when the terminal event has been synchronized.
+- `deleteJob()` is destructive cleanup for terminal retained jobs only.
+- Events passed into `streamJobEvents()` for a job should include one of the same identifiers if multiple solver runs are possible.
 - Tauri payloads are ignored only when they carry a different job id than the active run; id-less single-run updates still pass through.
-- Solver lifecycle events are canonical camelCase only: `eventType`, `currentScore`, `bestScore`, `movesPerSecond`, `solverStatus`, and `solution` where required.
-- `eventType` must be explicit. Supported values are `progress`, `best_solution`, and `finished`.
-- Raw `score`-only progress payloads and implicit `solverStatus === NOT_SOLVING` completion messages are not part of the supported stream contract.
+- Solver lifecycle events are canonical camelCase only: `eventType`, `jobId`, `eventSequence`, `lifecycleState`, `snapshotRevision`, `currentScore`, `bestScore`, `telemetry`, and `solution` where required.
+- `eventType` must be explicit. Supported values are `progress`, `best_solution`, `pause_requested`, `paused`, `resumed`, `completed`, `cancelled`, and `failed`.
+- Raw score-only progress payloads and implicit completion heuristics are not part of the supported stream contract.
 
 ### Tauri
 

@@ -1,6 +1,6 @@
 /* ============================================================================
    SolverForge UI — Solver Lifecycle
-   SSE state machine: start → streaming → stop/complete.
+   Shared job orchestration for start, pause, resume, cancel, and snapshots.
    ============================================================================ */
 
 (function (sf) {
@@ -9,11 +9,21 @@
   sf.createSolver = function (config) {
     sf.assert(config, 'createSolver(config) requires a configuration object');
     sf.assert(config.backend, 'createSolver(config.backend) is required');
-    sf.assert(config.backend.createSchedule && typeof config.backend.createSchedule === 'function', 'createSolver(config.backend.createSchedule) must be a function');
-    sf.assert(config.backend.streamEvents && typeof config.backend.streamEvents === 'function', 'createSolver(config.backend.streamEvents) must be a function');
+    sf.assert(hasFunction(config.backend, 'createJob'), 'createSolver(config.backend.createJob) must be a function');
+    sf.assert(hasFunction(config.backend, 'getSnapshot'), 'createSolver(config.backend.getSnapshot) must be a function');
+    sf.assert(hasFunction(config.backend, 'analyzeSnapshot'), 'createSolver(config.backend.analyzeSnapshot) must be a function');
+    sf.assert(hasFunction(config.backend, 'pauseJob'), 'createSolver(config.backend.pauseJob) must be a function');
+    sf.assert(hasFunction(config.backend, 'resumeJob'), 'createSolver(config.backend.resumeJob) must be a function');
+    sf.assert(hasFunction(config.backend, 'cancelJob'), 'createSolver(config.backend.cancelJob) must be a function');
+    sf.assert(hasFunction(config.backend, 'streamJobEvents'), 'createSolver(config.backend.streamJobEvents) must be a function');
     sf.assert(!config.onProgress || typeof config.onProgress === 'function', 'createSolver(config.onProgress) must be a function');
     sf.assert(!config.onSolution || typeof config.onSolution === 'function', 'createSolver(config.onSolution) must be a function');
+    sf.assert(!config.onPauseRequested || typeof config.onPauseRequested === 'function', 'createSolver(config.onPauseRequested) must be a function');
+    sf.assert(!config.onPaused || typeof config.onPaused === 'function', 'createSolver(config.onPaused) must be a function');
+    sf.assert(!config.onResumed || typeof config.onResumed === 'function', 'createSolver(config.onResumed) must be a function');
+    sf.assert(!config.onCancelled || typeof config.onCancelled === 'function', 'createSolver(config.onCancelled) must be a function');
     sf.assert(!config.onComplete || typeof config.onComplete === 'function', 'createSolver(config.onComplete) must be a function');
+    sf.assert(!config.onFailure || typeof config.onFailure === 'function', 'createSolver(config.onFailure) must be a function');
     sf.assert(!config.onAnalysis || typeof config.onAnalysis === 'function', 'createSolver(config.onAnalysis) must be a function');
     sf.assert(!config.onError || typeof config.onError === 'function', 'createSolver(config.onError) must be a function');
 
@@ -22,381 +32,671 @@
     var closeStream = null;
     var activeJobId = null;
     var retainedJobId = null;
+    var lifecycleState = 'IDLE';
     var phase = 'idle';
     var runToken = 0;
-    var canceledToken = null;
-    var suppressStreamErrors = false;
-    var stopPromise = null;
-    var COMPAT_STOP_ATTEMPTS = 3;
-    var RETAINED_STOP_ATTEMPTS = 10;
-    var STOP_SYNC_DELAY_MS = 50;
+    var lastSnapshotRevision = null;
+    var lastMeta = null;
+    var queuedAction = null;
+    var pendingPause = null;
+    var pendingResume = null;
+    var pendingCancel = null;
 
     var api = {};
 
     api.start = function (data) {
       if (phase !== 'idle') return Promise.resolve();
+
+      resetForStart();
       phase = 'starting';
       runToken += 1;
-      canceledToken = null;
-      suppressStreamErrors = false;
-      activeJobId = null;
-
-      if (statusBar) {
-        statusBar.setSolving(true);
-        statusBar.updateMoves(null);
-      }
+      applyLifecycleState('STARTING');
+      updateMoves(null);
 
       var token = runToken;
-      return backend.createSchedule(data).then(function (id) {
-        if (token !== runToken) {
-          if (isValidJobId(id)) discardSchedule(id);
-          return;
-        }
-        if (typeof id !== 'string' || !id.trim()) {
-          throw new Error('Invalid solver backend createSchedule response');
-        }
+      return backend.createJob(data).then(function (id) {
+        if (token !== runToken) return;
+        ensureJobId(id);
 
-        retainedJobId = id;
         activeJobId = id;
+        retainedJobId = id;
+        phase = 'solving';
+        applyLifecycleState('SOLVING');
 
-        if (canceledToken === token) {
-          canceledToken = null;
-          return stopAndSync(token, id, { keepIdle: true });
-        }
-
-        phase = 'running';
-        closeStream = backend.streamEvents(id, function (msg) {
-          if (token !== runToken || canceledToken === token) return;
-          if (!isEventForCurrentJob(msg, id)) return;
-          if (!msg || typeof msg !== 'object') return;
-
-          if (typeof msg.eventType !== 'string' || !msg.eventType) return;
-
-          var eventType = msg.eventType;
-          if (eventType !== 'progress' && eventType !== 'best_solution' && eventType !== 'finished') return;
-
-          var meta = {
-            id: id,
-            eventType: eventType,
-            solverStatus: msg.solverStatus || null,
-            currentScore: msg.currentScore || null,
-            bestScore: msg.bestScore || null,
-            movesPerSecond: msg.movesPerSecond || null
-          };
-
-          if (eventType === 'progress') {
-            if (!meta.currentScore) return;
-            updateStatus(meta);
-            if (config.onProgress) config.onProgress(meta);
-            return;
-          }
-
-          if (eventType === 'best_solution') {
-            if (!msg.solution || !meta.currentScore) return;
-            updateStatus(meta);
-            if (config.onSolution && msg.solution) config.onSolution(msg.solution, meta);
-            return;
-          }
-
-          if (eventType === 'finished') {
-            if (!msg.solution || !meta.currentScore) return;
-            retainedJobId = id;
-            updateStatus(meta);
-            if (config.onComplete && msg.solution) config.onComplete(msg.solution, meta);
-            api._cleanup(token);
-            return;
-          }
+        closeStream = backend.streamJobEvents(id, function (payload) {
+          if (token !== runToken) return;
+          handleEvent(token, id, payload);
         }, function (err) {
-          if (suppressStreamErrors || token !== runToken || canceledToken === token) return;
-          handleError(token, err);
+          if (token !== runToken) return;
+          failTransport(err);
         });
+
+        if (queuedAction === 'pause') {
+          queuedAction = null;
+          requestPause(token, id);
+        } else if (queuedAction === 'cancel') {
+          queuedAction = null;
+          requestCancel(token, id);
+        }
       }).catch(function (err) {
-        handleError(token, err);
+        if (token !== runToken) return;
+        failTransport(err);
+        throw err;
       });
     };
 
-    api.stop = function () {
-      if (phase === 'idle') return Promise.resolve();
-      if (phase === 'stopping' && stopPromise) return stopPromise;
-      var token = runToken;
-      canceledToken = token;
-
+    api.pause = function () {
+      if (pendingPause) return pendingPause.promise;
       if (phase === 'starting' && !activeJobId) {
-        api._cleanup(token);
-        return Promise.resolve();
+        queuedAction = 'pause';
+        pendingPause = createDeferred();
+        return pendingPause.promise;
       }
+      if (phase !== 'solving' || !activeJobId) return Promise.resolve();
 
-      var stoppedId = activeJobId;
-      if (!stoppedId) {
-        api._cleanup(token);
-        return Promise.resolve();
-      }
-
-      stopPromise = stopAndSync(token, stoppedId, { closeStream: true });
-      return stopPromise;
+      pendingPause = createDeferred();
+      requestPause(runToken, activeJobId);
+      return pendingPause.promise;
     };
 
-    api._cleanup = function (token, options) {
-      if (token != null && token !== runToken) return;
-      suppressStreamErrors = true;
-      if (closeStream) { closeStream(); closeStream = null; }
-      phase = 'idle';
-      activeJobId = null;
-      stopPromise = null;
-      if (options && options.clearRetainedJob) retainedJobId = null;
-      if (statusBar) {
-        statusBar.setSolving(false);
-        statusBar.updateMoves(null);
-      }
+    api.resume = function () {
+      if (pendingResume) return pendingResume.promise;
+      if (phase !== 'paused' || !activeJobId) return Promise.resolve();
+
+      pendingResume = createDeferred();
+      requestResume(runToken, activeJobId);
+      return pendingResume.promise;
     };
 
-    api.isRunning = function () { return phase !== 'idle'; };
+    api.cancel = function () {
+      if (pendingCancel) return pendingCancel.promise;
+      if (phase === 'starting' && !activeJobId) {
+        queuedAction = 'cancel';
+        pendingCancel = createDeferred();
+        return pendingCancel.promise;
+      }
+      if (!activeJobId || !isCancelablePhase()) return Promise.resolve();
 
-    api.getJobId = function () { return activeJobId || retainedJobId; };
+      pendingCancel = createDeferred();
+      requestCancel(runToken, activeJobId);
+      return pendingCancel.promise;
+    };
+
+    api.delete = function () {
+      if (!retainedJobId || !hasFunction(backend, 'deleteJob')) return Promise.resolve();
+      if (api.isRunning() || phase === 'paused') {
+        return Promise.reject(new Error('Cannot delete a live or paused job'));
+      }
+
+      var jobId = retainedJobId;
+      return backend.deleteJob(jobId).then(function () {
+        if (retainedJobId !== jobId) return;
+        retainedJobId = null;
+        activeJobId = null;
+        lastSnapshotRevision = null;
+        lastMeta = null;
+        applyLifecycleState('IDLE');
+        updateMoves(null);
+      }).catch(function (err) {
+        notifyError(err);
+        throw err;
+      });
+    };
+
+    api.getSnapshot = function (snapshotRevision) {
+      var jobId = currentJobId();
+      if (!jobId) return Promise.reject(new Error('No retained job is available'));
+      var revision = resolveRequestedSnapshotRevision(snapshotRevision);
+      return backend.getSnapshot(jobId, revision).then(function (payload) {
+        return normalizeSnapshot(payload, lastMeta);
+      });
+    };
+
+    api.analyzeSnapshot = function (snapshotRevision) {
+      var jobId = currentJobId();
+      if (!jobId) return Promise.reject(new Error('No retained job is available'));
+      var revision = resolveRequestedSnapshotRevision(snapshotRevision);
+      return backend.analyzeSnapshot(jobId, revision).then(function (payload) {
+        return normalizeAnalysis(payload, lastMeta);
+      });
+    };
+
+    api.isRunning = function () {
+      return phase !== 'idle' && phase !== 'paused';
+    };
+
+    api.getJobId = function () {
+      return activeJobId || retainedJobId;
+    };
+
+    api.getLifecycleState = function () {
+      return lifecycleState;
+    };
+
+    api.getSnapshotRevision = function () {
+      return lastSnapshotRevision;
+    };
 
     return api;
 
-    function handleError(token, err) {
-      if (token !== runToken) return;
-      if (activeJobId) retainedJobId = activeJobId;
-      api._cleanup(token);
-      if (config.onError) config.onError(err.message || String(err));
-    }
-
-    function stopAndSync(token, id, options) {
-      options = options || {};
-      if (token !== runToken) return Promise.resolve();
-
-      if (!options.keepIdle) phase = 'stopping';
-      if (options.closeStream) {
-        suppressStreamErrors = true;
-        if (closeStream) { closeStream(); closeStream = null; }
-      }
-
-      return requestStop(id).then(function (stopResult) {
-        if (token !== runToken) return null;
-        return syncStoppedState(id, stopResult && stopResult.mustRetain);
-      }).then(function (result) {
-        if (token !== runToken || !result) return;
-
-        if (result.schedule) {
-          retainedJobId = id;
-          var meta = buildTerminalMeta(id, result.schedule);
-          updateStatus(meta);
-          if (config.onComplete) config.onComplete(result.schedule, meta);
-        }
-
-        if (result.analysis) {
-          if (statusBar && result.analysis.constraints) {
-            statusBar.colorDotsFromAnalysis(result.analysis.constraints);
-          }
-          if (config.onAnalysis) config.onAnalysis(result.analysis);
-        }
-
-        api._cleanup(token, result.clearRetainedJob ? { clearRetainedJob: true } : null);
-      }).catch(function (err) {
-        handleError(token, err);
+    function requestPause(token, id) {
+      phase = 'pause-requested';
+      backend.pauseJob(id).catch(function (err) {
+        if (token !== runToken) return;
+        phase = 'solving';
+        rejectDeferred('pause', err);
+        notifyError(err);
       });
     }
 
-    function isValidJobId(id) {
-      return typeof id === 'string' && !!id.trim();
+    function requestResume(token, id) {
+      phase = 'resuming';
+      backend.resumeJob(id).catch(function (err) {
+        if (token !== runToken) return;
+        phase = 'paused';
+        rejectDeferred('resume', err);
+        notifyError(err);
+      });
     }
 
-    function isEventForCurrentJob(msg, expectedId) {
-      if (!msg || typeof msg !== 'object') return false;
-      var candidate = msg.jobId || msg.job_id || msg.scheduleId || msg.schedule_id || msg.id || (msg.data && msg.data.id);
-      if (candidate == null) return true;
-      return String(candidate) === String(expectedId);
+    function requestCancel(token, id) {
+      phase = 'cancelling';
+      backend.cancelJob(id).catch(function (err) {
+        if (token !== runToken) return;
+        phase = lifecycleState === 'PAUSED' ? 'paused' : 'solving';
+        rejectDeferred('cancel', err);
+        notifyError(err);
+      });
     }
 
-    function updateStatus(meta) {
-      if (!statusBar) return;
-      statusBar.updateScore(meta.currentScore || meta.bestScore || null);
-      statusBar.updateMoves(meta.movesPerSecond);
-    }
+    function handleEvent(token, expectedId, payload) {
+      var event = normalizeJobEvent(payload, expectedId);
+      if (!event) return;
 
-    function discardSchedule(id) {
-      if (!backend.deleteSchedule || typeof backend.deleteSchedule !== 'function') return;
-      backend.deleteSchedule(id).catch(function () {});
-    }
+      lastMeta = event.meta;
+      if (event.meta.snapshotRevision != null) {
+        lastSnapshotRevision = event.meta.snapshotRevision;
+      }
+      retainedJobId = event.meta.jobId;
+      activeJobId = event.meta.jobId;
 
-    function requestStop(id) {
-      if (backend.stopSchedule && typeof backend.stopSchedule === 'function') {
-        return backend.stopSchedule(id).then(function () {
-          return { mustRetain: true };
+      if (event.eventType === 'progress') {
+        if (!event.meta.currentScore) return;
+        phase = 'solving';
+        applyEventMeta(event.meta);
+        if (config.onProgress) config.onProgress(event.meta);
+        return;
+      }
+
+      if (event.eventType === 'best_solution') {
+        if (!event.solution || !event.meta.currentScore) return;
+        phase = 'solving';
+        applyEventMeta(event.meta);
+        if (config.onSolution) {
+          config.onSolution(buildLiveSnapshot(event), event.meta);
+        }
+        return;
+      }
+
+      if (event.eventType === 'pause_requested') {
+        phase = 'pause-requested';
+        applyEventMeta(event.meta);
+        if (config.onPauseRequested) config.onPauseRequested(event.meta);
+        return;
+      }
+
+      if (event.eventType === 'paused') {
+        phase = 'paused';
+        applyEventMeta(event.meta);
+        syncSnapshotBundle(event.meta, true).then(function (bundle) {
+          if (token !== runToken || hasNewerEvent(event.meta)) return;
+          applyBundle(bundle);
+          if (config.onPaused && bundle.snapshot) config.onPaused(bundle.snapshot, bundle.meta);
+          resolveDeferred('pause', bundle);
         }).catch(function (err) {
-          if (isAmbiguousStopNotFound(err)) {
-            return resolveAmbiguousStopError(id, err);
-          }
-          if (!isUnsupportedStopError(err) || !canDeleteSchedule()) {
-            throw err;
-          }
-          return deleteStoppedSchedule(id);
+          if (token !== runToken || hasNewerEvent(event.meta)) return;
+          rejectDeferred('pause', err);
+          notifyError(err);
+        });
+        return;
+      }
+
+      if (event.eventType === 'resumed') {
+        phase = 'solving';
+        applyEventMeta(event.meta);
+        if (config.onResumed) config.onResumed(event.meta);
+        resolveDeferred('resume', event.meta);
+        return;
+      }
+
+      if (event.eventType === 'completed') {
+        phase = 'idle';
+        applyEventMeta(event.meta);
+        syncSnapshotBundle(event.meta, true).then(function (bundle) {
+          if (token !== runToken || hasNewerEvent(event.meta)) return;
+          finalizeTerminal(bundle.meta);
+          applyBundle(bundle);
+          if (config.onComplete && bundle.snapshot) config.onComplete(bundle.snapshot, bundle.meta);
+          settlePendingFromTerminal('completed', bundle);
+        }).catch(function (err) {
+          if (token !== runToken || hasNewerEvent(event.meta)) return;
+          finalizeTerminal(event.meta);
+          settlePendingFromTerminal('completed', null, err);
+          notifyError(err);
+        });
+        return;
+      }
+
+      if (event.eventType === 'cancelled') {
+        phase = 'idle';
+        applyEventMeta(event.meta);
+        syncSnapshotBundle(event.meta, false).then(function (bundle) {
+          if (token !== runToken || hasNewerEvent(event.meta)) return;
+          finalizeTerminal(bundle.meta);
+          applyBundle(bundle);
+          if (config.onCancelled) config.onCancelled(bundle.snapshot, bundle.meta);
+          settlePendingFromTerminal('cancelled', bundle);
+        }).catch(function (err) {
+          if (token !== runToken || hasNewerEvent(event.meta)) return;
+          finalizeTerminal(event.meta);
+          settlePendingFromTerminal('cancelled', null, err);
+          notifyError(err);
+        });
+        return;
+      }
+
+      if (event.eventType === 'failed') {
+        phase = 'idle';
+        applyEventMeta(event.meta);
+        syncSnapshotBundle(event.meta, false).then(function (bundle) {
+          if (token !== runToken || hasNewerEvent(event.meta)) return;
+          finalizeTerminal(bundle.meta);
+          applyBundle(bundle);
+          if (config.onFailure) config.onFailure(event.error || 'Solver job failed', bundle.meta, bundle.snapshot, bundle.analysis);
+          settlePendingFromTerminal('failed', bundle, new Error(event.error || 'Solver job failed'));
+        }).catch(function (err) {
+          if (token !== runToken || hasNewerEvent(event.meta)) return;
+          finalizeTerminal(event.meta);
+          if (config.onFailure) config.onFailure(event.error || 'Solver job failed', event.meta, null, null);
+          settlePendingFromTerminal('failed', null, err);
+          notifyError(err);
         });
       }
-      if (canDeleteSchedule()) {
-        return deleteStoppedSchedule(id);
-      }
-      return Promise.reject(new Error('Solver backend stopSchedule() or deleteSchedule() is required'));
     }
 
-    function syncStoppedState(id, requireRetainedSchedule) {
-      requireRetainedSchedule = !!requireRetainedSchedule;
-      var attempts = requireRetainedSchedule ? RETAINED_STOP_ATTEMPTS : COMPAT_STOP_ATTEMPTS;
-      return waitForRetainedSchedule(id, requireRetainedSchedule, attempts).then(function (schedule) {
-        if (!schedule) {
-          return {
-            schedule: null,
-            analysis: null,
-            clearRetainedJob: !requireRetainedSchedule,
-          };
-        }
-        return waitForAnalysis(id, attempts).then(function (analysis) {
-          return {
-            schedule: schedule,
-            analysis: analysis,
-            clearRetainedJob: false,
-          };
-        });
-      });
-    }
+    function syncSnapshotBundle(meta, requireSnapshot) {
+      var analysisRequired = !!config.onAnalysis;
+      var snapshotRevision = meta && meta.snapshotRevision != null ? meta.snapshotRevision : null;
 
-    function canDeleteSchedule() {
-      return !!(backend.deleteSchedule && typeof backend.deleteSchedule === 'function');
-    }
+      return backend.getSnapshot(meta.jobId, snapshotRevision).then(function (snapshotPayload) {
+        var snapshot = normalizeSnapshot(snapshotPayload, meta);
+        if (!snapshot) throw new Error('Solver backend returned an invalid snapshot payload');
 
-    function deleteStoppedSchedule(id) {
-      return backend.deleteSchedule(id).then(function () {
-        return {
-          mustRetain: false,
+        var mergedMeta = mergeMeta(meta, snapshot, meta.eventType);
+        var result = {
+          meta: mergedMeta,
+          snapshot: snapshot,
+          analysis: null,
         };
-      });
-    }
 
-    function resolveAmbiguousStopError(id, err) {
-      return detectTerminalStopState(id).then(function (alreadyStopped) {
-        if (alreadyStopped) return { mustRetain: true };
-        if (!canDeleteSchedule()) throw err;
-        return deleteStoppedSchedule(id);
-      });
-    }
+        if (!analysisRequired) return result;
 
-    function detectTerminalStopState(id) {
-      return probeScheduleStatus(id).then(function (status) {
-        if (status && isTerminalSolverStatus(status)) return true;
-        return probeRetainedSchedule(id);
-      });
-    }
-
-    function probeScheduleStatus(id) {
-      if (!backend.getScheduleStatus || typeof backend.getScheduleStatus !== 'function') {
-        return Promise.resolve(null);
-      }
-      return backend.getScheduleStatus(id).then(function (status) {
-        return readSolverStatus(status);
-      }).catch(function () {
-        return null;
-      });
-    }
-
-    function probeRetainedSchedule(id) {
-      if (!backend.getSchedule || typeof backend.getSchedule !== 'function') {
-        return Promise.resolve(false);
-      }
-      return backend.getSchedule(id).then(function (schedule) {
-        if (!schedule) return false;
-        var status = readSolverStatus(schedule);
-        if (status) return isTerminalSolverStatus(status);
-        return schedule.retained === true;
-      }).catch(function () {
-        return false;
-      });
-    }
-
-    function readSolverStatus(payload) {
-      if (!payload || typeof payload !== 'object') return null;
-      var status = payload.solverStatus || payload.solver_status || (payload.data && (payload.data.solverStatus || payload.data.solver_status));
-      return typeof status === 'string' && status ? status : null;
-    }
-
-    function isTerminalSolverStatus(status) {
-      return String(status).toUpperCase() === 'NOT_SOLVING';
-    }
-
-    function waitForRetainedSchedule(id, required, attemptsLeft) {
-      if (!backend.getSchedule || typeof backend.getSchedule !== 'function') {
-        return required
-          ? Promise.reject(new Error('Solver backend getSchedule() is required for retained stop'))
-          : Promise.resolve(null);
-      }
-
-      return backend.getSchedule(id).then(function (schedule) {
-        if (schedule) return schedule;
-        if (attemptsLeft <= 1) {
-          if (required) throw new Error('Retained stopped schedule was not available for ' + id);
-          return null;
-        }
-        return delay(STOP_SYNC_DELAY_MS).then(function () {
-          return waitForRetainedSchedule(id, required, attemptsLeft - 1);
+        return backend.analyzeSnapshot(meta.jobId, mergedMeta.snapshotRevision).then(function (analysisPayload) {
+          result.analysis = normalizeAnalysis(analysisPayload, mergedMeta);
+          return result;
         });
       }).catch(function (err) {
-        if (attemptsLeft <= 1) {
-          if (required) throw err;
-          return null;
+        if (requireSnapshot) throw err;
+
+        var fallback = { meta: meta, snapshot: null, analysis: null };
+        if (!analysisRequired || snapshotRevision == null) return fallback;
+
+        return backend.analyzeSnapshot(meta.jobId, snapshotRevision).then(function (analysisPayload) {
+          fallback.analysis = normalizeAnalysis(analysisPayload, meta);
+          return fallback;
+        }).catch(function () {
+          return fallback;
+        });
+      });
+    }
+
+    function applyBundle(bundle) {
+      if (!bundle) return;
+      lastMeta = bundle.meta;
+      if (bundle.meta && bundle.meta.snapshotRevision != null) {
+        lastSnapshotRevision = bundle.meta.snapshotRevision;
+      }
+      applyEventMeta(bundle.meta, bundle.analysis);
+      if (bundle.analysis && config.onAnalysis) config.onAnalysis(bundle.analysis, bundle.meta);
+    }
+
+    function finalizeTerminal(meta) {
+      closeCurrentStream();
+      activeJobId = null;
+      queuedAction = null;
+      phase = 'idle';
+      applyLifecycleState(meta && meta.lifecycleState ? meta.lifecycleState : 'IDLE');
+      updateMoves(null);
+    }
+
+    function failTransport(err) {
+      retainedJobId = activeJobId || retainedJobId;
+      closeCurrentStream();
+      activeJobId = null;
+      phase = 'idle';
+      queuedAction = null;
+      rejectDeferred('pause', err);
+      rejectDeferred('resume', err);
+      rejectDeferred('cancel', err);
+      applyLifecycleState('IDLE');
+      updateMoves(null);
+      notifyError(err);
+    }
+
+    function applyEventMeta(meta, analysis) {
+      applyLifecycleState(meta && meta.lifecycleState ? meta.lifecycleState : lifecycleState);
+      updateScore(meta && (meta.currentScore || meta.bestScore) ? (meta.currentScore || meta.bestScore) : null);
+      updateMoves(meta ? readMovesPerSecond(meta.telemetry) : null);
+      if (analysis) {
+        var constraints = readAnalysisConstraints(analysis);
+        if (constraints && constraints.length && statusBar && statusBar.colorDotsFromAnalysis) {
+          statusBar.colorDotsFromAnalysis(constraints);
         }
-        return delay(STOP_SYNC_DELAY_MS).then(function () {
-          return waitForRetainedSchedule(id, required, attemptsLeft - 1);
-        });
-      });
+      }
     }
 
-    function waitForAnalysis(id, attemptsLeft) {
-      if (!backend.analyze || typeof backend.analyze !== 'function') return Promise.resolve(null);
-      return backend.analyze(id).then(function (analysis) {
-        return analysis || null;
-      }).catch(function () {
-        if (attemptsLeft <= 1) return null;
-        return delay(STOP_SYNC_DELAY_MS).then(function () {
-          return waitForAnalysis(id, attemptsLeft - 1);
-        });
-      });
+    function applyLifecycleState(state) {
+      lifecycleState = state || 'IDLE';
+      if (!statusBar) return;
+      if (typeof statusBar.setLifecycleState === 'function') {
+        statusBar.setLifecycleState(lifecycleState);
+        return;
+      }
+      if (typeof statusBar.setSolving === 'function') {
+        statusBar.setSolving(isActiveLifecycle(lifecycleState));
+      }
     }
 
-    function buildTerminalMeta(id, schedule) {
-      var score = schedule && schedule.score ? schedule.score : null;
-      return {
-        id: id,
-        eventType: 'finished',
-        solverStatus: 'NOT_SOLVING',
-        currentScore: score,
-        bestScore: score,
-        movesPerSecond: null,
-      };
+    function updateScore(score) {
+      if (statusBar && typeof statusBar.updateScore === 'function') {
+        statusBar.updateScore(score);
+      }
     }
 
-    function isUnsupportedStopError(err) {
-      var message = String(err && err.message ? err.message : err).toLowerCase();
-      return (err && (err.status === 405 || err.status === 501))
-        || message.indexOf('405') !== -1
-        || message.indexOf('501') !== -1
-        || message.indexOf('method not allowed') !== -1
-        || message.indexOf('unknown command') !== -1
-        || message.indexOf('not implemented') !== -1;
+    function updateMoves(value) {
+      if (statusBar && typeof statusBar.updateMoves === 'function') {
+        statusBar.updateMoves(value);
+      }
     }
 
-    function isAmbiguousStopNotFound(err) {
-      var message = String(err && err.message ? err.message : err).toLowerCase();
-      return (err && err.status === 404)
-        || message.indexOf('404') !== -1
-        || message.indexOf('not found') !== -1;
+    function resetForStart() {
+      closeCurrentStream();
+      activeJobId = null;
+      lastSnapshotRevision = null;
+      lastMeta = null;
+      queuedAction = null;
+      pendingPause = null;
+      pendingResume = null;
+      pendingCancel = null;
     }
 
-    function delay(ms) {
-      return new Promise(function (resolve) {
-        setTimeout(resolve, ms);
-      });
+    function closeCurrentStream() {
+      if (!closeStream) return;
+      closeStream();
+      closeStream = null;
+    }
+
+    function currentJobId() {
+      return activeJobId || retainedJobId;
+    }
+
+    function hasNewerEvent(meta) {
+      var currentSequence = lastMeta && typeof lastMeta.eventSequence === 'number' ? lastMeta.eventSequence : null;
+      var candidateSequence = meta && typeof meta.eventSequence === 'number' ? meta.eventSequence : null;
+      if (currentSequence == null || candidateSequence == null) return false;
+      return currentSequence > candidateSequence;
+    }
+
+    function resolveRequestedSnapshotRevision(snapshotRevision) {
+      if (snapshotRevision != null && snapshotRevision !== '') return snapshotRevision;
+      return lastSnapshotRevision;
+    }
+
+    function isCancelablePhase() {
+      return phase === 'solving' || phase === 'pause-requested' || phase === 'paused' || phase === 'cancelling';
+    }
+
+    function settlePendingFromTerminal(eventType, bundle, err) {
+      if (eventType === 'cancelled') {
+        resolveDeferred('cancel', bundle);
+      } else if (pendingCancel) {
+        if (bundle) pendingCancel.resolve(bundle);
+        else pendingCancel.reject(err || new Error('Cancel did not settle before the job terminated'));
+        pendingCancel = null;
+      }
+
+      rejectDeferred('pause', err || new Error('Job terminated before pause settled'));
+      rejectDeferred('resume', err || new Error('Job terminated before resume settled'));
+    }
+
+    function resolveDeferred(name, value) {
+      var deferred = getDeferred(name);
+      if (!deferred) return;
+      deferred.resolve(value);
+      setDeferred(name, null);
+    }
+
+    function rejectDeferred(name, err) {
+      var deferred = getDeferred(name);
+      if (!deferred) return;
+      deferred.reject(err);
+      setDeferred(name, null);
+    }
+
+    function getDeferred(name) {
+      if (name === 'pause') return pendingPause;
+      if (name === 'resume') return pendingResume;
+      if (name === 'cancel') return pendingCancel;
+      return null;
+    }
+
+    function setDeferred(name, value) {
+      if (name === 'pause') pendingPause = value;
+      if (name === 'resume') pendingResume = value;
+      if (name === 'cancel') pendingCancel = value;
+    }
+
+    function notifyError(err) {
+      if (config.onError) config.onError(err && err.message ? err.message : String(err));
+    }
+
+    function ensureJobId(id) {
+      if (typeof id === 'string' && id.trim()) return;
+      throw new Error('Invalid solver backend createJob response');
     }
   };
 
+  function hasFunction(object, key) {
+    return !!(object && typeof object[key] === 'function');
+  }
+
+  function createDeferred() {
+    var resolve;
+    var reject;
+    var promise = new Promise(function (res, rej) {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise: promise, resolve: resolve, reject: reject };
+  }
+
+  function normalizeJobEvent(payload, expectedId) {
+    if (!payload || typeof payload !== 'object') return null;
+
+    var eventType = normalizeEventType(readField(payload, ['eventType', 'event_type', 'type']));
+    if (!eventType) return null;
+
+    var jobId = readField(payload, ['jobId', 'job_id', 'id'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || expectedId;
+    if (!jobId) return null;
+    if (String(jobId) !== String(expectedId)) return null;
+
+    var meta = {
+      id: String(jobId),
+      jobId: String(jobId),
+      eventType: eventType,
+      eventSequence: readField(payload, ['eventSequence', 'event_sequence'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]),
+      lifecycleState: normalizeLifecycleState(readField(payload, ['lifecycleState', 'lifecycle_state', 'solverStatus', 'solver_status'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]), eventType),
+      terminalReason: readField(payload, ['terminalReason', 'terminal_reason'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || null,
+      telemetry: normalizeTelemetry(readField(payload, ['telemetry'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]), payload),
+      currentScore: readField(payload, ['currentScore', 'current_score'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || null,
+      bestScore: readField(payload, ['bestScore', 'best_score'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || null,
+      snapshotRevision: readField(payload, ['snapshotRevision', 'snapshot_revision'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]),
+    };
+
+    return {
+      eventType: eventType,
+      meta: meta,
+      solution: payload.solution || (payload.data && payload.data.solution) || null,
+      error: readField(payload, ['error'], [payload, payload.data]) || null,
+    };
+  }
+
+  function normalizeSnapshot(payload, fallbackMeta) {
+    if (!payload || typeof payload !== 'object') return null;
+
+    var jobId = readField(payload, ['jobId', 'job_id', 'id'], [payload, payload.data]) || (fallbackMeta && fallbackMeta.jobId) || null;
+    return {
+      id: jobId != null ? String(jobId) : null,
+      jobId: jobId != null ? String(jobId) : null,
+      snapshotRevision: readField(payload, ['snapshotRevision', 'snapshot_revision'], [payload, payload.data]),
+      lifecycleState: normalizeLifecycleState(readField(payload, ['lifecycleState', 'lifecycle_state'], [payload, payload.data]), fallbackMeta && fallbackMeta.eventType),
+      terminalReason: readField(payload, ['terminalReason', 'terminal_reason'], [payload, payload.data]) || null,
+      currentScore: readField(payload, ['currentScore', 'current_score'], [payload, payload.data]) || null,
+      bestScore: readField(payload, ['bestScore', 'best_score'], [payload, payload.data]) || null,
+      telemetry: normalizeTelemetry(readField(payload, ['telemetry'], [payload, payload.data]), payload),
+      solution: payload.solution || (payload.data && payload.data.solution) || null,
+    };
+  }
+
+  function normalizeAnalysis(payload, fallbackMeta) {
+    if (!payload || typeof payload !== 'object') return null;
+
+    var analysisBody = payload.analysis || (payload.data && payload.data.analysis) || payload;
+    var constraints = readAnalysisConstraints(analysisBody);
+    return {
+      jobId: readField(payload, ['jobId', 'job_id', 'id'], [payload, payload.data]) || (fallbackMeta && fallbackMeta.jobId) || null,
+      snapshotRevision: readField(payload, ['snapshotRevision', 'snapshot_revision'], [payload, payload.data]) || (fallbackMeta && fallbackMeta.snapshotRevision) || null,
+      lifecycleState: normalizeLifecycleState(readField(payload, ['lifecycleState', 'lifecycle_state'], [payload, payload.data]), fallbackMeta && fallbackMeta.eventType),
+      terminalReason: readField(payload, ['terminalReason', 'terminal_reason'], [payload, payload.data]) || (fallbackMeta && fallbackMeta.terminalReason) || null,
+      analysis: analysisBody,
+      score: analysisBody && analysisBody.score != null ? analysisBody.score : null,
+      constraints: constraints,
+    };
+  }
+
+  function buildLiveSnapshot(event) {
+    return {
+      id: event.meta.jobId,
+      jobId: event.meta.jobId,
+      snapshotRevision: event.meta.snapshotRevision,
+      lifecycleState: event.meta.lifecycleState,
+      terminalReason: event.meta.terminalReason,
+      currentScore: event.meta.currentScore,
+      bestScore: event.meta.bestScore,
+      telemetry: event.meta.telemetry,
+      solution: event.solution,
+    };
+  }
+
+  function mergeMeta(meta, snapshot, eventType) {
+    if (!snapshot) return meta;
+    return {
+      id: meta && meta.id ? meta.id : snapshot.id,
+      jobId: meta && meta.jobId ? meta.jobId : snapshot.jobId,
+      eventType: meta && meta.eventType ? meta.eventType : eventType,
+      eventSequence: meta ? meta.eventSequence : null,
+      lifecycleState: (meta && meta.lifecycleState) || snapshot.lifecycleState || normalizeLifecycleState(null, eventType),
+      terminalReason: (meta && meta.terminalReason) || snapshot.terminalReason || null,
+      telemetry: snapshot.telemetry || (meta && meta.telemetry) || null,
+      currentScore: snapshot.currentScore || (meta && meta.currentScore) || null,
+      bestScore: snapshot.bestScore || (meta && meta.bestScore) || null,
+      snapshotRevision: snapshot.snapshotRevision != null ? snapshot.snapshotRevision : (meta && meta.snapshotRevision),
+    };
+  }
+
+  function readField(payload, names, sources) {
+    var fields = Array.isArray(names) ? names : [names];
+    var roots = sources || [payload];
+    for (var i = 0; i < roots.length; i++) {
+      var source = roots[i];
+      if (!source || typeof source !== 'object') continue;
+      for (var j = 0; j < fields.length; j++) {
+        if (source[fields[j]] != null) return source[fields[j]];
+      }
+    }
+    return null;
+  }
+
+  function normalizeEventType(value) {
+    if (typeof value !== 'string') return null;
+    var normalized = value
+      .trim()
+      .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+      .replace(/[\s-]+/g, '_')
+      .toLowerCase();
+    if (!normalized) return null;
+    if (normalized === 'finished') return 'completed';
+    return normalized;
+  }
+
+  function normalizeLifecycleState(value, eventType) {
+    if (typeof value === 'string' && value.trim()) {
+      return value
+        .trim()
+        .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+        .replace(/[\s-]+/g, '_')
+        .toUpperCase();
+    }
+
+    if (eventType === 'progress' || eventType === 'best_solution' || eventType === 'resumed') return 'SOLVING';
+    if (eventType === 'pause_requested') return 'PAUSE_REQUESTED';
+    if (eventType === 'paused') return 'PAUSED';
+    if (eventType === 'completed') return 'COMPLETED';
+    if (eventType === 'cancelled') return 'CANCELLED';
+    if (eventType === 'failed') return 'FAILED';
+    return 'IDLE';
+  }
+
+  function normalizeTelemetry(rawTelemetry, payload) {
+    if (rawTelemetry && typeof rawTelemetry === 'object') return rawTelemetry;
+
+    var telemetry = {};
+    var movesPerSecond = readField(payload, ['movesPerSecond', 'moves_per_second']);
+    var stepCount = readField(payload, ['stepCount', 'step_count']);
+    if (movesPerSecond != null) telemetry.movesPerSecond = movesPerSecond;
+    if (stepCount != null) telemetry.stepCount = stepCount;
+    return Object.keys(telemetry).length ? telemetry : null;
+  }
+
+  function readMovesPerSecond(telemetry) {
+    if (!telemetry || typeof telemetry !== 'object') return null;
+    if (telemetry.movesPerSecond != null) return telemetry.movesPerSecond;
+    if (telemetry.moves_per_second != null) return telemetry.moves_per_second;
+    return null;
+  }
+
+  function readAnalysisConstraints(analysis) {
+    if (!analysis || typeof analysis !== 'object') return null;
+    if (Array.isArray(analysis.constraints)) return analysis.constraints;
+    if (analysis.analysis && Array.isArray(analysis.analysis.constraints)) return analysis.analysis.constraints;
+    return null;
+  }
+
+  function isActiveLifecycle(state) {
+    return state === 'STARTING'
+      || state === 'SOLVING'
+      || state === 'PAUSE_REQUESTED'
+      || state === 'RESUMING'
+      || state === 'CANCELLING';
+  }
 })(SF);

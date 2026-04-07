@@ -11,7 +11,6 @@
     var controls = null;
 
     // Score display
-    var scoreEl = sf.el('span', { className: 'sf-statusbar-score' }, '\u2014');
     var scoreEl = sf.el('span', { className: 'sf-statusbar-score', id: 'sfScoreDisplay', 'aria-live': 'polite' }, '\u2014');
     bar.appendChild(scoreEl);
 
@@ -33,7 +32,6 @@
 
     // Separator + status text
     bar.appendChild(sf.el('span', { className: 'sf-statusbar-sep' }, '|'));
-    var statusEl = sf.el('span');
     var statusEl = sf.el('span', { id: 'sfStatusText', role: 'status', 'aria-live': 'polite' });
     bar.appendChild(statusEl);
 
@@ -64,19 +62,35 @@
       }
     };
 
-    api.setSolving = function (solving) {
+    api.setLifecycleState = function (state) {
+      var normalized = normalizeLifecycleState(state);
       var solveBtn = controls && controls.solveBtn;
-      var stopBtn = controls && controls.stopBtn;
+      var pauseBtn = controls && controls.pauseBtn;
+      var resumeBtn = controls && controls.resumeBtn;
+      var cancelBtn = controls && controls.cancelBtn;
       var spinner = controls && controls.spinner;
 
-      if (solveBtn) solveBtn.style.display = solving ? 'none' : '';
-      if (stopBtn) stopBtn.style.display = solving ? '' : 'none';
-      if (spinner) spinner.classList.toggle('active', solving);
+      if (solveBtn) solveBtn.style.display = shouldShowSolve(normalized) ? '' : 'none';
+      if (pauseBtn) {
+        pauseBtn.style.display = shouldShowPause(normalized) ? '' : 'none';
+        pauseBtn.disabled = normalized === 'PAUSE_REQUESTED';
+      }
+      if (resumeBtn) resumeBtn.style.display = normalized === 'PAUSED' ? '' : 'none';
+      if (cancelBtn) cancelBtn.style.display = shouldShowCancel(normalized) ? '' : 'none';
+      if (spinner) spinner.classList.toggle('active', shouldSpin(normalized));
 
-      statusEl.textContent = solving ? 'Solving\u2026' : 'Ready';
-      statusEl.style.color = solving
+      statusEl.textContent = lifecycleLabel(normalized);
+      statusEl.style.color = isActiveLifecycle(normalized)
         ? 'var(--sf-emerald-600)'
-        : 'var(--sf-gray-500)';
+        : normalized === 'FAILED'
+          ? 'var(--sf-red-600)'
+          : normalized === 'CANCELLED'
+            ? 'var(--sf-amber-700)'
+            : 'var(--sf-gray-500)';
+    };
+
+    api.setSolving = function (solving) {
+      api.setLifecycleState(solving ? 'SOLVING' : 'IDLE');
     };
 
     api.updateMoves = function (mps) {
@@ -122,6 +136,8 @@
       api.bindHeader(config.header);
     }
 
+    api.setLifecycleState('IDLE');
+
     return api;
   };
 
@@ -144,6 +160,65 @@
       }
       container.appendChild(dot);
     });
+  }
+
+  function normalizeLifecycleState(value) {
+    if (typeof value !== 'string' || !value.trim()) return 'IDLE';
+    return value
+      .trim()
+      .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+      .replace(/[\s-]+/g, '_')
+      .toUpperCase();
+  }
+
+  function shouldShowSolve(state) {
+    return state === 'IDLE'
+      || state === 'COMPLETED'
+      || state === 'CANCELLED'
+      || state === 'FAILED'
+      || state === 'TERMINATED_BY_CONFIG';
+  }
+
+  function shouldShowPause(state) {
+    return state === 'STARTING'
+      || state === 'SOLVING'
+      || state === 'PAUSE_REQUESTED'
+      || state === 'RESUMING';
+  }
+
+  function shouldShowCancel(state) {
+    return state === 'STARTING'
+      || state === 'SOLVING'
+      || state === 'PAUSE_REQUESTED'
+      || state === 'PAUSED'
+      || state === 'RESUMING'
+      || state === 'CANCELLING';
+  }
+
+  function shouldSpin(state) {
+    return state === 'STARTING'
+      || state === 'SOLVING'
+      || state === 'PAUSE_REQUESTED'
+      || state === 'RESUMING'
+      || state === 'CANCELLING';
+  }
+
+  function isActiveLifecycle(state) {
+    return shouldSpin(state);
+  }
+
+  function lifecycleLabel(state) {
+    if (state === 'STARTING') return 'Starting...';
+    if (state === 'SOLVING') return 'Solving...';
+    if (state === 'PAUSE_REQUESTED') return 'Pause requested...';
+    if (state === 'PAUSED') return 'Paused';
+    if (state === 'RESUMING') return 'Resuming...';
+    if (state === 'CANCELLING') return 'Cancelling...';
+    if (state === 'COMPLETED') return 'Completed';
+    if (state === 'CANCELLED') return 'Cancelled';
+    if (state === 'FAILED') return 'Failed';
+    if (state === 'TERMINATED_BY_CONFIG') return 'Completed';
+    return 'Ready';
   }
 
 })(SF);

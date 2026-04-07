@@ -36,21 +36,27 @@ test('status bars only toggle the controls on their bound header', () => {
     'js-src/05-statusbar.js',
   ]);
 
-  const headerOne = SF.createHeader({ actions: { onSolve() {}, onStop() {} } });
-  const headerTwo = SF.createHeader({ actions: { onSolve() {}, onStop() {} } });
+  const headerOne = SF.createHeader({ actions: { onSolve() {}, onPause() {}, onResume() {}, onCancel() {} } });
+  const headerTwo = SF.createHeader({ actions: { onSolve() {}, onPause() {}, onResume() {}, onCancel() {} } });
   const barOne = SF.createStatusBar({ header: headerOne });
   const barTwo = SF.createStatusBar({ header: headerTwo });
 
-  barOne.setSolving(true);
+  barOne.setLifecycleState('SOLVING');
   assert.equal(headerOne.sfControls.solveBtn.style.display, 'none');
-  assert.equal(headerOne.sfControls.stopBtn.style.display, '');
+  assert.equal(headerOne.sfControls.pauseBtn.style.display, '');
+  assert.equal(headerOne.sfControls.cancelBtn.style.display, '');
   assert.equal(headerOne.sfControls.spinner.classList.contains('active'), true);
   assert.notEqual(headerTwo.sfControls.solveBtn.style.display, 'none');
   assert.equal(headerTwo.sfControls.spinner.classList.contains('active'), false);
 
-  barTwo.setSolving(true);
+  barTwo.setLifecycleState('PAUSED');
   assert.equal(headerTwo.sfControls.solveBtn.style.display, 'none');
-  assert.equal(headerTwo.sfControls.stopBtn.style.display, '');
+  assert.equal(headerTwo.sfControls.resumeBtn.style.display, '');
+  assert.equal(headerTwo.sfControls.cancelBtn.style.display, '');
+
+  barTwo.setLifecycleState('SOLVING');
+  assert.equal(headerTwo.sfControls.solveBtn.style.display, 'none');
+  assert.equal(headerTwo.sfControls.pauseBtn.style.display, '');
 });
 
 test('tab switching stays scoped to the owning tab container', () => {

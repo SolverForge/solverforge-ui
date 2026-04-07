@@ -15,7 +15,7 @@ Sections in this document follow a simple staging rule:
 ```
 +------------------------------------------------------------------------+
 | .sf-header  (sticky, 60px, emerald gradient)                           |
-|  [logo] [title / subtitle]         [nav tabs...]    [Solve][Stop][Ana] |
+|  [logo] [title / subtitle]         [nav tabs...] [Solve][Pause][Ana]   |
 +------------------------------------------------------------------------+
 | .sf-statusbar  (score | constraint dots | moves/s | status)            |
 +------------------------------------------------------------------------+
@@ -44,17 +44,18 @@ sticky header, and scrollable main area.
 ```
 +------------------------------------------------------------------------+
 |  ┌──┐                                                                  |
-|  │🐍│  Furnace Scheduler     [Forni] [Ordini] [Gantt]   [▶ Solve] [◉] |
+|  │🐍│  Furnace Scheduler [Forni] [Ordini] [Gantt] [▶ Solve][❚❚][◉]    |
 |  └──┘  by SolverForge        ←─ nav tabs ──→            ←─ actions ──→ |
 +------------------------------------------------------------------------+
    ↑                     ↑                                    ↑
    .sf-header-logo       .sf-header-brand                     .sf-header-actions
    44×44, white filter   .sf-header-title (18px, white)       .sf-btn--success (Solve)
-                         .sf-header-subtitle (12px, mono)     .sf-btn--danger  (Stop, hidden)
+                         .sf-header-subtitle (12px, mono)     .sf-btn--default (Pause, hidden)
+                                                              .sf-btn--danger  (Cancel, hidden)
                                                               .sf-btn--ghost   (Analyze, circle)
 ```
 
-**JS:** `SF.createHeader({ logo, title, subtitle, tabs[], onTabChange, actions: { onSolve, onStop, onAnalyze } })`
+**JS:** `SF.createHeader({ logo, title, subtitle, tabs[], onTabChange, actions: { onSolve, onPause, onResume, onCancel, onAnalyze } })`
 
 **Nav buttons** (`.sf-nav-btn`): semi-transparent white, `.active` state toggles on click.
 
@@ -76,11 +77,11 @@ sticky header, and scrollable main area.
 ```
 
 **JS:** `SF.createStatusBar({ header?, constraints[], onConstraintClick })`
-Returns: `{ el, bindHeader(header), updateScore(str), setSolving(bool), updateMoves(n), colorDotsFromAnalysis(arr) }`
+Returns: `{ el, bindHeader(header), updateScore(str), setLifecycleState(state), updateMoves(n), colorDotsFromAnalysis(arr) }`
 
 Pass `header` or call `bindHeader(header)` when the status bar should control a
-specific header's Solve/Stop/spinner state. Without a bound header,
-`setSolving()` only updates the status text and moves display.
+specific header's lifecycle controls and spinner state. Without a bound header,
+`setLifecycleState()` only updates the status text and moves display.
 
 ---
 
@@ -253,18 +254,21 @@ Shorthand: `SF.showError(title, detail)`
 
 ```
   ┌─────────────────────────────────────────────┐
-  │  GET /schedules/{id}                        │  .sf-api-section h3
-  │  Get the current best solution.             │  (emerald-700 text)
+  │  GET /jobs/{id}/snapshot                    │  .sf-api-section h3
+  │  Get the latest or requested retained       │  (emerald-700 text)
+  │  snapshot for a job.                        │
   │  ┌───────────────────────────────────┬────┐ │
-  │  │ curl localhost:7860/schedules/abc │Copy│ │  .sf-api-code-block
+  │  │ curl localhost:7860/jobs/abc/      │Copy│ │  .sf-api-code-block
+  │  │ snapshot?snapshot_revision=4       │    │ │
   │  └───────────────────────────────────┴────┘ │  .sf-copy-btn
   └─────────────────────────────────────────────┘
 
   ┌─────────────────────────────────────────────┐
-  │  DELETE /schedules/{id}                     │
-  │  Stop solving and save checkpoint.          │
+  │  POST /jobs/{id}/pause                      │
+  │  Request an exact runtime-managed pause.    │
   │  ┌───────────────────────────────────┬────┐ │
-  │  │ curl -X DELETE localhost:786...   │Copy│ │
+  │  │ curl -X POST localhost:7860/jobs/ │Copy│ │
+  │  │ abc/pause                         │    │ │
   │  └───────────────────────────────────┴────┘ │
   └─────────────────────────────────────────────┘
 ```

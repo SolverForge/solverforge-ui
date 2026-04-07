@@ -21,8 +21,6 @@
     if (raw.id != null) return String(raw.id).trim();
     if (raw.jobId != null) return String(raw.jobId).trim();
     if (raw.job_id != null) return String(raw.job_id).trim();
-    if (raw.scheduleId != null) return String(raw.scheduleId).trim();
-    if (raw.schedule_id != null) return String(raw.schedule_id).trim();
 
     if (raw.data && typeof raw.data === 'object' && raw.data.id != null) {
       return String(raw.data.id).trim();
@@ -34,19 +32,22 @@
     if (!payload || typeof payload !== 'object') return '';
     if (payload.jobId != null) return String(payload.jobId).trim();
     if (payload.job_id != null) return String(payload.job_id).trim();
-    if (payload.scheduleId != null) return String(payload.scheduleId).trim();
-    if (payload.schedule_id != null) return String(payload.schedule_id).trim();
     if (payload.id != null) return String(payload.id).trim();
     if (payload.data && typeof payload.data === 'object' && payload.data.id != null) return String(payload.data.id).trim();
     if (payload.data && typeof payload.data === 'object' && payload.data.jobId != null) return String(payload.data.jobId).trim();
     return '';
   }
 
+  function withSnapshotRevision(path, snapshotRevision) {
+    if (snapshotRevision == null || snapshotRevision === '') return path;
+    return path + '?snapshot_revision=' + encodeURIComponent(String(snapshotRevision));
+  }
+
   /* ── HTTP backend (Axum, Rails, anything) ── */
 
   function createHttpBackend(config) {
     var baseUrl = config.baseUrl || '';
-    var schedulesPath = config.schedulesPath || '/schedules';
+    var jobsPath = config.jobsPath || '/jobs';
     var demoDataPath = config.demoDataPath || '/demo-data';
     var extraHeaders = config.headers || {};
 
@@ -76,23 +77,32 @@
     }
 
     return {
-      createSchedule: function (data) {
-        return request('POST', schedulesPath, data).then(resolveJobId);
+      createJob: function (data) {
+        return request('POST', jobsPath, data).then(resolveJobId);
       },
-      getSchedule: function (id) {
-        return request('GET', schedulesPath + '/' + id);
+      getJob: function (id) {
+        return request('GET', jobsPath + '/' + id);
       },
-      getScheduleStatus: function (id) {
-        return request('GET', schedulesPath + '/' + id + '/status');
+      getJobStatus: function (id) {
+        return request('GET', jobsPath + '/' + id + '/status');
       },
-      stopSchedule: function (id) {
-        return request('POST', schedulesPath + '/' + id + '/stop');
+      getSnapshot: function (id, snapshotRevision) {
+        return request('GET', withSnapshotRevision(jobsPath + '/' + id + '/snapshot', snapshotRevision));
       },
-      deleteSchedule: function (id) {
-        return request('DELETE', schedulesPath + '/' + id);
+      analyzeSnapshot: function (id, snapshotRevision) {
+        return request('GET', withSnapshotRevision(jobsPath + '/' + id + '/analysis', snapshotRevision));
       },
-      analyze: function (id) {
-        return request('GET', schedulesPath + '/' + id + '/analyze');
+      pauseJob: function (id) {
+        return request('POST', jobsPath + '/' + id + '/pause');
+      },
+      resumeJob: function (id) {
+        return request('POST', jobsPath + '/' + id + '/resume');
+      },
+      cancelJob: function (id) {
+        return request('POST', jobsPath + '/' + id + '/cancel');
+      },
+      deleteJob: function (id) {
+        return request('DELETE', jobsPath + '/' + id);
       },
       getDemoData: function (name) {
         return request('GET', demoDataPath + '/' + (name || 'STANDARD'));
@@ -100,8 +110,8 @@
       listDemoData: function () {
         return request('GET', demoDataPath);
       },
-      streamEvents: function (id, onMessage, onError) {
-        var url = baseUrl + schedulesPath + '/' + id + '/events';
+      streamJobEvents: function (id, onMessage, onError) {
+        var url = baseUrl + jobsPath + '/' + id + '/events';
         var es = new EventSource(url);
         var closed = false;
         es.onmessage = function (e) {
@@ -134,20 +144,36 @@
     var eventName = config.eventName || 'solver-update';
 
     return {
-      createSchedule: function (data) {
-        return invoke(commands.startSolve || 'create_schedule', { request: data }).then(resolveJobId);
+      createJob: function (data) {
+        return invoke(commands.createJob || 'create_job', { request: data }).then(resolveJobId);
       },
-      getSchedule: function (id) {
-        return invoke(commands.getSchedule || 'get_schedule', { id: id });
+      getJob: function (id) {
+        return invoke(commands.getJob || 'get_job', { id: id });
       },
-      stopSchedule: function (id) {
-        return invoke(commands.stopSolve || 'stop_solve', { id: id });
+      getJobStatus: function (id) {
+        return invoke(commands.getJobStatus || 'get_job_status', { id: id });
       },
-      deleteSchedule: function (id) {
-        return invoke(commands.deleteSchedule || commands.stopSolve || 'delete_schedule', { id: id });
+      getSnapshot: function (id, snapshotRevision) {
+        var payload = { id: id };
+        if (snapshotRevision != null && snapshotRevision !== '') payload.snapshotRevision = snapshotRevision;
+        return invoke(commands.getSnapshot || 'get_snapshot', payload);
       },
-      analyze: function (id) {
-        return invoke(commands.analyze || 'score_schedule', { id: id });
+      analyzeSnapshot: function (id, snapshotRevision) {
+        var payload = { id: id };
+        if (snapshotRevision != null && snapshotRevision !== '') payload.snapshotRevision = snapshotRevision;
+        return invoke(commands.analyzeSnapshot || 'analyze_snapshot', payload);
+      },
+      pauseJob: function (id) {
+        return invoke(commands.pauseJob || 'pause_job', { id: id });
+      },
+      resumeJob: function (id) {
+        return invoke(commands.resumeJob || 'resume_job', { id: id });
+      },
+      cancelJob: function (id) {
+        return invoke(commands.cancelJob || 'cancel_job', { id: id });
+      },
+      deleteJob: function (id) {
+        return invoke(commands.deleteJob || 'delete_job', { id: id });
       },
       getDemoData: function (name) {
         return invoke(commands.demoData || 'demo_seed', { name: name });
@@ -155,7 +181,7 @@
       listDemoData: function () {
         return Promise.resolve([]);
       },
-      streamEvents: function (id, onMessage) {
+      streamJobEvents: function (id, onMessage) {
         var targetId = String(id);
         var unlisten = null;
         listen(eventName, function (event) {
