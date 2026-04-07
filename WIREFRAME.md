@@ -241,7 +241,7 @@ Shorthand: `SF.showError(title, detail)`
 
 ```
 +------------------------------------------------------------------------+
-|  SolverForge  │  Documentation  │  GitHub        v0.3.0                |
+|  SolverForge  │  Documentation  │  GitHub        v0.4.2                |
 |  ↑ links with hover emerald                      ↑ right-aligned      |
 +------------------------------------------------------------------------+
 ```
@@ -277,7 +277,35 @@ Shorthand: `SF.showError(title, detail)`
 
 ---
 
-## 13. Timeline Rail (Shipped Core)
+## 13. Solver Stream Contract (Shipped)
+
+```
+  start()
+    │
+    ├── "progress"       → scored metadata update only
+    │
+    └── "best_solution"  → scored live snapshot update
+
+  Startup rule:
+  the first lifecycle event may be either branch above, but it must already
+  carry score data.
+
+  Retained bootstrap rule:
+  if startup state is restored from a retained snapshot, do not follow that
+  bootstrap with an identical duplicate startup "best_solution".
+```
+
+Shipped runtime expectations:
+
+- `progress` updates score, telemetry, and status only.
+- `best_solution` updates score, telemetry, and the live solution view.
+- `best_solution` always includes `solution` plus `snapshotRevision`.
+- `paused`, `completed`, `cancelled`, and `failed` remain authoritative and
+  trigger retained snapshot synchronization before downstream callbacks fire.
+
+---
+
+## 14. Timeline Rail (Shipped Core)
 
 ```
   .sf-timeline-header
@@ -339,7 +367,7 @@ card.clearBlocks();
 
 ---
 
-## 14. Gantt Chart (Frappe Gantt)
+## 15. Gantt Chart (Frappe Gantt)
 
 ```
   .sf-gantt-split
@@ -397,7 +425,7 @@ gantt.highlightTask('task-1');
 
 Requires: `/sf/vendor/frappe-gantt/` + `/sf/vendor/split/`
 
-## 15. Planned Rail Extensions
+## 16. Planned Rail Extensions
 
 These ideas are intentionally not part of the shipped API surface yet:
 
@@ -408,7 +436,7 @@ Treat those as design direction until they are wired into `js-src/13-rail.js` an
 
 ---
 
-## 16. Map Module (optional, requires Leaflet)
+## 17. Map Module (optional, requires Leaflet)
 
 ```
   ┌─────────────────────────────────────────────────┐
@@ -439,7 +467,7 @@ map.highlight(vehicleColor);
 
 ---
 
-## 17. Constraint Analysis (in Modal)
+## 18. Constraint Analysis (in Modal)
 
 ```
   ┌──────────────────────────────────────────────────┐

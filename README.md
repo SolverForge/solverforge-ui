@@ -171,6 +171,9 @@ Default content is always text-rendered. Use these fields only with trusted HTML
 | `SF.createBackend(config)` | Backend adapter | HTTP or Tauri IPC transport |
 | `SF.createSolver(config)` | `{start, pause, resume, cancel, delete, getSnapshot, analyzeSnapshot, isRunning, getJobId, getLifecycleState, getSnapshotRevision}` | Shared job lifecycle orchestration around typed runtime events, exact paused snapshots, retained analysis, and terminal cleanup |
 
+Startup streams may begin with either a scored `progress` event or a scored
+`best_solution` event. Consumers must not require `progress` to arrive first.
+
 Canonical stream payloads:
 
 ```json
@@ -213,6 +216,8 @@ Canonical stream payloads:
 ```
 
 Runtime rules:
+- The first lifecycle event for a newly started solve may be `progress` or `best_solution`, but it must already be scored.
+- Backends that bootstrap startup state from a retained snapshot must not follow it with an identical startup `best_solution` duplicate.
 - `progress` is metadata-only. It must not carry the solution payload.
 - `best_solution` must include `solution` and `snapshotRevision`.
 - `pause_requested` does not imply that a checkpoint is ready yet.
@@ -581,7 +586,7 @@ cargo build
 
 Consumer integration stays npm-free. Maintainer release automation does not.
 
-- Current crate release: `0.4.1`.
+- Current crate release: `0.4.2`.
 - Keep `CHANGELOG.md` current as work lands.
 - Use `RELEASE.md` as the source of truth when preparing a public release.
 - Run `make pre-release` before tagging.

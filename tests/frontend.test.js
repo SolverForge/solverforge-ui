@@ -657,6 +657,74 @@ test('solver surfaces stream errors and resets the lifecycle', async () => {
   ]);
 });
 
+test('solver accepts an initial best_solution event before any progress event', async () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js']);
+  const calls = [];
+  const statusBar = {
+    setLifecycleState(value) {
+      calls.push(['setLifecycleState', value]);
+    },
+    updateMoves(value) {
+      calls.push(['updateMoves', value]);
+    },
+    updateScore(value) {
+      calls.push(['updateScore', value]);
+    },
+  };
+
+  let onMessage;
+  const solutionUpdates = [];
+  const backend = {
+    createJob: async () => 'job-bootstrap',
+    streamJobEvents(_id, callback) {
+      onMessage = callback;
+      return function () {};
+    },
+    getSnapshot: async () => null,
+    analyzeSnapshot: async () => null,
+    pauseJob: async () => {},
+    resumeJob: async () => {},
+    cancelJob: async () => {},
+  };
+
+  const solver = SF.createSolver({
+    backend,
+    statusBar,
+    onSolution(snapshot, meta) {
+      solutionUpdates.push([snapshot, meta]);
+    },
+  });
+
+  solver.start({});
+  await flush();
+
+  onMessage({
+    eventType: 'best_solution',
+    eventSequence: 1,
+    lifecycleState: 'SOLVING',
+    snapshotRevision: 1,
+    currentScore: '0hard/-1soft',
+    bestScore: '0hard/-1soft',
+    telemetry: { movesPerSecond: 9 },
+    solution: { id: 'job-bootstrap', score: '0hard/-1soft' },
+  });
+  await flush();
+
+  assert.equal(solutionUpdates.length, 1);
+  assert.equal(solutionUpdates[0][0].snapshotRevision, 1);
+  assert.equal(solutionUpdates[0][0].solution.score, '0hard/-1soft');
+  assert.equal(solutionUpdates[0][1].eventType, 'best_solution');
+  assert.equal(solutionUpdates[0][1].currentScore, '0hard/-1soft');
+  assert.deepEqual(calls, [
+    ['setLifecycleState', 'STARTING'],
+    ['updateMoves', null],
+    ['setLifecycleState', 'SOLVING'],
+    ['setLifecycleState', 'SOLVING'],
+    ['updateScore', '0hard/-1soft'],
+    ['updateMoves', 9],
+  ]);
+});
+
 test('solver ignores malformed and mismatched lifecycle events without corrupting state', async () => {
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js']);
   const calls = [];
