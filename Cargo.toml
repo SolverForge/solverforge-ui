@@ -1,6 +1,6 @@
 [package]
 name = "solverforge-ui"
-version = "0.4.2"
+version = "0.4.3"
 edition = "2021"
 rust-version = "1.75"
 description = "Frontend component library for SolverForge constraint-optimization applications"

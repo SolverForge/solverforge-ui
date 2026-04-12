@@ -14,7 +14,7 @@ Repository guidance for coding agents and maintainers working in
 
 ## Current Release
 
-- Crate version: `0.4.2`.
+- Crate version: `0.4.3`.
 - Versioned asset outputs are emitted as `static/sf/sf.<version>.css` and
   `static/sf/sf.<version>.js`.
 

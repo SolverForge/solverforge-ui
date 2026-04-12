@@ -56,7 +56,7 @@ alongside the solver. When you scaffold a new SolverForge project with
 ## Testing
 
 Repository coverage now includes the embedded Rust asset routes plus Node-based
-frontend tests for backend adapters, solver lifecycle transitions, and core
+frontend tests for backend adapters, focused solver lifecycle suites, and core
 component rendering. Use `make test` for the full suite, `make test-quick` for
 Rust doctests and unit tests plus frontend coverage, or `make test-frontend`
 when you only want the JavaScript suite.
@@ -586,7 +586,7 @@ cargo build
 
 Consumer integration stays npm-free. Maintainer release automation does not.
 
-- Current crate release: `0.4.2`.
+- Current crate release: `0.4.3`.
 - Keep `CHANGELOG.md` current as work lands.
 - Use `RELEASE.md` as the source of truth when preparing a public release.
 - Run `make pre-release` before tagging.
