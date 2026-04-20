@@ -166,6 +166,31 @@ test('timeline overview lanes cluster overlaps and expand only the targeted regi
   assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-item--cluster').length, 1);
 });
 
+test('timeline overview lanes reject duplicate cluster ids across disjoint groups in one lane', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  assert.throws(() => {
+    SF.rail.createTimeline({
+      model: {
+        axis: buildAxis(14, { startMinute: 0, endMinute: 7 * 1440 }),
+        lanes: [
+          {
+            id: 'location-east',
+            label: 'Ward East',
+            mode: 'overview',
+            items: [
+              { id: 'early-a', clusterId: 'morning-rush', startMinute: 120, endMinute: 300, label: 'Early A', tone: 'blue' },
+              { id: 'early-b', clusterId: 'morning-rush', startMinute: 180, endMinute: 360, label: 'Early B', tone: 'blue' },
+              { id: 'late-a', clusterId: 'morning-rush', startMinute: 900, endMinute: 1020, label: 'Late A', tone: 'emerald' },
+              { id: 'late-b', clusterId: 'morning-rush', startMinute: 960, endMinute: 1080, label: 'Late B', tone: 'emerald' },
+            ],
+          },
+        ],
+      },
+    });
+  }, /must identify at most one overview group per lane/);
+});
+
 test('timeline overview summaries accept additive summary metadata and render count/open/tone composition', () => {
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
 
@@ -589,6 +614,55 @@ test('timeline assigns stable fallback labels and ordering for unlabeled items a
   assert.equal(expandedLabels[1].startsWith('Item 2'), true);
 });
 
+test('timeline scopes lane heading ids so aria-labelledby stays valid across instances', () => {
+  const { SF, document } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  const first = SF.rail.createTimeline({
+    model: {
+      axis: buildAxis(7, { startMinute: 0, endMinute: 3 * 1440 }),
+      lanes: [
+        {
+          id: 'Ward East',
+          label: 'Ward East',
+          mode: 'overview',
+          items: [
+            { id: 'visit-a', startMinute: 60, endMinute: 180, label: 'Visit A', tone: 'blue' },
+          ],
+        },
+      ],
+    },
+  });
+  const second = SF.rail.createTimeline({
+    model: {
+      axis: buildAxis(7, { startMinute: 0, endMinute: 3 * 1440 }),
+      lanes: [
+        {
+          id: 'Ward East',
+          label: 'Ward East',
+          mode: 'overview',
+          items: [
+            { id: 'visit-b', startMinute: 240, endMinute: 360, label: 'Visit B', tone: 'emerald' },
+          ],
+        },
+      ],
+    },
+  });
+
+  document.body.appendChild(first.el);
+  document.body.appendChild(second.el);
+
+  const rows = document.querySelectorAll('.sf-rail-timeline-row');
+  const headings = document.querySelectorAll('.sf-rail-timeline-lane-title');
+
+  assert.equal(rows.length, 2);
+  assert.equal(headings.length, 2);
+  assert.notEqual(headings[0].id, headings[1].id);
+  assert.equal(rows[0].attributes['aria-labelledby'], headings[0].id);
+  assert.equal(rows[1].attributes['aria-labelledby'], headings[1].id);
+  assert.equal(document.getElementById(rows[0].attributes['aria-labelledby']).textContent.trim(), 'Ward East');
+  assert.equal(document.getElementById(rows[1].attributes['aria-labelledby']).textContent.trim(), 'Ward East');
+});
+
 test('timeline rejects non-numeric minute inputs instead of coercing them', () => {
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
 
@@ -731,6 +805,84 @@ test('timeline rejects non-numeric minute inputs instead of coercing them', () =
       endMinute: 1440,
     });
   }, /rail\.createTimeline\(\)\.setViewport\(viewport\)\.startMinute must be a finite number/);
+});
+
+test('timeline rejects fractional minute inputs instead of rendering malformed clock labels', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  assert.throws(() => {
+    SF.rail.createTimeline({
+      model: {
+        axis: {
+          ...buildAxis(7),
+          ticks: [{ minute: 360.5, label: '06:00' }],
+        },
+        lanes: [],
+      },
+    });
+  }, /createTimeline\(model\.axis\.ticks\[0\]\.minute\) must be an integer/);
+
+  assert.throws(() => {
+    SF.rail.createTimeline({
+      model: {
+        axis: buildAxis(7),
+        lanes: [
+          {
+            id: 'employee-h',
+            label: 'Employee H',
+            mode: 'detailed',
+            items: [
+              { id: 'shift-1', startMinute: 120.5, endMinute: 300, label: 'Shift 1', tone: 'blue' },
+            ],
+          },
+        ],
+      },
+    });
+  }, /createTimeline\(model\.lanes\[\]\.items\[\]\.startMinute\) must be an integer/);
+
+  assert.throws(() => {
+    SF.rail.createTimeline({
+      model: {
+        axis: buildAxis(7),
+        lanes: [
+          {
+            id: 'employee-i',
+            label: 'Employee I',
+            mode: 'detailed',
+            overlays: [
+              { startMinute: 60.5, endMinute: 180, label: 'Unavailable', tone: 'red' },
+            ],
+            items: [
+              { id: 'shift-1', startMinute: 240, endMinute: 420, label: 'Shift 1', tone: 'blue' },
+            ],
+          },
+        ],
+      },
+    });
+  }, /createTimeline\(model\.lanes\[\]\.overlays\[0\]\)\.startMinute must be an integer/);
+
+  const timeline = SF.rail.createTimeline({
+    model: {
+      axis: buildAxis(7),
+      lanes: [
+        {
+          id: 'employee-j',
+          label: 'Employee J',
+          mode: 'detailed',
+          items: [
+            { id: 'shift-1', startMinute: 120, endMinute: 300, label: 'Shift 1', tone: 'blue' },
+          ],
+        },
+      ],
+    },
+  });
+
+  assert.throws(() => {
+    timeline.setViewport({
+      startMinute: 0.5,
+      endMinute: 1440,
+    });
+  }, /rail\.createTimeline\(\)\.setViewport\(viewport\)\.startMinute must be an integer/);
 });
 
 test('timeline renders weekend shading and default 6-hour ticks without explicit tick input', () => {

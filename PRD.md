@@ -132,6 +132,8 @@ The goal is to improve the behavior behind this API, not replace it.
 
 ## Model Contract
 The library continues to accept a normalized numeric model only.
+Every time-bearing field is integer-minute only; the library does not coerce
+fractional minutes, timestamps, or numeric strings.
 
 ### Axis
 `model.axis` contains:
@@ -164,6 +166,11 @@ Base item contract remains:
 - `tone`
 - optional `clusterId`
 - optional `detailItems[]`
+
+If a consumer provides `clusterId`, each lane may resolve that value to at most
+one overview group. Reusing the same `clusterId` for disjoint groups in the
+same lane is invalid because it makes `expandCluster(laneId, clusterId)`
+ambiguous.
 
 ### Additive overview-summary contract
 To make overview lanes production-grade, add optional summary fields for aggregated display:

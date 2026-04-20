@@ -2299,6 +2299,7 @@ const SF = (function () {
       destroyed: false,
       expandedClusters: {},
       hasQueuedPostMountSync: false,
+      instanceId: sf.uid('sf-rail-timeline'),
       labelWidth: labelWidth,
       model: normalizeModel(config.model),
       scrollSync: null,
@@ -2394,7 +2395,7 @@ const SF = (function () {
     function renderLanes() {
       lanes.innerHTML = '';
 
-      state.model.lanes.forEach(function (lane) {
+      state.model.lanes.forEach(function (lane, laneIndex) {
         var laneRender = lane.mode === 'overview'
           ? buildOverviewRender(lane, state, function () {
             rerenderTimeline();
@@ -2414,7 +2415,12 @@ const SF = (function () {
         }
         row.setAttribute('role', 'group');
 
-        var label = buildLaneLabel(lane, laneRender, row);
+        var label = buildLaneLabel(
+          lane,
+          laneRender,
+          row,
+          buildScopedId(state.instanceId, 'lane-title-' + laneIndex)
+        );
         row.appendChild(label);
 
         var track = sf.el('div', { className: 'sf-rail-timeline-track' });
@@ -2702,7 +2708,7 @@ const SF = (function () {
     var packedExpanded = null;
 
     groups.forEach(function (group) {
-      if (expandedClusterId && group.id === expandedClusterId && group.isCluster) {
+      if (!expandedGroup && expandedClusterId && group.clusterKey === expandedClusterId && group.isCluster) {
         expandedGroup = group;
       }
     });
@@ -2715,7 +2721,7 @@ const SF = (function () {
 
     var blocks = [];
     groups.forEach(function (group) {
-      if (expandedGroup && group.id === expandedGroup.id) {
+      if (expandedGroup && group.renderId === expandedGroup.renderId) {
         packedExpanded.items.forEach(function (entry) {
           blocks.push(buildDetailBlockConfig(
             entry.item,
@@ -2723,7 +2729,7 @@ const SF = (function () {
             entry.trackIndex,
             TRACK_PADDING + entry.trackIndex * (TRACK_HEIGHT + TRACK_GAP),
             {
-              clusterId: group.id,
+              clusterId: group.clusterKey,
               detailHint: 'Expanded',
             }
           ));
@@ -2733,14 +2739,14 @@ const SF = (function () {
 
       if (group.isCluster) {
         blocks.push(buildOverviewBlockConfig(group, height, {
-          clusterId: group.id,
-          itemId: group.id,
+          clusterId: group.clusterKey,
+          itemId: group.renderId,
           kindClass: 'sf-rail-timeline-item--cluster',
           onClick: function () {
             setExpandedCluster(
               state,
               lane.id,
-              state.expandedClusters[lane.id] === group.id ? null : group.id
+              state.expandedClusters[lane.id] === group.clusterKey ? null : group.clusterKey
             );
             if (state.config && state.config.onClusterToggle) {
               state.config.onClusterToggle(lane.id, state.expandedClusters[lane.id] || null);
@@ -2761,13 +2767,13 @@ const SF = (function () {
 
     return {
       blocks: blocks,
-      expandedClusterId: expandedGroup ? expandedGroup.id : null,
+      expandedClusterId: expandedGroup ? expandedGroup.clusterKey : null,
       height: height,
       trackCount: packedExpanded ? Math.max(packedExpanded.trackCount, 1) : 1,
     };
   }
 
-  function buildLaneLabel(lane, laneRender, row) {
+  function buildLaneLabel(lane, laneRender, row, headingId) {
     var label = sf.el('div', {
       className: 'sf-rail-timeline-lane-label',
       dataset: { laneId: lane.id },
@@ -2776,7 +2782,7 @@ const SF = (function () {
 
     var heading = sf.el('div', { className: 'sf-rail-timeline-lane-heading' });
     var title = sf.el('div', { className: 'sf-rail-timeline-lane-title' }, lane.label);
-    title.id = 'sf-rail-timeline-lane-title-' + lane.id;
+    title.id = headingId;
     heading.appendChild(title);
     if (lane.mode) {
       heading.appendChild(sf.el('div', { className: 'sf-rail-timeline-lane-mode' }, lane.mode));
@@ -2865,7 +2871,7 @@ const SF = (function () {
     var duration = preset === '1w' ? WEEK_MINUTES : preset === '2w' ? WEEK_MINUTES * 2 : WEEK_MINUTES * 4;
     var visibleDuration = clampNumber(duration, DAY_MINUTES, axis.endMinute - axis.startMinute);
     var center = currentViewport.startMinute + (currentViewport.endMinute - currentViewport.startMinute) / 2;
-    var start = center - visibleDuration / 2;
+    var start = Math.round(center - visibleDuration / 2);
     return clampViewport(axis, {
       startMinute: start,
       endMinute: start + visibleDuration,
@@ -2896,6 +2902,10 @@ const SF = (function () {
   function assertFiniteNumber(value, label) {
     sf.assert(typeof value === 'number' && isFinite(value), label + ' must be a finite number');
     return value;
+  }
+
+  function assertMinuteValue(value, label) {
+    return assertInteger(value, label);
   }
 
   function assertInteger(value, label) {
@@ -2953,8 +2963,8 @@ const SF = (function () {
   }
 
   function normalizeMinuteRange(startValue, endValue, startLabel, endLabel) {
-    var startMinute = assertFiniteNumber(startValue, startLabel);
-    var endMinute = assertFiniteNumber(endValue, endLabel);
+    var startMinute = assertMinuteValue(startValue, startLabel);
+    var endMinute = assertMinuteValue(endValue, endLabel);
     sf.assert(endMinute > startMinute, endLabel + ' must be greater than startMinute');
     return {
       endMinute: endMinute,
@@ -2964,6 +2974,10 @@ const SF = (function () {
 
   function normalizeId(value, prefix, suffix) {
     return value != null ? String(value) : prefix + suffix;
+  }
+
+  function buildScopedId(scope, suffix) {
+    return scope + '-' + suffix;
   }
 
   function setExpandedCluster(state, laneId, clusterId) {
@@ -3185,13 +3199,13 @@ const SF = (function () {
     if (Array.isArray(ticks) && ticks.length > 0) {
       ticks.forEach(function (tick, index) {
         if (typeof tick === 'number') {
-          var numericTick = assertFiniteNumber(tick, 'createTimeline(model.axis.ticks[' + index + '])');
+          var numericTick = assertMinuteValue(tick, 'createTimeline(model.axis.ticks[' + index + '])');
           list.push({ id: 'tick-' + index, label: formatClock(numericTick), minute: numericTick });
           return;
         }
         sf.assert(tick && typeof tick === 'object', 'createTimeline(model.axis.ticks[' + index + ']) must be a number or object');
         sf.assert(tick.minute != null, 'createTimeline(model.axis.ticks[' + index + '].minute) is required');
-        var minute = assertFiniteNumber(tick.minute, 'createTimeline(model.axis.ticks[' + index + '].minute)');
+        var minute = assertMinuteValue(tick.minute, 'createTimeline(model.axis.ticks[' + index + '].minute)');
         list.push({
           id: normalizeId(tick.id, 'tick-', index),
           label: tick.label || formatClock(minute),
@@ -3349,6 +3363,8 @@ const SF = (function () {
     groups.forEach(function (group, groupIndex) {
       finalizeGroup(group, lane, groupIndex);
     });
+    assertUniqueClusterKeys(lane, groups);
+
     return groups;
   }
 
@@ -3370,14 +3386,28 @@ const SF = (function () {
     group.isCluster = detailItems.length > 1 || group.items.some(function (item) {
       return item.detailItems.length > 0;
     });
-    group.id = group.clusterId || (group.isCluster
-      ? 'cluster:' + lane.id + ':' + (group.items[0] ? group.items[0].id : index)
-      : (group.items[0] ? group.items[0].id : 'group-' + index));
+    group.renderId = group.isCluster
+      ? buildScopedId('cluster', lane.id + '-' + index + '-' + (group.items[0] ? group.items[0].id : 'group'))
+      : normalizeId(group.items[0] ? group.items[0].id : null, 'group-', lane.id + '-' + index);
+    group.clusterKey = group.isCluster ? String(group.clusterId || group.renderId) : null;
     group.summary = deriveOverviewSummary(group);
     group.count = group.summary.count;
     group.label = group.summary.primaryLabel;
     group.metaLabel = group.summary.secondaryLabel;
     group.tone = group.summary.primaryTone || dominantTone(group.detailItems);
+  }
+
+  function assertUniqueClusterKeys(lane, groups) {
+    var seen = {};
+
+    groups.forEach(function (group) {
+      if (!group.clusterKey) return;
+      sf.assert(
+        !seen[group.clusterKey],
+        'createTimeline(model.lanes[].items[].clusterId) must identify at most one overview group per lane; lane "' + lane.id + '" reuses "' + group.clusterKey + '"'
+      );
+      seen[group.clusterKey] = true;
+    });
   }
 
   function dominantTone(items) {

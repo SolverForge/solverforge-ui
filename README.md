@@ -264,9 +264,10 @@ SF.createButton({ text: 'Sm',       variant: 'primary', size: 'small' })
 `SF.rail.createTimeline()` is the canonical read-only scheduling surface.
 It accepts a normalized numeric model only; backend timestamp parsing and
 timezone policy stay outside the library.
-Every minute field and viewport boundary must already be a finite number.
-String timestamps, `Date` objects, and numeric strings are rejected instead of
-being coerced inside the library.
+Every minute field and viewport boundary must already be an integer number of
+minutes.
+String timestamps, `Date` objects, numeric strings, and fractional minutes are
+rejected instead of being coerced inside the library.
 Malformed tick objects and overlay spans are rejected instead of being silently
 dropped during normalization.
 Layout density is derived from the actual timeline body viewport, not padded
@@ -300,11 +301,14 @@ aggregate staffing signal it wants overview users to see first.
 
 Integer-only fields remain integer-only:
 
+- all time-bearing minute fields on `axis`, `days`, `ticks`, `items`, `overlays`, and `initialViewport`
 - `model.lanes[].overlays[].dayIndex`
 - `model.lanes[].overlays[].dayCount`
 
 If you want stable programmatic expansion through `expandCluster(laneId, clusterId)`,
 provide `clusterId` on the overlapping overview items that should expand together.
+Each lane may produce at most one overview group for a given `clusterId`; reusing
+the same `clusterId` for disjoint groups is rejected as ambiguous input.
 The example below assumes small consumer-side helpers such as `buildDays()` and
 `buildSixHourTicks()` that normalize backend timestamps into numeric axis data.
 
