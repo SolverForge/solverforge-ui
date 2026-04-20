@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>solverforge-ui rail demo</title>
+  <title>solverforge-ui rail primitives demo</title>
   <link rel="stylesheet" href="../static/sf/vendor/fontawesome/css/fontawesome.min.css">
   <link rel="stylesheet" href="../static/sf/vendor/fontawesome/css/solid.min.css">
   <link rel="stylesheet" href="../static/sf/sf.css">
@@ -21,6 +21,13 @@
 
   <script>
     var app = document.getElementById('app');
+
+    var intro = document.createElement('section');
+    intro.className = 'sf-card';
+    intro.style.padding = '16px';
+    intro.style.marginBottom = '12px';
+    intro.innerHTML = '<h1 style="margin:0 0 8px;">Low-level rail primitives</h1><p style="margin:0;color:var(--sf-gray-600);line-height:1.6;">This fixture keeps the original <code>SF.rail.createHeader()</code>, <code>createCard()</code>, <code>addBlock()</code>, and <code>addChangeover()</code> APIs available as advanced building blocks. The canonical dense scheduling surface now lives in <code>SF.rail.createTimeline()</code>.</p>';
+    app.appendChild(intro);
 
     var header = SF.rail.createHeader({
       label: 'Resource',

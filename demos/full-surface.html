@@ -48,56 +48,118 @@
       });
     }
 
-    function buildRailCard() {
-      var card = SF.rail.createCard({
-        id: 'furnace-1',
-        name: 'FORNO 1',
-        labelWidth: 220,
-        columns: 5,
-        type: 'CAMERA',
-        typeStyle: {
-          bg: 'rgba(59,130,246,0.15)',
-          color: '#1d4ed8',
-          border: '1px solid rgba(59,130,246,0.30)'
+    function dayMinute(dayIndex, hour, minute) {
+      return dayIndex * 1440 + hour * 60 + (minute || 0);
+    }
+
+    function buildTimelineModel() {
+      var weekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      var days = [];
+      var ticks = [];
+      var dayCount = 28;
+
+      for (var dayIndex = 0; dayIndex < dayCount; dayIndex += 1) {
+        days.push({
+          label: weekday[dayIndex % 7] + ' ' + (20 + dayIndex),
+          startMinute: dayIndex * 1440,
+          endMinute: (dayIndex + 1) * 1440,
+          isWeekend: dayIndex % 7 === 5 || dayIndex % 7 === 6,
+          subLabel: dayIndex % 7 === 0 ? 'Rotation' : ''
+        });
+      }
+
+      for (var minute = 0; minute < dayCount * 1440; minute += 360) {
+        var hour = Math.floor((minute % 1440) / 60);
+        ticks.push({
+          minute: minute,
+          label: (hour < 10 ? '0' + hour : String(hour)) + ':00'
+        });
+      }
+
+      return {
+        axis: {
+          startMinute: 0,
+          endMinute: dayCount * 1440,
+          days: days,
+          ticks: ticks,
+          initialViewport: {
+            startMinute: 0,
+            endMinute: 14 * 1440
+          }
         },
-        gauges: [
-          { label: 'Temp', pct: 84, style: 'heat', text: '840 / 1000 C' },
-          { label: 'Load', pct: 63, style: 'load', text: '126 / 200 kg' }
-        ],
-        stats: [
-          { label: 'Jobs', value: 12 },
-          { label: 'Prod', value: '840 kg' }
+        lanes: [
+          {
+            id: 'location-east',
+            label: 'By location · Ward East',
+            mode: 'overview',
+            badges: ['default', { label: 'overview', style: { bg: 'rgba(59,130,246,0.12)', color: '#1d4ed8', border: '1px solid rgba(59,130,246,0.22)' } }],
+            stats: [
+              { label: 'Coverage', value: '92%' },
+              { label: 'Requests', value: 18 }
+            ],
+            overlays: [
+              { dayIndex: 5, label: 'Unavailable', tone: 'red' },
+              { dayIndex: 11, dayCount: 2, label: 'Desired weekend', tone: 'emerald' }
+            ],
+            items: [
+              { id: 'east-1', clusterId: 'east-rush', startMinute: dayMinute(0, 6), endMinute: dayMinute(0, 14), label: 'ER intake', meta: '8 clinicians', tone: 'blue' },
+              { id: 'east-2', clusterId: 'east-rush', startMinute: dayMinute(0, 7), endMinute: dayMinute(0, 16), label: 'Trauma hold', meta: '6 clinicians', tone: 'blue' },
+              { id: 'east-3', clusterId: 'east-rush', startMinute: dayMinute(0, 8), endMinute: dayMinute(0, 18), label: 'Overflow beds', meta: '10 clinicians', tone: 'blue' },
+              { id: 'east-4', startMinute: dayMinute(2, 6), endMinute: dayMinute(2, 18), label: 'Cardio block', meta: '5 clinicians', tone: 'emerald' }
+            ]
+          },
+          {
+            id: 'location-west',
+            label: 'By location · Ward West',
+            mode: 'overview',
+            badges: ['secondary', { label: 'overview', style: { bg: 'rgba(139,92,246,0.12)', color: '#6d28d9', border: '1px solid rgba(139,92,246,0.22)' } }],
+            stats: [
+              { label: 'Coverage', value: '88%' },
+              { label: 'Requests', value: 12 }
+            ],
+            overlays: [
+              { dayIndex: 6, label: 'Unavailable', tone: 'red' },
+              { dayIndex: 15, dayCount: 3, label: 'Preferred span', tone: 'emerald' }
+            ],
+            items: [
+              { id: 'west-1', clusterId: 'west-rush', startMinute: dayMinute(1, 6), endMinute: dayMinute(1, 13), label: 'Pediatrics triage', meta: '4 clinicians', tone: 'violet' },
+              { id: 'west-2', clusterId: 'west-rush', startMinute: dayMinute(1, 8), endMinute: dayMinute(1, 15), label: 'Float pool', meta: '3 clinicians', tone: 'violet' },
+              { id: 'west-3', startMinute: dayMinute(4, 7), endMinute: dayMinute(4, 19), label: 'Ward reset', meta: '2 clinicians', tone: 'cyan' },
+              { id: 'west-4', startMinute: dayMinute(7, 6), endMinute: dayMinute(7, 18), label: 'Rotation handoff', meta: '5 clinicians', tone: 'blue' }
+            ]
+          },
+          {
+            id: 'employee-ada',
+            label: 'By employee · Ada',
+            mode: 'detailed',
+            badges: ['detailed'],
+            stats: [
+              { label: 'Hours', value: '38h' },
+              { label: 'PTO', value: '1 day' }
+            ],
+            overlays: [
+              { dayIndex: 10, label: 'Unavailable', tone: 'red' },
+              { dayIndex: 12, dayCount: 2, label: 'Desired', tone: 'emerald' }
+            ],
+            items: [
+              { id: 'ada-1', startMinute: dayMinute(2, 6), endMinute: dayMinute(2, 14), label: 'Primary shift', meta: 'Ward East', tone: 'amber' },
+              { id: 'ada-2', startMinute: dayMinute(2, 11), endMinute: dayMinute(2, 17), label: 'Handoff overlap', meta: 'Safety round', tone: 'amber' },
+              { id: 'ada-3', startMinute: dayMinute(3, 7), endMinute: dayMinute(3, 15), label: 'Primary shift', meta: 'Ward West', tone: 'amber' },
+              { id: 'ada-4', startMinute: dayMinute(3, 14), endMinute: dayMinute(3, 20), label: 'Late coverage', meta: 'ER intake', tone: 'amber' }
+            ]
+          }
         ]
-      });
+      };
+    }
 
-      card.addBlock({
-        start: 120,
-        end: 340,
-        horizon: 600,
-        label: 'ODL-2847',
-        meta: 'Bianchi',
-        color: 'rgba(59,130,246,0.55)',
-        borderColor: '#3b82f6'
-      });
-
-      SF.rail.addChangeover(card.rail, {
-        start: 340,
-        end: 385,
-        horizon: 600
-      });
-
-      card.addBlock({
-        start: 385,
-        end: 560,
-        horizon: 600,
-        label: 'ODL-3012',
-        meta: 'Rossi',
-        color: 'rgba(16,185,129,0.55)',
-        borderColor: '#10b981',
-        late: true
-      });
-
-      return card.el;
+    function buildRailTimeline() {
+      return SF.rail.createTimeline({
+        title: 'Read-only schedule',
+        subtitle: 'Overview by location, detailed by employee, hover for detail, drag to pan.',
+        label: 'Staffing lane',
+        labelWidth: 280,
+        model: buildTimelineModel()
+      }).el;
     }
 
     function createGanttPanel() {
@@ -277,9 +339,8 @@
 
               var railSection = document.createElement('section');
               railSection.className = 'demo-card';
-              railSection.innerHTML = '<h2>Rail</h2>';
-              railSection.appendChild(SF.rail.createHeader({ label: 'Resource', labelWidth: 220, columns: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] }));
-              railSection.appendChild(buildRailCard());
+              railSection.innerHTML = '<h2>Scheduling timeline</h2>';
+              railSection.appendChild(buildRailTimeline());
               panel.appendChild(railSection);
 
               var tableSection = document.createElement('section');

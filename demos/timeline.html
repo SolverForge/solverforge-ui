@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>solverforge-ui timeline demo</title>
+  <link rel="stylesheet" href="../static/sf/vendor/fontawesome/css/fontawesome.min.css">
+  <link rel="stylesheet" href="../static/sf/vendor/fontawesome/css/solid.min.css">
+  <link rel="stylesheet" href="../static/sf/sf.css">
+  <script src="../static/sf/sf.js"></script>
+  <style>
+    body { margin: 0; }
+    .demo-wrap { max-width: 1440px; margin: 0 auto; padding: 24px; }
+    .demo-stack { display: grid; gap: 16px; }
+    .demo-card {
+      background: white;
+      border: 1px solid var(--sf-gray-200);
+      border-radius: 16px;
+      box-shadow: var(--sf-shadow-base);
+      padding: 18px;
+    }
+    .demo-card h1,
+    .demo-card h2 { margin: 0 0 10px; }
+    .demo-card p {
+      color: var(--sf-gray-600);
+      line-height: 1.6;
+      margin: 0;
+      max-width: 84ch;
+    }
+  </style>
+</head>
+<body class="sf-app">
+  <main class="sf-main">
+    <div class="demo-wrap demo-stack" id="app"></div>
+  </main>
+
+  <script>
+    function dayMinute(dayIndex, hour, minute) {
+      return dayIndex * 1440 + hour * 60 + (minute || 0);
+    }
+
+    function buildAxis(dayCount) {
+      var weekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      var days = [];
+      var ticks = [];
+
+      for (var dayIndex = 0; dayIndex < dayCount; dayIndex += 1) {
+        days.push({
+          label: weekday[dayIndex % 7] + ' ' + (20 + dayIndex),
+          startMinute: dayIndex * 1440,
+          endMinute: (dayIndex + 1) * 1440,
+          isWeekend: dayIndex % 7 === 5 || dayIndex % 7 === 6,
+          subLabel: dayIndex % 7 === 0 ? 'New roster' : '',
+        });
+      }
+
+      for (var minute = 0; minute < dayCount * 1440; minute += 360) {
+        var hour = Math.floor((minute % 1440) / 60);
+        ticks.push({ minute: minute, label: (hour < 10 ? '0' + hour : String(hour)) + ':00' });
+      }
+
+      return {
+        startMinute: 0,
+        endMinute: dayCount * 1440,
+        days: days,
+        ticks: ticks,
+        initialViewport: {
+          startMinute: 0,
+          endMinute: Math.min(dayCount, 14) * 1440,
+        },
+      };
+    }
+
+    function buildLocationItems() {
+      return [
+        { id: 'east-1', clusterId: 'east-monday', startMinute: dayMinute(0, 6), endMinute: dayMinute(0, 14), label: 'ER intake', meta: '8 clinicians', tone: 'blue' },
+        { id: 'east-2', clusterId: 'east-monday', startMinute: dayMinute(0, 7), endMinute: dayMinute(0, 16), label: 'Trauma hold', meta: '6 clinicians', tone: 'blue' },
+        { id: 'east-3', clusterId: 'east-monday', startMinute: dayMinute(0, 8), endMinute: dayMinute(0, 18), label: 'Overflow beds', meta: '10 clinicians', tone: 'blue' },
+        { id: 'east-4', startMinute: dayMinute(2, 6), endMinute: dayMinute(2, 18), label: 'Cardio block', meta: '5 clinicians', tone: 'emerald' },
+        { id: 'east-5', startMinute: dayMinute(5, 10), endMinute: dayMinute(5, 20), label: 'Weekend surge', meta: '7 clinicians', tone: 'amber' },
+      ];
+    }
+
+    function buildWestItems() {
+      return [
+        { id: 'west-1', clusterId: 'west-tuesday', startMinute: dayMinute(1, 6), endMinute: dayMinute(1, 13), label: 'Pediatrics triage', meta: '4 clinicians', tone: 'violet' },
+        { id: 'west-2', clusterId: 'west-tuesday', startMinute: dayMinute(1, 8), endMinute: dayMinute(1, 15), label: 'Float pool', meta: '3 clinicians', tone: 'violet' },
+        { id: 'west-3', startMinute: dayMinute(4, 7), endMinute: dayMinute(4, 19), label: 'Ward reset', meta: '2 clinicians', tone: 'cyan' },
+        { id: 'west-4', startMinute: dayMinute(7, 6), endMinute: dayMinute(7, 18), label: 'Rotation handoff', meta: '5 clinicians', tone: 'blue' },
+      ];
+    }
+
+    function buildEmployeeItems(baseId, dayOffset, tone) {
+      return [
+        { id: baseId + '-1', startMinute: dayMinute(dayOffset, 6), endMinute: dayMinute(dayOffset, 14), label: 'Primary shift', meta: 'Ward East', tone: tone },
+        { id: baseId + '-2', startMinute: dayMinute(dayOffset, 11), endMinute: dayMinute(dayOffset, 17), label: 'Handoff overlap', meta: 'Safety round', tone: tone },
+        { id: baseId + '-3', startMinute: dayMinute(dayOffset + 1, 7), endMinute: dayMinute(dayOffset + 1, 15), label: 'Primary shift', meta: 'Ward West', tone: tone },
+        { id: baseId + '-4', startMinute: dayMinute(dayOffset + 1, 14), endMinute: dayMinute(dayOffset + 1, 20), label: 'Late coverage', meta: 'ER intake', tone: tone },
+      ];
+    }
+
+    function buildModel() {
+      return {
+        axis: buildAxis(28),
+        lanes: [
+          {
+            id: 'ward-east',
+            label: 'By location · Ward East',
+            mode: 'overview',
+            badges: ['default', { label: 'overview', style: { bg: 'rgba(59,130,246,0.12)', color: '#1d4ed8', border: '1px solid rgba(59,130,246,0.22)' } }],
+            stats: [
+              { label: 'Coverage', value: '92%' },
+              { label: 'Requests', value: 18 },
+            ],
+            overlays: [
+              { dayIndex: 5, label: 'Unavailable', tone: 'red' },
+              { dayIndex: 11, dayCount: 2, label: 'Desired weekend', tone: 'emerald' },
+            ],
+            items: buildLocationItems(),
+          },
+          {
+            id: 'ward-west',
+            label: 'By location · Ward West',
+            mode: 'overview',
+            badges: ['secondary', { label: 'overview', style: { bg: 'rgba(139,92,246,0.12)', color: '#6d28d9', border: '1px solid rgba(139,92,246,0.22)' } }],
+            stats: [
+              { label: 'Coverage', value: '88%' },
+              { label: 'Requests', value: 12 },
+            ],
+            overlays: [
+              { dayIndex: 6, label: 'Unavailable', tone: 'red' },
+              { dayIndex: 15, dayCount: 3, label: 'Preferred span', tone: 'emerald' },
+            ],
+            items: buildWestItems(),
+          },
+          {
+            id: 'employee-ada',
+            label: 'By employee · Ada',
+            mode: 'detailed',
+            badges: ['detailed'],
+            stats: [
+              { label: 'Hours', value: '38h' },
+              { label: 'PTO', value: '1 day' },
+            ],
+            overlays: [
+              { dayIndex: 10, label: 'Unavailable', tone: 'red' },
+              { dayIndex: 12, dayCount: 2, label: 'Desired', tone: 'emerald' },
+            ],
+            items: buildEmployeeItems('ada', 2, 'amber'),
+          },
+          {
+            id: 'employee-marco',
+            label: 'By employee · Marco',
+            mode: 'detailed',
+            badges: ['detailed'],
+            stats: [
+              { label: 'Hours', value: '42h' },
+              { label: 'PTO', value: '0 days' },
+            ],
+            overlays: [
+              { dayIndex: 9, dayCount: 2, label: 'Undesired', tone: 'rose' },
+              { dayIndex: 18, label: 'Preferred', tone: 'emerald' },
+            ],
+            items: buildEmployeeItems('marco', 5, 'blue'),
+          },
+        ],
+      };
+    }
+
+    var app = document.getElementById('app');
+
+    var intro = document.createElement('section');
+    intro.className = 'demo-card';
+    intro.innerHTML = '<h1>Scheduling timeline</h1><p>This fixture uses <code>SF.rail.createTimeline()</code> as the canonical dense schedule surface. It mixes overview location lanes, detailed employee lanes, overlay bands, weekend shading, six-hour ticks, cluster expansion, and drag-to-pan within a 28-day numeric horizon.</p>';
+    app.appendChild(intro);
+
+    var timelineCard = document.createElement('section');
+    timelineCard.className = 'demo-card';
+    timelineCard.innerHTML = '<h2>Hospital-like 28 day schedule</h2>';
+    timelineCard.appendChild(SF.rail.createTimeline({
+      title: 'Read-only schedule',
+      subtitle: 'Overview by location, detailed by employee, drag to pan, hover for detail.',
+      label: 'Staffing lane',
+      labelWidth: 280,
+      model: buildModel(),
+    }).el);
+    app.appendChild(timelineCard);
+  </script>
+</body>
+</html>

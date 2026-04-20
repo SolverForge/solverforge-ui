@@ -154,7 +154,7 @@ async function checkFullSurface() {
     await page.waitForSelector('.sf-statusbar', { timeout: 10000 });
     await page.waitForSelector('.sf-tabs-container', { timeout: 10000 });
     await page.waitForSelector('.sf-table', { timeout: 10000 });
-    await page.waitForSelector('.sf-rail', { timeout: 10000 });
+    await page.waitForSelector('.sf-rail-timeline', { timeout: 10000 });
     await page.waitForSelector('.sf-footer', { timeout: 10000 });
 
     await page.getByRole('tab', { name: /gantt/i }).click({ timeout: 10000 });
@@ -166,7 +166,9 @@ async function checkFullSurface() {
     const title = await page.locator('.sf-header-title').textContent();
     assert.equal(title, 'Planner123');
 
+    const timelineCount = await page.locator('.sf-rail-timeline').count();
     const ganttRows = await page.locator('.sf-gantt-row').count();
+    assert.equal(timelineCount, 1);
     assert.equal(ganttRows, 3);
 
     const apiSections = await page.locator('.sf-api-section').count();
@@ -199,9 +201,35 @@ async function checkRailDemo() {
   });
 }
 
+async function checkTimelineDemo() {
+  await withPage(async ({ goto, page, assertNoBrowserErrors }) => {
+    const response = await goto('/demos/timeline.html');
+    assert.equal(response.status(), 200);
+
+    await page.waitForSelector('.sf-rail-timeline', { timeout: 10000 });
+    await page.waitForSelector('.sf-rail-timeline-item--cluster', { timeout: 10000 });
+
+    const timelineCount = await page.locator('.sf-rail-timeline').count();
+    const clusterCount = await page.locator('.sf-rail-timeline-item--cluster').count();
+    const weekendBandCount = await page.locator('.sf-rail-timeline-weekend-band').count();
+
+    assert.equal(timelineCount, 1);
+    assert.equal(clusterCount >= 2, true);
+    assert.equal(weekendBandCount > 0, true);
+
+    await page.locator('.sf-rail-timeline-item--cluster').first().click();
+
+    const detailCount = await page.locator('.sf-rail-timeline-item--detail').count();
+    assert.equal(detailCount >= 4, true);
+
+    assertNoBrowserErrors();
+  });
+}
+
 (async function main() {
   try {
     await runCheck('full-surface demo', checkFullSurface);
+    await runCheck('timeline demo', checkTimelineDemo);
     await runCheck('rail demo', checkRailDemo);
   } catch (error) {
     process.exit(1);
