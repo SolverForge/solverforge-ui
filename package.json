@@ -2,9 +2,12 @@
   "name": "solverforge-ui",
   "private": true,
   "scripts": {
+    "lint:frontend": "eslint js-src tests scripts",
     "test:browser": "node tests/demo-browser-check.js"
   },
   "devDependencies": {
+    "eslint": "^9.39.4",
+    "globals": "^17.5.0",
     "playwright": "^1.58.2"
   }
 }

@@ -28,6 +28,11 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Install browser test dependencies
         run: |
           npm ci
@@ -44,6 +49,9 @@ jobs:
 
       - name: Run clippy
         run: cargo clippy --all-targets -- -D warnings
+
+      - name: Run frontend lint
+        run: npm run lint:frontend --silent
 
       - name: Build
         run: cargo build

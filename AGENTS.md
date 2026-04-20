@@ -36,5 +36,6 @@ Repository guidance for coding agents and maintainers working in
   and tests in the same change.
 - Do not document planned or exploratory wireframe ideas as shipped behavior
   until they are wired into the generated assets and the README API reference.
-- Prefer `make test-frontend` for focused JavaScript lifecycle validation and
+- Prefer `make lint-frontend` for focused JavaScript linting, `make
+  test-frontend` or `make test-browser` for focused frontend validation, and
   `make test-quick` or `make test` before release work.

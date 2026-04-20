@@ -58,8 +58,10 @@ alongside the solver. When you scaffold a new SolverForge project with
 Repository coverage now includes the embedded Rust asset routes plus Node-based
 frontend tests for backend adapters, focused solver lifecycle suites, and core
 component rendering. Use `make test` for the full suite, `make test-quick` for
-Rust doctests and unit tests plus frontend coverage, or `make test-frontend`
-when you only want the JavaScript suite.
+Rust doctests, Rust unit tests, frontend Node coverage, and browser smoke
+tests, or `make test-frontend` when you only want the JavaScript suite.
+Use `make lint-frontend` for ESLint on `js-src/`, `tests/`, and `scripts/`, or
+`make lint` to run the Rust and JavaScript lint surfaces together.
 
 ## Quick Start
 
@@ -658,7 +660,10 @@ vim css-src/06-buttons.css
 vim js-src/03-buttons.js
 
 # Rebuild concatenated files
-make
+make assets
+
+# Run frontend lint
+make lint-frontend
 
 # Compile the crate (embeds updated assets)
 cargo build

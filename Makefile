@@ -29,7 +29,7 @@ VERSIONED_JS := static/sf/sf.$(VERSION).js
 
 # ============== Phony Targets ==============
 .PHONY: banner help assets build build-release test test-quick test-doc test-unit test-frontend test-browser test-one \
-        lint fmt fmt-check clippy ci-local pre-release version package-verify browser-setup \
+        lint lint-frontend fmt fmt-check clippy ci-local pre-release version package-verify browser-setup \
         bump-version bump-patch bump-minor bump-major bump-dry release-tag demo-serve \
         publish-dry publish clean watch
 
@@ -135,6 +135,12 @@ test-browser:
 		printf "$(GREEN)$(CHECK) Browser smoke tests passed$(RESET)\n" || \
 		(printf "$(RED)$(CROSS) Browser smoke tests failed$(RESET)\n" && exit 1)
 
+lint-frontend:
+	@printf "$(PROGRESS) Running frontend lint...\n"
+	@npm run lint:frontend --silent && \
+		printf "$(GREEN)$(CHECK) Frontend lint passed$(RESET)\n" || \
+		(printf "$(RED)$(CROSS) Frontend lint failed$(RESET)\n" && exit 1)
+
 browser-setup:
 	@printf "$(PROGRESS) Installing browser test dependencies...\n"
 	@npm ci && npx playwright install --with-deps chromium && \
@@ -147,7 +153,7 @@ test-one:
 
 # ============== Lint & Format ==============
 
-lint: banner fmt-check clippy
+lint: banner fmt-check clippy lint-frontend
 	@printf "\n$(GREEN)$(BOLD)$(CHECK) All lint checks passed$(RESET)\n\n"
 
 fmt:
@@ -174,21 +180,23 @@ ci-local: banner
 	@printf "$(CYAN)$(BOLD)║              Local CI Simulation                         ║$(RESET)\n"
 	@printf "$(CYAN)$(BOLD)╚══════════════════════════════════════════════════════════╝$(RESET)\n\n"
 	@printf "$(ARROW) $(BOLD)Simulating GitHub Actions CI workflow locally...$(RESET)\n\n"
-	@printf "$(PROGRESS) Step 1/8: Asset freshness check...\n"
+	@printf "$(PROGRESS) Step 1/9: Asset freshness check...\n"
 	@$(MAKE) assets --no-print-directory
-	@printf "$(PROGRESS) Step 2/8: Format check...\n"
+	@printf "$(PROGRESS) Step 2/9: Format check...\n"
 	@$(MAKE) fmt-check --no-print-directory
-	@printf "$(PROGRESS) Step 3/8: Build...\n"
+	@printf "$(PROGRESS) Step 3/9: Build...\n"
 	@cargo build --quiet && printf "$(GREEN)$(CHECK) Build passed$(RESET)\n"
-	@printf "$(PROGRESS) Step 4/8: Clippy...\n"
+	@printf "$(PROGRESS) Step 4/9: Clippy...\n"
 	@$(MAKE) clippy --no-print-directory
-	@printf "$(PROGRESS) Step 5/8: Doctests...\n"
+	@printf "$(PROGRESS) Step 5/9: Frontend lint...\n"
+	@$(MAKE) lint-frontend --no-print-directory
+	@printf "$(PROGRESS) Step 6/9: Doctests...\n"
 	@cargo test --doc --quiet && printf "$(GREEN)$(CHECK) Doctests passed$(RESET)\n"
-	@printf "$(PROGRESS) Step 6/8: Unit tests...\n"
+	@printf "$(PROGRESS) Step 7/9: Unit tests...\n"
 	@cargo test --lib --quiet && printf "$(GREEN)$(CHECK) Unit tests passed$(RESET)\n"
-	@printf "$(PROGRESS) Step 7/8: Frontend tests...\n"
+	@printf "$(PROGRESS) Step 8/9: Frontend tests...\n"
 	@node --test tests/*.test.js && printf "$(GREEN)$(CHECK) Frontend tests passed$(RESET)\n"
-	@printf "$(PROGRESS) Step 8/8: Browser smoke tests...\n"
+	@printf "$(PROGRESS) Step 9/9: Browser smoke tests...\n"
 	@node tests/demo-browser-check.js && printf "$(GREEN)$(CHECK) Browser smoke tests passed$(RESET)\n"
 	@printf "\n$(GREEN)$(BOLD)╔══════════════════════════════════════════════════════════╗$(RESET)\n"
 	@printf "$(GREEN)$(BOLD)║              $(CHECK) CI SIMULATION PASSED                      ║$(RESET)\n"
@@ -254,6 +262,7 @@ pre-release: banner
 	@$(MAKE) assets --no-print-directory
 	@$(MAKE) fmt-check --no-print-directory
 	@$(MAKE) clippy --no-print-directory
+	@$(MAKE) lint-frontend --no-print-directory
 	@printf "$(PROGRESS) Running full test suite...\n"
 	@cargo test --quiet && node --test tests/*.test.js && node tests/demo-browser-check.js && printf "$(GREEN)$(CHECK) All tests passed$(RESET)\n"
 	@printf "$(PROGRESS) Dry-run publish...\n"
@@ -329,14 +338,16 @@ help: banner
 	@/bin/echo -e ""
 	@/bin/echo -e "$(CYAN)$(BOLD)Test Commands:$(RESET)"
 	@/bin/echo -e "  $(GREEN)make test$(RESET)           - Run all tests"
-	@/bin/echo -e "  $(GREEN)make test-quick$(RESET)     - Run doctests + unit tests (fast)"
+	@/bin/echo -e "  $(GREEN)make test-quick$(RESET)     - Run doctests + unit + frontend + browser smoke"
 	@/bin/echo -e "  $(GREEN)make test-doc$(RESET)       - Run doctests only"
 	@/bin/echo -e "  $(GREEN)make test-unit$(RESET)      - Run unit tests only"
 	@/bin/echo -e "  $(GREEN)make test-frontend$(RESET)  - Run frontend Node tests"
+	@/bin/echo -e "  $(GREEN)make test-browser$(RESET)   - Run browser demo smoke tests"
 	@/bin/echo -e "  $(GREEN)make test-one TEST=name$(RESET) - Run specific test with output"
 	@/bin/echo -e ""
 	@/bin/echo -e "$(CYAN)$(BOLD)Lint & Format:$(RESET)"
-	@/bin/echo -e "  $(GREEN)make lint$(RESET)           - Run fmt-check + clippy"
+	@/bin/echo -e "  $(GREEN)make lint$(RESET)           - Run fmt-check + clippy + frontend lint"
+	@/bin/echo -e "  $(GREEN)make lint-frontend$(RESET)  - Run ESLint on js-src/, tests/, and scripts/"
 	@/bin/echo -e "  $(GREEN)make fmt$(RESET)            - Format code"
 	@/bin/echo -e "  $(GREEN)make fmt-check$(RESET)      - Check formatting"
 	@/bin/echo -e "  $(GREEN)make clippy$(RESET)         - Run clippy lints"
