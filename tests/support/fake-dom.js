@@ -175,8 +175,21 @@ class FakeElement extends FakeNode {
   }
 
   dispatchEvent(event) {
-    var type = typeof event === 'string' ? event : event.type;
-    (this.eventListeners[type] || []).forEach((handler) => handler({ target: this, type: type }));
+    var payload = typeof event === 'string'
+      ? { type: event }
+      : event || { type: '' };
+    var type = payload.type;
+    if (!payload.target) payload.target = this;
+    payload.currentTarget = this;
+    if (typeof payload.preventDefault !== 'function') {
+      payload.preventDefault = function () {
+        payload.defaultPrevented = true;
+      };
+    }
+    if (typeof payload.stopPropagation !== 'function') {
+      payload.stopPropagation = function () {};
+    }
+    (this.eventListeners[type] || []).forEach((handler) => handler(payload));
   }
 
   click() {
