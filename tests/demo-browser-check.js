@@ -203,6 +203,8 @@ async function checkRailDemo() {
 
 async function checkTimelineDemo() {
   await withPage(async ({ goto, page, assertNoBrowserErrors }) => {
+    await page.setViewportSize({ width: 1400, height: 1200 });
+
     const response = await goto('/demos/timeline.html');
     assert.equal(response.status(), 200);
 
@@ -216,6 +218,55 @@ async function checkTimelineDemo() {
     assert.equal(timelineCount, 1);
     assert.equal(clusterCount >= 2, true);
     assert.equal(weekendBandCount > 0, true);
+
+    const layoutMetrics = await page.locator('.sf-rail-timeline').evaluate((root) => {
+      const header = root.querySelector('.sf-rail-timeline-header-viewport');
+      const body = root.querySelector('.sf-rail-timeline-body-viewport');
+      const styles = getComputedStyle(root);
+      const labelWidth = Number.parseFloat(styles.getPropertyValue('--sf-rail-label-width'));
+      const viewportDuration = Number(root.dataset.viewportDurationMinutes);
+      const timelineSpan = Number(root.dataset.timelineSpanMinutes);
+      const visibleTrackWidth = body.clientWidth - labelWidth;
+      const scale = timelineSpan > 0 && viewportDuration > 0
+        ? timelineSpan / viewportDuration
+        : 1;
+      const expectedContentWidth = labelWidth + Math.max(
+        Math.round(visibleTrackWidth * scale),
+        visibleTrackWidth,
+        480
+      );
+      return {
+        bodyClientWidth: body.clientWidth,
+        bodyScrollWidth: body.scrollWidth,
+        expectedContentWidth,
+        headerClientWidth: header.clientWidth,
+        headerScrollWidth: header.scrollWidth,
+        labelWidth,
+      };
+    });
+
+    assert.equal(Math.abs(layoutMetrics.bodyScrollWidth - layoutMetrics.expectedContentWidth) <= 1, true);
+    assert.equal(layoutMetrics.bodyScrollWidth > layoutMetrics.bodyClientWidth, true);
+    assert.equal(layoutMetrics.headerScrollWidth > layoutMetrics.headerClientWidth, true);
+
+    await page.locator('.sf-rail-timeline-body-viewport').evaluate((body) => {
+      body.scrollLeft = 240;
+      body.dispatchEvent(new Event('scroll'));
+    });
+
+    const syncedScroll = await page.locator('.sf-rail-timeline').evaluate((root) => {
+      const header = root.querySelector('.sf-rail-timeline-header-viewport');
+      const body = root.querySelector('.sf-rail-timeline-body-viewport');
+      return {
+        bodyScrollLeft: body.scrollLeft,
+        headerScrollLeft: header.scrollLeft,
+        viewportStartMinute: Number(root.dataset.viewportStartMinute),
+      };
+    });
+
+    assert.equal(syncedScroll.bodyScrollLeft, 240);
+    assert.equal(syncedScroll.headerScrollLeft, 240);
+    assert.notEqual(syncedScroll.viewportStartMinute, 0);
 
     await page.locator('.sf-rail-timeline-item--cluster').first().click();
 

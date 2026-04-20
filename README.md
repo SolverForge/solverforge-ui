@@ -262,6 +262,11 @@ SF.createButton({ text: 'Sm',       variant: 'primary', size: 'small' })
 `SF.rail.createTimeline()` is the canonical read-only scheduling surface.
 It accepts a normalized numeric model only; backend timestamp parsing and
 timezone policy stay outside the library.
+Layout density is derived from the actual timeline body viewport, not padded
+wrappers or outer card chrome.
+`labelWidth` is the preferred sticky-label width; supported embeds with a body
+viewport of `500px` or wider compact that label column as needed to preserve at
+least `320px` of visible schedule track.
 
 Model shape:
 

@@ -14,8 +14,10 @@
   var TRACK_PADDING = 12;
   var OVERVIEW_HEIGHT = 68;
   var OVERVIEW_BLOCK_HEIGHT = 34;
-  var FALLBACK_VIEWPORT_WIDTH = 1280;
-  var MIN_TRACK_WIDTH = 480;
+  var MIN_LABEL_WIDTH = 180;
+  var MIN_VISIBLE_TRACK_WIDTH = 320;
+  var MIN_CONTENT_TRACK_WIDTH = 480;
+  var MIN_SUPPORTED_VIEWPORT_WIDTH = 500;
 
   var TONE_MAP = {
     emerald: {
@@ -83,7 +85,7 @@
       model: normalizeModel(config.model),
       scrollSync: null,
       viewport: null,
-      widthInfo: null,
+      layout: null,
     };
 
     state.viewport = clampViewport(state.model.axis, state.model.axis.initialViewport);
@@ -139,35 +141,20 @@
     bindScrollSync(headerViewport, bodyViewport, state, root, zoomButtons);
     bindDragPan(headerViewport, bodyViewport, state, root, zoomButtons);
     bindDragPan(bodyViewport, headerViewport, state, root, zoomButtons);
-
-    if (typeof window !== 'undefined' && window.addEventListener) {
-      var handleResize = function () {
-        if (state.destroyed) return;
-        render();
-        syncScrollToViewport();
-      };
-      window.addEventListener('resize', handleResize);
-      state.cleanup.push(function () {
-        if (window.removeEventListener) window.removeEventListener('resize', handleResize);
-      });
-    }
+    bindResizeObserver(bodyViewport, state, render, syncScrollToViewport);
 
     function render() {
-      state.widthInfo = measureWidths(root, bodyViewport, state);
+      state.layout = measureLayout(bodyViewport, state);
+      applyLayout(root, headerRow, lanes, state.layout);
       renderHeader();
       renderLanes();
       updateViewportMetadata(root, state);
       updateZoomButtons(zoomButtons, state);
-      headerViewport.__sfClientWidth = state.widthInfo.viewportWidth;
-      bodyViewport.__sfClientWidth = state.widthInfo.viewportWidth;
-      headerViewport.__sfScrollWidth = state.widthInfo.contentWidth;
-      bodyViewport.__sfScrollWidth = state.widthInfo.contentWidth;
     }
 
     function renderHeader() {
       headerRow.innerHTML = '';
-      headerRow.style.width = state.widthInfo.contentWidth + 'px';
-      headerRow.style.gridTemplateColumns = state.labelWidth + 'px 1fr';
+      if (!state.layout) return;
 
       var corner = sf.el('div', { className: 'sf-rail-timeline-label-corner' }, config.label || 'Lane');
       headerRow.appendChild(corner);
@@ -180,7 +167,7 @@
 
     function renderLanes() {
       lanes.innerHTML = '';
-      lanes.style.width = state.widthInfo.contentWidth + 'px';
+      if (!state.layout) return;
 
       state.model.lanes.forEach(function (lane) {
         var laneRender = lane.mode === 'overview'
@@ -201,8 +188,7 @@
         if (laneRender.expandedClusterId) {
           row.dataset.expandedClusterId = laneRender.expandedClusterId;
         }
-        row.style.width = state.widthInfo.contentWidth + 'px';
-        row.style.gridTemplateColumns = state.labelWidth + 'px 1fr';
+        row.style.width = state.layout.contentWidth + 'px';
 
         var label = buildLaneLabel(lane, laneRender);
         row.appendChild(label);
@@ -220,6 +206,7 @@
     }
 
     function syncScrollToViewport() {
+      if (!state.layout) return;
       var scrollLeft = viewportToScrollLeft(state, bodyViewport);
       state.scrollSync = bodyViewport;
       bodyViewport.scrollLeft = scrollLeft;
@@ -259,14 +246,6 @@
 
     render();
     syncScrollToViewport();
-
-    if (typeof setTimeout === 'function') {
-      setTimeout(function () {
-        if (state.destroyed) return;
-        render();
-        syncScrollToViewport();
-      }, 0);
-    }
 
     return api;
   };
@@ -358,6 +337,7 @@
 
   function handleScroll(source, target, state, root, zoomButtons) {
     if (state.destroyed) return;
+    if (!state.layout) return;
     if (state.scrollSync === source) return;
 
     state.scrollSync = source;
@@ -1093,25 +1073,35 @@
     return TONE_MAP.slate;
   }
 
-  function measureWidths(root, bodyViewport, state) {
-    var viewportWidth = bodyViewport.clientWidth || bodyViewport.offsetWidth || root.clientWidth || root.offsetWidth || 0;
-    if (!viewportWidth && typeof document !== 'undefined' && document.body) {
-      viewportWidth = document.body.clientWidth || document.body.offsetWidth || 0;
-    }
-    if (!viewportWidth) viewportWidth = FALLBACK_VIEWPORT_WIDTH;
+  function measureLayout(bodyViewport, state) {
+    var viewportWidth = getMeasuredViewportWidth(bodyViewport);
+    if (!(viewportWidth > 0)) return null;
 
-    var labelWidth = state.labelWidth;
+    var preferredLabelWidth = state.labelWidth;
+    var maxLabelWidth = viewportWidth - MIN_VISIBLE_TRACK_WIDTH;
+    var effectiveLabelWidth = preferredLabelWidth;
     var visibleDuration = state.viewport.endMinute - state.viewport.startMinute;
     var totalDuration = state.model.axis.endMinute - state.model.axis.startMinute;
     var scale = totalDuration > 0 && visibleDuration > 0
       ? totalDuration / visibleDuration
       : 1;
-    var trackViewportWidth = Math.max(viewportWidth - labelWidth, MIN_TRACK_WIDTH);
-    var contentWidth = labelWidth + Math.max(Math.round(trackViewportWidth * scale), trackViewportWidth);
+    if (effectiveLabelWidth < MIN_LABEL_WIDTH) effectiveLabelWidth = MIN_LABEL_WIDTH;
+    if (maxLabelWidth >= MIN_LABEL_WIDTH) effectiveLabelWidth = Math.min(effectiveLabelWidth, maxLabelWidth);
+    else effectiveLabelWidth = MIN_LABEL_WIDTH;
+
+    var visibleTrackWidth = Math.max(viewportWidth - effectiveLabelWidth, 0);
+    var contentTrackWidth = Math.max(
+      Math.round(visibleTrackWidth * scale),
+      visibleTrackWidth,
+      MIN_CONTENT_TRACK_WIDTH
+    );
+    var contentWidth = effectiveLabelWidth + contentTrackWidth;
 
     return {
       contentWidth: contentWidth,
-      trackViewportWidth: trackViewportWidth,
+      contentTrackWidth: contentTrackWidth,
+      effectiveLabelWidth: effectiveLabelWidth,
+      visibleTrackWidth: visibleTrackWidth,
       viewportWidth: viewportWidth,
     };
   }
@@ -1147,9 +1137,59 @@
   }
 
   function getMaxScrollLeft(viewportEl) {
-    var scrollWidth = viewportEl.scrollWidth || viewportEl.__sfScrollWidth || viewportEl.__sfClientWidth || FALLBACK_VIEWPORT_WIDTH;
-    var clientWidth = viewportEl.clientWidth || viewportEl.offsetWidth || viewportEl.__sfClientWidth || FALLBACK_VIEWPORT_WIDTH;
+    var scrollWidth = viewportEl.scrollWidth || 0;
+    var clientWidth = viewportEl.clientWidth || viewportEl.offsetWidth || 0;
     return Math.max(scrollWidth - clientWidth, 0);
+  }
+
+  function bindResizeObserver(bodyViewport, state, render, syncScrollToViewport) {
+    if (typeof ResizeObserver !== 'function') return;
+
+    var resizeObserver = new ResizeObserver(function () {
+      if (state.destroyed) return;
+      render();
+      syncScrollToViewport();
+    });
+    resizeObserver.observe(bodyViewport);
+    state.cleanup.push(function () {
+      resizeObserver.disconnect();
+    });
+  }
+
+  function getMeasuredViewportWidth(bodyViewport) {
+    if (!bodyViewport) return 0;
+    if (typeof bodyViewport.clientWidth === 'number' && bodyViewport.clientWidth > 0) {
+      return Math.round(bodyViewport.clientWidth);
+    }
+    if (typeof bodyViewport.offsetWidth === 'number' && bodyViewport.offsetWidth > 0) {
+      return Math.round(bodyViewport.offsetWidth);
+    }
+    if (typeof bodyViewport.getBoundingClientRect === 'function') {
+      var rect = bodyViewport.getBoundingClientRect();
+      if (rect && typeof rect.width === 'number' && rect.width > 0) {
+        return Math.round(rect.width);
+      }
+    }
+    return 0;
+  }
+
+  function applyLayout(root, headerRow, lanes, layout) {
+    setCustomProperty(root.style, '--sf-rail-label-width', layout ? layout.effectiveLabelWidth + 'px' : '');
+    setCustomProperty(root.style, '--sf-rail-content-width', layout ? layout.contentWidth + 'px' : '');
+    headerRow.style.width = layout ? layout.contentWidth + 'px' : '';
+    lanes.style.width = layout ? layout.contentWidth + 'px' : '';
+    root.dataset.supportedViewportWidth = layout
+      ? String(layout.viewportWidth >= MIN_SUPPORTED_VIEWPORT_WIDTH)
+      : '';
+  }
+
+  function setCustomProperty(style, name, value) {
+    if (!style) return;
+    if (typeof style.setProperty === 'function') {
+      style.setProperty(name, value);
+      return;
+    }
+    style[name] = value;
   }
 
   function showTooltip(tooltip, root, payload, event) {

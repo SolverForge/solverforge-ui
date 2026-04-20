@@ -83,6 +83,7 @@ class FakeElement extends FakeNode {
     this._className = '';
     this._id = '';
     this._innerHTML = '';
+    this._scrollWidth = null;
     this.clientWidth = 1024;
     this.clientHeight = 768;
     this.offsetWidth = 1024;
@@ -121,6 +122,17 @@ class FakeElement extends FakeNode {
 
   get children() {
     return this.childNodes.filter((child) => child instanceof FakeElement);
+  }
+
+  get scrollWidth() {
+    if (typeof this._scrollWidth === 'number') return this._scrollWidth;
+    var styleWidth = getStyleInlineSize(this);
+    if (styleWidth > 0) return styleWidth;
+    return Math.max(getInlineSize(this), getChildScrollWidth(this));
+  }
+
+  set scrollWidth(value) {
+    this._scrollWidth = value;
   }
 
   get firstChild() {
@@ -275,6 +287,32 @@ function toCamel(value) {
   return value.replace(/-([a-z])/g, function (_, letter) {
     return letter.toUpperCase();
   });
+}
+
+function getInlineSize(node) {
+  var styleWidth = getStyleInlineSize(node);
+  if (styleWidth > 0) return styleWidth;
+  if (typeof node.clientWidth === 'number' && node.clientWidth > 0) return node.clientWidth;
+  if (typeof node.offsetWidth === 'number' && node.offsetWidth > 0) return node.offsetWidth;
+  return 0;
+}
+
+function getStyleInlineSize(node) {
+  return readStyleLength(node.style.width) || readStyleLength(node.style.inlineSize);
+}
+
+function getChildScrollWidth(node) {
+  return node.childNodes.reduce((maxWidth, child) => {
+    if (!(child instanceof FakeElement)) return maxWidth;
+    return Math.max(maxWidth, child.scrollWidth || getInlineSize(child));
+  }, 0);
+}
+
+function readStyleLength(value) {
+  if (typeof value === 'number' && isFinite(value)) return value;
+  if (typeof value !== 'string') return 0;
+  var match = value.trim().match(/^(-?\d+(?:\.\d+)?)px$/);
+  return match ? Number(match[1]) : 0;
 }
 
 function createDom() {

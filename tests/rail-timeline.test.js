@@ -155,6 +155,135 @@ test('timeline syncs header/body scroll, updates zoom presets, and drag-pans fro
   assert.equal(bodyViewport.scrollLeft, headerViewport.scrollLeft);
 });
 
+test('timeline derives content width from the measured body viewport instead of the padded host', () => {
+  const observers = [];
+  const { SF, document } = loadSf(
+    ['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js'],
+    {
+      ResizeObserver: class ResizeObserver {
+        constructor(callback) {
+          this.callback = callback;
+          observers.push(this);
+        }
+
+        observe(target) {
+          this.target = target;
+        }
+
+        disconnect() {}
+      },
+    }
+  );
+
+  const timeline = SF.rail.createTimeline({
+    labelWidth: 280,
+    model: {
+      axis: buildAxis(28, { startMinute: 0, endMinute: 14 * 1440 }),
+      lanes: [
+        {
+          id: 'employee-c',
+          label: 'Employee C',
+          mode: 'detailed',
+          items: [
+            { id: 'shift-1', startMinute: 30, endMinute: 210, label: 'Shift 1', tone: 'amber' },
+            { id: 'shift-2', startMinute: 240, endMinute: 420, label: 'Shift 2', tone: 'blue' },
+          ],
+        },
+      ],
+    },
+  });
+
+  const host = document.createElement('div');
+  host.clientWidth = 1400;
+  host.offsetWidth = 1400;
+  document.body.appendChild(host);
+
+  const root = timeline.el;
+  root.clientWidth = 2520;
+  root.offsetWidth = 2520;
+  host.appendChild(root);
+
+  const bodyViewport = root.querySelector('.sf-rail-timeline-body-viewport');
+  bodyViewport.clientWidth = 1364;
+  bodyViewport.offsetWidth = 1364;
+
+  observers[0].callback();
+
+  const labelWidth = Number.parseFloat(root.style['--sf-rail-label-width']);
+  const visibleTrackWidth = bodyViewport.clientWidth - labelWidth;
+  const expectedContentWidth = labelWidth + Math.max(
+    Math.round(visibleTrackWidth * 2),
+    visibleTrackWidth,
+    480
+  );
+
+  assert.equal(labelWidth, 280);
+  assert.equal(bodyViewport.scrollWidth, expectedContentWidth);
+  assert.equal(root.dataset.supportedViewportWidth, 'true');
+});
+
+test('timeline compacts the label column before collapsing the visible track', () => {
+  const observers = [];
+  const { SF, document } = loadSf(
+    ['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js'],
+    {
+      ResizeObserver: class ResizeObserver {
+        constructor(callback) {
+          this.callback = callback;
+          observers.push(this);
+        }
+
+        observe(target) {
+          this.target = target;
+        }
+
+        disconnect() {}
+      },
+    }
+  );
+
+  const timeline = SF.rail.createTimeline({
+    labelWidth: 280,
+    model: {
+      axis: buildAxis(28, { startMinute: 0, endMinute: 14 * 1440 }),
+      lanes: [
+        {
+          id: 'employee-d',
+          label: 'Employee D',
+          mode: 'detailed',
+          items: [
+            { id: 'shift-1', startMinute: 60, endMinute: 240, label: 'Shift 1', tone: 'emerald' },
+          ],
+        },
+      ],
+    },
+  });
+
+  const host = document.createElement('div');
+  host.clientWidth = 560;
+  host.offsetWidth = 560;
+  document.body.appendChild(host);
+
+  const root = timeline.el;
+  root.clientWidth = 860;
+  root.offsetWidth = 860;
+  host.appendChild(root);
+
+  const bodyViewport = root.querySelector('.sf-rail-timeline-body-viewport');
+  bodyViewport.clientWidth = 540;
+  bodyViewport.offsetWidth = 540;
+
+  observers[0].callback();
+
+  const labelWidth = Number.parseFloat(root.style['--sf-rail-label-width']);
+  const visibleTrackWidth = bodyViewport.clientWidth - labelWidth;
+
+  assert.equal(labelWidth, 220);
+  assert.equal(visibleTrackWidth, 320);
+  assert.equal(bodyViewport.scrollWidth, 860);
+  assert.equal(root.dataset.supportedViewportWidth, 'true');
+});
+
 test('timeline renders weekend shading and default 6-hour ticks without explicit tick input', () => {
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
 

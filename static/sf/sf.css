@@ -1983,6 +1983,9 @@ body {
   border: 1px solid var(--sf-gray-200);
   border-radius: 18px;
   box-shadow: var(--sf-shadow-lg);
+  display: grid;
+  inline-size: 100%;
+  min-inline-size: 0;
   overflow: hidden;
   position: relative;
 }
@@ -2050,11 +2053,16 @@ body {
 
 .sf-rail-timeline-shell {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 250, 251, 0.98));
+  display: grid;
+  inline-size: 100%;
+  min-inline-size: 0;
 }
 
 .sf-rail-timeline-header-viewport,
 .sf-rail-timeline-body-viewport {
   cursor: grab;
+  inline-size: 100%;
+  min-inline-size: 0;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -2082,9 +2090,15 @@ body {
   overflow-y: auto;
 }
 
+.sf-rail-timeline-lanes {
+  inline-size: var(--sf-rail-content-width);
+}
+
 .sf-rail-timeline-header-row,
 .sf-rail-timeline-row {
   display: grid;
+  grid-template-columns: var(--sf-rail-label-width) minmax(0, 1fr);
+  inline-size: var(--sf-rail-content-width);
 }
 
 .sf-rail-timeline-row {
