@@ -351,6 +351,54 @@ test('timeline overview summaries fall back per field when summary metadata is p
   assert.equal(block.attributes['aria-label'].includes('1 open'), true);
 });
 
+test('timeline does not invent open or tone aggregates when explicit summary count outruns inspectable items', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  const timeline = SF.rail.createTimeline({
+    model: {
+      axis: buildAxis(14, { startMinute: 0, endMinute: 7 * 1440 }),
+      lanes: [
+        {
+          id: 'ward-unknown-aggregate',
+          label: 'Ward unknown aggregate',
+          mode: 'overview',
+          items: [
+            {
+              id: 'surge',
+              startMinute: dayMinute(1, 6),
+              endMinute: dayMinute(1, 12),
+              label: 'Surge',
+              tone: 'blue',
+              summary: {
+                primaryLabel: 'Monday intake surge',
+                count: 12,
+              },
+            },
+            {
+              id: 'float-pool',
+              startMinute: dayMinute(1, 12, 15),
+              endMinute: dayMinute(1, 16),
+              label: 'Float pool',
+              tone: 'emerald',
+              meta: { open: true },
+            },
+          ],
+        },
+      ],
+    },
+  });
+
+  const block = timeline.el.querySelector('.sf-rail-timeline-item--cluster');
+  const pills = timeline.el.querySelectorAll('.sf-rail-timeline-summary-pill').map((node) => node.textContent.trim());
+  const toneSegments = timeline.el.querySelectorAll('.sf-rail-timeline-summary-tone-segment');
+
+  assert.equal(block.textContent.includes('Monday intake surge'), true);
+  assert.deepEqual(pills, ['13 total', 'Enter to inspect']);
+  assert.equal(toneSegments.length, 0);
+  assert.equal(block.attributes['aria-label'].includes('open'), false);
+  assert.equal(block.attributes['aria-label'].includes('emerald'), false);
+});
+
 test('timeline overview lanes cluster tightly adjacent items into one aggregate block', () => {
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
 

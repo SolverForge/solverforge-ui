@@ -1223,11 +1223,26 @@
   function deriveOverviewContribution(item) {
     var items = effectiveOverviewItems(item);
     var summary = item.summary;
+    var derivedCount = items.length;
+    var count = summary && summary.count != null ? summary.count : derivedCount;
+    var canDeriveAggregateMetrics = !summary || summary.count == null || summary.count === derivedCount;
+    var openCount = null;
+    var toneSegments = [];
+
+    if (summary && summary.openCount != null) openCount = summary.openCount;
+    else if (canDeriveAggregateMetrics) openCount = inferOpenCount(items);
+
+    if (summary && summary.toneSegments.length > 0) toneSegments = summary.toneSegments;
+    else if (canDeriveAggregateMetrics) toneSegments = buildToneSegmentsFromItems(items);
 
     return {
-      count: summary && summary.count != null ? summary.count : items.length,
-      openCount: summary && summary.openCount != null ? summary.openCount : inferOpenCount(items),
-      toneSegments: summary && summary.toneSegments.length > 0 ? summary.toneSegments : buildToneSegmentsFromItems(items),
+      count: count,
+      openCount: openCount,
+      openCountKnown: openCount != null,
+      toneSegments: toneSegments,
+      toneSegmentsKnown: summary && summary.toneSegments.length > 0
+        ? true
+        : canDeriveAggregateMetrics,
     };
   }
 
@@ -1239,12 +1254,20 @@
     var count = contributions.reduce(function (sum, contribution) {
       return sum + contribution.count;
     }, 0);
-    var openCount = contributions.reduce(function (sum, contribution) {
-      return sum + contribution.openCount;
-    }, 0);
-    var toneSegments = mergeToneSegments(contributions.reduce(function (segments, contribution) {
-      return segments.concat(contribution.toneSegments);
-    }, []));
+    var openCount = contributions.every(function (contribution) {
+      return contribution.openCountKnown;
+    })
+      ? contributions.reduce(function (sum, contribution) {
+        return sum + contribution.openCount;
+      }, 0)
+      : null;
+    var toneSegments = contributions.every(function (contribution) {
+      return contribution.toneSegmentsKnown;
+    })
+      ? mergeToneSegments(contributions.reduce(function (segments, contribution) {
+        return segments.concat(contribution.toneSegments);
+      }, []))
+      : [];
     var primarySummary = summaries.length === 1 ? summaries[0] : null;
 
     return {

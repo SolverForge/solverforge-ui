@@ -301,6 +301,12 @@ summary fields with derived count/open/tone data from the remaining grouped
 items. Use explicit `summary` when the app already knows the aggregate staffing
 signal it wants overview users to see first.
 
+If a summary item overrides aggregate `count` beyond the number of concrete
+backing items the library can inspect, omitted `openCount` and omitted
+`toneSegments` remain unknown and are not rendered. In that case, provide
+`summary.openCount` and `summary.toneSegments` explicitly if you want those
+aggregate signals shown.
+
 Integer-only fields remain integer-only:
 
 - all time-bearing minute fields on `axis`, `days`, `ticks`, `items`, `overlays`, and `initialViewport`

@@ -406,6 +406,7 @@ Shipped dense overview rules:
 - overview lanes are for scanability, not raw-label dumps
 - additive `summary` metadata can provide explicit headline, count, open state, and tone mix
 - mixed summarized/raw groups combine explicit summary fields with derived count/open/tone data from the other grouped items
+- summary items that override aggregate count must also provide open/tone aggregate data if those signals should be shown
 - if `summary` is omitted, the timeline computes a default aggregate summary from grouped detail items
 - expanded overview clusters keep the aggregate block visible as the collapse affordance
 - focus and hover expose the same tooltip content for overview and detailed blocks

@@ -193,6 +193,9 @@ If `summary` is absent, the library must compute a sensible default from cluster
 If a group mixes summarized and unsummarized items, the library must combine
 explicit summary fields with derived count/open/tone data from the remaining
 grouped items rather than switching to a summary-only aggregate mode.
+If an item overrides aggregate `count` beyond the concrete backing items the
+library can inspect, omitted `openCount` and omitted `toneSegments` must remain
+unknown instead of being guessed from the shell item.
 
 This is additive. Do not require consumer apps to provide it up front.
 
