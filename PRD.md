@@ -1,355 +1,439 @@
-# PRD: Production Hardening for `SF.rail.createTimeline()`
-
-This PRD supersedes the previous `PRD.md`.
-
-The prior PRD was about introducing `SF.rail.createTimeline()` as the canonical
-read-only scheduling surface. That API now exists. This document replaces the
-introduction-focused PRD with a hardening-focused PRD for the shipped timeline.
-
-The target is a production-grade component with one canonical layout path, one
-measurement authority, and one strict numeric input contract. Do not preserve
-compatibility branches, guessed widths, or coercive parsing behavior.
+# PRD: Production-Grade Scheduling Timeline in `SF.rail.createTimeline()`
 
 ## Summary
-
-`SF.rail.createTimeline()` must render the same time density from the actual
-horizontal scroll viewport regardless of parent padding, card chrome, grid
-gutters, or flex context.
-
-It must also preserve a usable visible schedule track at every supported embed
-width without introducing a second presentation mode, a stacked fallback, or
-legacy layout branches.
-
-The component remains read-only. The public API shape stays the same. The work
-is a contract hardening pass, not a new feature surface.
-
-## Problem Statement
-
-The current implementation has two production blockers:
-
-1. Width measurement can drift away from the actual scroll viewport, which
-   changes the apparent zoom level and breaks the promise that the timeline
-   reflects the configured viewport consistently across embeddings.
-2. Narrow hosts can collapse the visible track to an unusable sliver beside the
-   sticky label, which makes pan, scan, and visual interpretation fail even
-   though the component is technically mounted.
-
-There is a second independent contract issue:
-
-3. Invalid minute inputs must fail synchronously at normalization boundaries.
-   The library must not coerce strings, timestamps, or other non-numeric values
-   into the layout model.
-
-## Product Goal
-
-Ship `SF.rail.createTimeline()` as a deterministic scheduling surface with:
-
-- one canonical horizontal layout model
-- one canonical numeric input contract
-- one supported responsive behavior for narrow but valid hosts
-- no fallback code paths masked as compatibility
-
-## Non-Goals
-
-This pass does not include:
-
-- direct editing of schedule items
-- a new top-level scheduling namespace
-- a stacked mobile presentation
-- legacy compatibility parsing for timestamp strings or `Date` objects
-- parent-width heuristics
-- guessed viewport widths
-- preserving multiple layout algorithms for old callers
-
-If product later wants a stacked or mobile-specific presentation, that must be a
-separate PRD and a separate shipped contract.
-
-## Public API Contract
-
-The public API remains:
+`solverforge-ui` already has the correct canonical surface for read-only scheduling:
 
 - `SF.rail.createTimeline(config)`
-- returned API: `el`, `setModel(model)`, `setViewport(viewport)`,
-  `expandCluster(laneId, clusterId | null)`, `destroy()`
 
-The hardening pass changes contract quality, not API shape.
+That decision is final. This PRD is not about inventing another API. It is about turning the existing timeline into a polished, production-grade scheduling library for dense resource-lane visualization.
 
-### Numeric input contract
+The first proving consumer is `solverforge-hospital`, but this PRD is library-first. The timeline must become generically strong enough for future SolverForge quickstarts without becoming hospital-specific.
 
-The timeline accepts normalized numeric data only.
+The implementation agent for this work should assume:
 
-Every minute field must already be a finite number:
+- the public entrypoint stays `SF.rail.createTimeline()`
+- `SF.rail` remains the one canonical namespace for resource-lane scheduling
+- `SF.gantt` remains separate and unchanged
+- the component stays read-only in this pass
 
-- `model.axis.startMinute`
-- `model.axis.endMinute`
-- `model.axis.initialViewport.startMinute`
-- `model.axis.initialViewport.endMinute`
-- `model.axis.days[].startMinute`
-- `model.axis.days[].endMinute`
-- `model.axis.ticks[]`
-- `model.axis.ticks[].minute`
-- `model.lanes[].items[].startMinute`
-- `model.lanes[].items[].endMinute`
-- `model.lanes[].overlays[].startMinute`
-- `model.lanes[].overlays[].endMinute`
-- `setViewport({ startMinute, endMinute })`
+## Current Baseline
+The shipped timeline already provides:
 
-Integer-only fields remain integer-only:
+- numeric-only model input
+- sticky top time header
+- sticky left lane labels
+- synchronized header/body horizontal viewport
+- hidden native scrollbar
+- drag-to-pan
+- zoom presets
+- weekend shading
+- six-hour tick marks
+- overlays
+- `overview` and `detailed` lane modes
+- packed detailed lanes
+- cluster expansion support
 
-- `model.lanes[].overlays[].dayIndex`
-- `model.lanes[].overlays[].dayCount`
+This is the correct foundation. The remaining problem is polish and density semantics, not surface selection.
 
-Rejected inputs include:
+## Product Goal
+Make `SF.rail.createTimeline()` a production-grade scheduling timeline for dense resource-lane schedules.
 
-- ISO timestamps
-- `Date` objects
-- numeric strings
-- `NaN`
-- `Infinity`
-- partially missing viewport objects
+Production-grade means:
 
-Validation must fail synchronously and point to the offending field. The
-library must not call `Number(...)` on external inputs.
+1. It remains the single canonical scheduling API in the library.
+2. It is visually readable for dense schedules, not just technically correct.
+3. It has a clear ownership boundary between library responsibilities and consumer responsibilities.
+4. It has explicit behavior for overview aggregation, detailed precision, accessibility, responsiveness, and performance.
+5. It is documented and tested as a reusable library component, not a hospital one-off.
 
-## Layout Contract
+## Non-Goals
+This pass does not include:
 
-### Canonical width authority
+- a new top-level scheduling namespace
+- direct editing, drag-rescheduling, or resizing
+- timestamp parsing inside the library
+- timezone policy inside the library
+- a stacked mobile timeline mode
+- preserving or adding app-side custom layout engines
+- another “simple timeline” surface parallel to `SF.rail.createTimeline()`
 
-The only measurement authority is the actual body scroller:
+## Design Principles
 
-- `.sf-rail-timeline-body-viewport`
+### 1. One canonical scheduling surface
+There must be exactly one shared scheduling surface in the library:
 
-The following are not layout inputs:
+- `SF.rail.createTimeline()`
 
-- `root.parentNode`
-- padded card wrappers
-- outer container gutters
-- inferred window width
-- guessed viewport constants
+Do not add:
 
-Header and body must share one derived width model. The header mirrors the body
-viewport; it does not own a second layout calculation.
+- `SF.schedule`
+- `SF.timeline`
+- `SF.scheduler`
+- or any second scheduling family
 
-### Supported width model
+Low-level rail helpers may remain, but only as primitives.
 
-The component keeps the current side-label plus horizontal-track presentation.
-It does not switch to a stacked layout in this hardening pass.
+### 2. The library owns scheduling semantics
+The shared component, not the app, must own:
 
-The layout engine must derive exactly these values from the measured body
-viewport width and the current timeline state:
+- overview clustering behavior
+- overview summary rendering
+- detailed interval packing
+- lane height computation
+- overlay rendering
+- sticky-axis behavior
+- drag-pan behavior
+- zoom behavior
+- viewport synchronization
+- density rules
 
-- `viewportWidth`
-- `effectiveLabelWidth`
-- `visibleTrackWidth`
-- `contentTrackWidth`
-- `contentWidth`
+### 3. The consumer owns domain semantics
+The consuming app must own:
 
-No other code path may derive competing width values.
+- timestamp normalization into numeric minutes
+- timezone interpretation
+- lane ordering policy
+- mapping domain facts into badges, stats, overlays, tones, and labels
 
-### Responsive constraints
+The library stays numeric-axis only.
 
-The layout contract is decision-complete and numeric:
+### 4. Dense schedules must be readable at a glance
+An overview lane must not degrade into a ribbon of tiny colored labels.
 
-- default preferred label width: `280px`
-- minimum label width: `180px`
-- minimum visible track width: `320px`
-- minimum content track width before scale expansion: `480px`
-- minimum supported body viewport width: `500px`
+The component must provide a real overview representation for dense schedules:
 
-Derived behavior:
+- compact aggregate blocks
+- visible count/state information
+- optional expansion to exact detail
 
-- for wide hosts, use the preferred label width
-- for narrower hosts, compact the label width down to `180px`
-- preserve at least `320px` of visible track for every supported host width
-- use `480px` as the minimum base content-track width before zoom scaling
+### 5. Detailed schedules must remain precise
+A detailed lane must show actual assignments with stable vertical packing.
 
-Below `500px` body viewport width, the layout is unsupported in this pass. Do
-not add heuristics, alternate modes, or hidden fallbacks for sub-minimum hosts.
+No fallback to:
 
-### Pre-measurement behavior
+- one fixed strip
+- arbitrary card slots
+- hidden overlap ambiguity
 
-There is no guessed viewport fallback.
+## Public API Contract
+The public entrypoint remains:
 
-If the body viewport is not measurable yet:
+- `SF.rail.createTimeline(config)`
 
-- mount the static structure
-- defer width-dependent rendering
-- wait for a real measurement from `ResizeObserver`
-- render once the body viewport has a non-zero width
+Returned API remains:
 
-Do not perform a speculative width render and then silently switch algorithms
-after mount.
+- `el`
+- `setModel(model)`
+- `setViewport(viewport)`
+- `expandCluster(laneId, clusterId | null)`
+- `destroy()`
 
-## Rendering Requirements
+The goal is to improve the behavior behind this API, not replace it.
 
-### Single layout path
+## Model Contract
+The library continues to accept a normalized numeric model only.
 
-All width-dependent rendering must flow through one derived layout object.
+### Axis
+`model.axis` contains:
 
-Required implementation shape:
+- `startMinute`
+- `endMinute`
+- `days[]`
+- `ticks[]`
+- `initialViewport`
 
-- one `measureLayout(bodyViewport, state)` function
-- one render pipeline that consumes the measured layout
-- one scroll model derived from the actual body scroller
+### Lanes
+`model.lanes[]` contains:
 
-Forbidden implementation shape:
+- `id`
+- `label`
+- optional `badges`
+- optional `stats`
+- optional `overlays`
+- `mode: 'overview' | 'detailed'`
+- `items[]`
 
-- a parent-width branch
-- a root-width branch that outranks body viewport measurement
-- a fixed-label path plus a responsive-label path
-- a guessed-width initialization path
-- scroll math that depends on synthetic fallback widths
+### Items
+Base item contract remains:
 
-### Styling path
+- `id`
+- `startMinute`
+- `endMinute`
+- `label`
+- optional `meta`
+- `tone`
+- optional `clusterId`
+- optional `detailItems[]`
 
-Measured widths should be pushed through CSS custom properties on the timeline
-root so header rows and lane rows consume the same values.
+### Additive overview-summary contract
+To make overview lanes production-grade, add optional summary fields for aggregated display:
 
-Required outputs include:
+- `summary`
+  - optional `primaryLabel`
+  - optional `secondaryLabel`
+  - optional `count`
+  - optional `openCount`
+  - optional `toneSegments[]`
 
-- `--sf-rail-label-width`
-- `--sf-rail-content-width`
+Where:
 
-Grid columns must use the measured label width and a track column that behaves
-correctly under shrink conditions. Use `minmax(0, 1fr)` where needed to avoid
-implicit overflow math.
+- `toneSegments[]` is an optional additive visualization hint, not a domain type
+- each segment is:
+  - `tone`
+  - `count`
 
-### Scroll behavior
+If `summary` is absent, the library must compute a sensible default from clustered detail items.
 
-The body scroller is the source of truth for horizontal position.
+This is additive. Do not require consumer apps to provide it up front.
+
+### Overlays
+Overlay contract remains numeric and generic:
+
+- span overlays via `startMinute/endMinute`
+- day overlays via `dayIndex/dayCount`
+
+The library must not assume hospital-specific overlay names.
+
+## Functional Requirements
+
+### A. Overview lane behavior
+Overview mode must become a first-class dense schedule representation.
 
 Requirements:
 
-- body scroll drives viewport-to-minute conversion
-- header scroll mirrors body scroll
-- drag-to-pan works from both header and body
-- scroll sync remains correct after mount, resize, zoom, and model replacement
+- overlapping and tightly adjacent items must collapse into aggregate blocks
+- aggregate blocks must show useful summary information directly in the block
+- aggregate blocks must visually encode:
+  - count
+  - open/unassigned state when supplied or inferable
+  - tone composition when supplied or inferable
+- aggregate blocks must expand inline into packed detailed items
+- only one expanded cluster per lane at a time
+- expansion must preserve row alignment and viewport continuity
 
-## Existing Timeline Features That Must Remain Intact
+Forbidden behavior:
 
-This hardening pass must preserve:
+- overview mode rendering every raw item label in dense lanes
+- overview blocks using only “first item wins” as the visual summary
+- overview blocks that are visually indistinguishable from ordinary detailed items
 
-- sticky top time header
-- sticky left lane labels
-- synchronized horizontal viewport for header and body
-- hidden native horizontal scrollbar
-- drag-to-pan from header and lane body
-- zoom presets: `1w`, `2w`, `4w`, `Reset`
-- weekend shading
-- six-hour tick marks
-- hover tooltips
-- interval packing for detailed lanes
-- cluster rendering and expansion for overview lanes
-- lane overlays
+### B. Detailed lane behavior
+Detailed mode must remain precise.
+
+Requirements:
+
+- interval partitioning per lane
+- stable track indices
+- lane height computed from packed tracks
+- overlapping items always visually separated
+- packed items remain readable at dense but supported widths
+
+Forbidden behavior:
+
+- one global strip for all items in a lane
+- arbitrary fixed slot positions
+- item overlap ambiguity
+
+### C. Visual density contract
+The timeline must have an explicit dense-schedule visual contract.
+
+At dense staffing scale:
+
+- overview lanes are for scanability
+- detailed lanes are for precision
+- labels degrade gracefully instead of becoming confetti
+- block summaries must remain legible without expansion
+
+### D. Interaction contract
+Keep and harden:
+
+- drag-to-pan from header
+- drag-to-pan from body
+- hidden native scrollbar
+- zoom presets
+- sticky header
+- sticky labels
+- synchronized header/body viewport
+
+The interaction model must feel native and deterministic.
+
+### E. Accessibility contract
+Production-grade means accessible by contract, not as an afterthought.
+
+Requirements:
+
+- zoom controls are keyboard reachable
+- timeline rows and item blocks participate in a sane focus order
+- overview cluster blocks are focusable when expandable
+- tooltips or hover-only content have a keyboard/focus equivalent
+- visible focus treatment exists for interactive elements
+- lane labels and item text remain available to assistive technologies
+
+The timeline may remain visually rich, but it must not be mouse-only.
+
+### F. Performance contract
+This PRD must result in a timeline that stays responsive on dense schedules.
+
+Reference validation scenario:
+
+- 28-day horizon
+- 100 lanes
+- 1500 scheduled items
+- mix of overview and detailed lanes
+
+Production-grade expectations:
+
+- first mount is fast enough to feel immediate on a modern developer desktop
+- `setModel()` updates do not visibly stall the UI
+- horizontal drag-pan remains smooth
+- zoom changes do not trigger obvious reflow thrash
+
+The implementation must avoid:
+
+- repeated full-DOM rebuilds during simple viewport changes
+- duplicate layout calculations from competing measurement authorities
+- layout logic split across incompatible rendering paths
+
+Exact perf thresholds may be tuned during implementation, but the agent must add a concrete validation harness or repeatable scenario for this dataset scale.
+
+## Internal Architecture Requirements
+
+### 1. One layout path
+There must be one canonical timeline layout pipeline:
+
+1. normalize model
+2. measure viewport
+3. derive layout
+4. derive lane render data
+5. render DOM
+
+Do not preserve multiple competing layout branches.
+
+### 2. One measurement authority
+The actual body scroller remains the only width authority:
+
+- `.sf-rail-timeline-body-viewport`
+
+No parent-width heuristics.
+No guessed initial widths.
+No wrapper-width fallback branch.
+
+### 3. Separate render concerns cleanly
+Internally, the implementation should clearly separate:
+
+- model normalization
+- overview grouping/summary derivation
+- detailed packing
+- DOM rendering
+- interaction/viewport state
+
+This is not for public API reasons. It is to keep the one canonical implementation maintainable.
+
+### 4. Preserve primitive rail APIs without making them the main path
+The low-level `SF.rail` helpers may remain public, but:
+
+- they are documented as primitives
+- they are not the recommended integration path for dense scheduling
+- no new scheduling capability should be implemented only in the primitive path
+
+## Hospital Consumer Requirements
+The new implementation must directly support the hospital app as first consumer.
+
+Required successful outcomes:
+
+- `By location` is readable as an overview
+- `By employee` is readable as a detailed inspection view
+- duplicate employee names remain distinguishable through app-supplied badges/labels
+- unassigned work remains visible
+- employee overlays work for unavailable / undesired / desired spans
+- the schedule no longer looks like a band of arbitrary colored cards
+
+The library must support this without becoming hospital-schema-aware.
 
 ## Documentation Requirements
+Update the library docs so a new consumer can use the component correctly without reverse-engineering hospital.
 
-In the same change:
+Required docs updates:
 
-- update `README.md` to describe the numeric-only input contract and supported
-  responsive layout behavior
-- keep `README.md` as the shipped source of truth for public runtime behavior
-- update demos if any copy implies parent-based sizing, unspecified narrow
-  behavior, or coercive input handling
-- do not document unsupported sub-`500px` layout behavior as shipped capability
-
-## Implementation Surface
-
-Primary source files:
-
-- `js-src/13a-rail-timeline.js`
-- `css-src/19-rail-timeline.css`
 - `README.md`
-- `tests/rail-timeline.test.js`
-- `tests/demo-browser-check.js`
-
-Generated assets updated in the same work:
-
-- `static/sf/sf.css`
-- `static/sf/sf.js`
-- `static/sf/sf.0.4.3.css`
-- `static/sf/sf.0.4.3.js`
-
-## Acceptance Criteria
-
-### Layout invariants
-
-1. The same timeline model rendered into hosts with different outer padding but
-   the same body viewport width must show the same apparent zoom density.
-2. The measured width used for layout must come from the body viewport, not the
-   padded parent.
-3. In every supported host width, the visible track must remain at least
-   `320px`.
-4. In every supported host width, the label column must never exceed the
-   measured constraints produced by the canonical layout function.
-5. Header and body must remain aligned after resize and drag-pan.
-
-### Numeric invariants
-
-6. Invalid numeric inputs must throw synchronously before rendering.
-7. No external minute field may be coerced with `Number(...)`.
-8. Overlay `dayIndex` and `dayCount` must reject non-integer values.
-
-### Product invariants
-
-9. No alternate stacked or fallback presentation mode is introduced.
-10. No compatibility branch survives for parent-based width measurement or
-    guessed viewport sizing.
+  - `SF.rail.createTimeline()` is the canonical scheduling surface
+  - numeric-only contract remains explicit
+  - overview vs detailed lane guidance is explicit
+  - additive `summary` contract is documented
+  - dense schedule example is included
+- `WIREFRAME.md`
+  - reflects shipped behavior, not aspirational old behavior
+  - explains the dense schedule visual model clearly
+- demo/example material
+  - include one dense staffing/resource schedule example
+  - include one example with overview expansion and overlays
 
 ## Test Plan
 
-### Unit coverage
+### Unit and normalization tests
+- numeric validation remains strict
+- overview summary normalization accepts additive `summary`
+- cluster grouping behavior is deterministic
+- detailed packing yields stable track indices
+- overlay normalization remains correct
 
-Add or update tests to prove:
+### DOM/render tests
+- overview blocks render count/open state when available
+- overview expansion swaps only the selected local cluster into detailed items
+- detailed lanes render packed items with non-overlapping vertical positions
+- sticky header and sticky labels remain intact
+- header/body viewport sync remains correct
+- drag-pan works from header and body
+- zoom controls update viewport correctly
 
-- padded parent width does not affect rendered time density
-- the body viewport is the measured width authority
-- a `500px` supported host preserves at least `320px` visible track
-- label compaction happens before track collapse
-- resize after mount recomputes layout from the same canonical path
-- invalid axis, day, tick, item, overlay, and runtime viewport inputs throw
-  descriptive errors
+### Accessibility tests
+- zoom controls are keyboard reachable
+- cluster blocks are focusable when expandable
+- keyboard interaction can reveal the same information as hover
+- focus styling and accessible text are present
 
-### Browser coverage
+### Visual acceptance tests
+Produce and validate screenshots for:
 
-Extend demo browser checks to prove:
+1. dense location overview
+2. expanded location cluster
+3. detailed employee lane view
+4. narrow but supported viewport
 
-- real horizontal overflow exists in the shipped timeline demo
-- header and body scroll positions stay synchronized
-- drag-to-pan remains functional
-- padded demo cards do not distort zoom density
+These screenshots are part of acceptance, not optional nice-to-haves.
 
-### Regression coverage
+### Consumer validation
+Validate against a hospital-like schedule:
 
-Also verify:
+- 28 days
+- 100 employees
+- 1500 shifts
 
-- low-level `SF.rail` primitives still work
-- `SF.gantt` remains unaffected
-- generated bundled assets reflect the hardened behavior
+Acceptance conditions:
 
-## Delivery Plan
+- overview remains scannable
+- detailed lanes remain precise
+- no lane appears as a random ribbon of blocks
+- no app-side custom layout engine is required
 
-Ship in two conventional commits:
+## Acceptance Criteria
+This work is complete only when all of the following are true:
 
-1. `fix(rail): make timeline layout viewport-driven`
-2. `fix(rail): reject non-numeric timeline minute inputs`
+1. `SF.rail.createTimeline()` is still the one canonical scheduling API.
+2. Overview lanes are genuinely useful for dense schedules.
+3. Detailed lanes remain precise and packed correctly.
+4. The library, not the app, owns scheduling layout semantics.
+5. The app only supplies numeric model data and domain mapping.
+6. Accessibility is intentionally supported.
+7. Dense hospital-like schedules are readable in both overview and detail views.
+8. Documentation matches shipped behavior.
+9. No second scheduling namespace or compatibility rendering path is introduced.
 
-Each commit must include:
+## Explicit Non-Negotiables for the Implementing Agent
 
-- source changes
-- tests
-- documentation changes for its contract
-- regenerated assets when applicable
-
-## Final Requirement
-
-This work is complete only when `SF.rail.createTimeline()` behaves as one
-deterministic product surface:
-
-- one measurement authority
-- one layout derivation path
-- one scroll model
-- one numeric validation path
-
-Anything that preserves duplicate paths for compatibility or fallback fails this
-PRD.
+- Do not add a new top-level scheduling namespace.
+- Do not move scheduling layout logic back into the hospital app.
+- Do not add timestamp parsing or timezone policy to the library.
+- Do not preserve a second hidden layout algorithm “for compatibility.”
+- Do not solve dense overview readability by showing every item label at once.
+- Do not call the work complete without screenshot-level visual validation.
