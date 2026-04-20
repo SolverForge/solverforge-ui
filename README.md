@@ -265,6 +265,8 @@ timezone policy stay outside the library.
 Every minute field and viewport boundary must already be a finite number.
 String timestamps, `Date` objects, and numeric strings are rejected instead of
 being coerced inside the library.
+Malformed tick objects and overlay spans are rejected instead of being silently
+dropped during normalization.
 Layout density is derived from the actual timeline body viewport, not padded
 wrappers or outer card chrome.
 `labelWidth` is the preferred sticky-label width; supported embeds with a body

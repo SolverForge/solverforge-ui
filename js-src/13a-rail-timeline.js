@@ -84,6 +84,7 @@
       config: config,
       destroyed: false,
       expandedClusters: {},
+      hasQueuedPostMountSync: false,
       labelWidth: labelWidth,
       model: normalizeModel(config.model),
       scrollSync: null,
@@ -144,7 +145,8 @@
     bindScrollSync(headerViewport, bodyViewport, state, root, zoomButtons);
     bindDragPan(headerViewport, bodyViewport, state, root, zoomButtons);
     bindDragPan(bodyViewport, headerViewport, state, root, zoomButtons);
-    bindResizeObserver(bodyViewport, state, render, syncScrollToViewport);
+    bindResizeObserver(bodyViewport, state, syncLayoutFromViewport);
+    bindWindowResize(state, syncLayoutFromViewport);
 
     function render() {
       state.layout = measureLayout(bodyViewport, state);
@@ -208,6 +210,11 @@
       });
     }
 
+    function syncLayoutFromViewport() {
+      render();
+      syncScrollToViewport();
+    }
+
     function syncScrollToViewport() {
       if (!state.layout) return;
       var scrollLeft = viewportToScrollLeft(state, bodyViewport);
@@ -230,28 +237,25 @@
       expandCluster: function (laneId, clusterId) {
         if (clusterId == null) delete state.expandedClusters[laneId];
         else state.expandedClusters[laneId] = String(clusterId);
-        render();
-        syncScrollToViewport();
+        syncLayoutFromViewport();
       },
       setModel: function (nextModel) {
         state.model = normalizeModel(nextModel);
         state.viewport = clampViewport(state.model.axis, state.viewport);
         pruneExpandedClusters(state);
-        render();
-        syncScrollToViewport();
+        syncLayoutFromViewport();
       },
       setViewport: function (nextViewport) {
         state.viewport = clampViewport(
           state.model.axis,
           normalizeViewportInput(nextViewport, 'rail.createTimeline().setViewport(viewport)')
         );
-        render();
-        syncScrollToViewport();
+        syncLayoutFromViewport();
       },
     };
 
-    render();
-    syncScrollToViewport();
+    syncLayoutFromViewport();
+    queuePostMountSync(state, syncLayoutFromViewport);
 
     return api;
   };
@@ -738,7 +742,7 @@
     return list;
   }
 
-  function normalizeItem(item, index) {
+  function normalizeItem(item, pathKey, ordinal) {
     sf.assert(item && item.startMinute != null && item.endMinute != null, 'timeline items require startMinute/endMinute');
     var startMinute = assertFiniteNumber(item.startMinute, 'createTimeline(model.lanes[].items[].startMinute)');
     var endMinute = assertFiniteNumber(item.endMinute, 'createTimeline(model.lanes[].items[].endMinute)');
@@ -748,14 +752,14 @@
       clusterId: item.clusterId != null ? String(item.clusterId) : null,
       detailItems: Array.isArray(item.detailItems)
         ? item.detailItems.map(function (detailItem, detailIndex) {
-          return normalizeItem(detailItem, index + '-' + detailIndex);
+          return normalizeItem(detailItem, pathKey + '-' + detailIndex, detailIndex);
         })
         : [],
       endMinute: endMinute,
-      id: item.id != null ? String(item.id) : 'item-' + index,
-      label: item.label || 'Item ' + (Number(index) + 1),
+      id: item.id != null ? String(item.id) : 'item-' + pathKey,
+      label: item.label || 'Item ' + (ordinal + 1),
       meta: item.meta != null ? item.meta : '',
-      originalIndex: Number(index),
+      originalIndex: ordinal,
       startMinute: startMinute,
       tone: resolveTone(item.tone || item.color || 'slate'),
     };
@@ -769,7 +773,7 @@
       badges: [],
       id: lane.id != null ? String(lane.id) : 'lane-' + index,
       items: lane.items.map(function (item, itemIndex) {
-        return normalizeItem(item, index + '-' + itemIndex);
+        return normalizeItem(item, index + '-' + itemIndex, itemIndex);
       }),
       label: lane.label || 'Lane ' + (index + 1),
       mode: lane.mode === 'overview' ? 'overview' : 'detailed',
@@ -809,11 +813,11 @@
   }
 
   function normalizeOverlay(overlay, index, axis) {
-    if (!overlay) return null;
+    var label = 'createTimeline(model.lanes[].overlays[' + index + '])';
+    sf.assert(overlay && typeof overlay === 'object', label + ' must be an object');
 
     var startMinute = overlay.startMinute;
     var endMinute = overlay.endMinute;
-    var label = 'createTimeline(model.lanes[].overlays[' + index + '])';
 
     if ((startMinute == null || endMinute == null) && overlay.dayIndex != null) {
       var dayIndex = assertInteger(overlay.dayIndex, label + '.dayIndex');
@@ -826,7 +830,10 @@
       endMinute = lastDay.endMinute;
     }
 
-    if (startMinute == null || endMinute == null) return null;
+    sf.assert(
+      startMinute != null && endMinute != null,
+      label + ' requires startMinute/endMinute or dayIndex/dayCount'
+    );
     startMinute = assertFiniteNumber(startMinute, label + '.startMinute');
     endMinute = assertFiniteNumber(endMinute, label + '.endMinute');
     sf.assert(endMinute > startMinute, label + '.endMinute must be greater than startMinute');
@@ -851,7 +858,8 @@
           list.push({ id: 'tick-' + index, label: formatClock(numericTick), minute: numericTick });
           return;
         }
-        if (!tick || tick.minute == null) return;
+        sf.assert(tick && typeof tick === 'object', 'createTimeline(model.axis.ticks[' + index + ']) must be a number or object');
+        sf.assert(tick.minute != null, 'createTimeline(model.axis.ticks[' + index + '].minute) is required');
         var minute = assertFiniteNumber(tick.minute, 'createTimeline(model.axis.ticks[' + index + '].minute)');
         list.push({
           id: tick.id != null ? String(tick.id) : 'tick-' + index,
@@ -1176,17 +1184,30 @@
     return Math.max(scrollWidth - clientWidth, 0);
   }
 
-  function bindResizeObserver(bodyViewport, state, render, syncScrollToViewport) {
+  function bindResizeObserver(bodyViewport, state, syncLayoutFromViewport) {
     if (typeof ResizeObserver !== 'function') return;
 
     var resizeObserver = new ResizeObserver(function () {
       if (state.destroyed) return;
-      render();
-      syncScrollToViewport();
+      syncLayoutFromViewport();
     });
     resizeObserver.observe(bodyViewport);
     state.cleanup.push(function () {
       resizeObserver.disconnect();
+    });
+  }
+
+  function bindWindowResize(state, syncLayoutFromViewport) {
+    if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return;
+
+    function handleResize() {
+      if (state.destroyed) return;
+      syncLayoutFromViewport();
+    }
+
+    window.addEventListener('resize', handleResize);
+    state.cleanup.push(function () {
+      if (typeof window.removeEventListener === 'function') window.removeEventListener('resize', handleResize);
     });
   }
 
@@ -1224,6 +1245,21 @@
       return;
     }
     style[name] = value;
+  }
+
+  function queuePostMountSync(state, syncLayoutFromViewport) {
+    if (state.hasQueuedPostMountSync || typeof setTimeout !== 'function') return;
+    state.hasQueuedPostMountSync = true;
+
+    var timerId = setTimeout(function () {
+      state.hasQueuedPostMountSync = false;
+      if (state.destroyed) return;
+      syncLayoutFromViewport();
+    }, 0);
+
+    state.cleanup.push(function () {
+      if (typeof clearTimeout === 'function') clearTimeout(timerId);
+    });
   }
 
   function normalizeViewportInput(viewport, label) {

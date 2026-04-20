@@ -277,10 +277,53 @@ async function checkTimelineDemo() {
   });
 }
 
+async function checkTimelineDemoWithoutResizeObserver() {
+  await withPage(async ({ goto, page, assertNoBrowserErrors }) => {
+    await page.addInitScript(() => {
+      delete window.ResizeObserver;
+    });
+    await page.setViewportSize({ width: 1400, height: 1200 });
+
+    const response = await goto('/demos/timeline.html');
+    assert.equal(response.status(), 200);
+
+    await page.waitForSelector('.sf-rail-timeline-row', { timeout: 10000 });
+
+    const initialMetrics = await page.locator('.sf-rail-timeline').evaluate((root) => ({
+      headerCells: root.querySelector('.sf-rail-timeline-header-row').children.length,
+      labelWidth: Number.parseFloat(getComputedStyle(root).getPropertyValue('--sf-rail-label-width')),
+      rowCount: root.querySelectorAll('.sf-rail-timeline-row').length,
+    }));
+
+    assert.equal(initialMetrics.headerCells, 2);
+    assert.equal(initialMetrics.rowCount > 0, true);
+    assert.equal(initialMetrics.labelWidth, 280);
+
+    await page.setViewportSize({ width: 700, height: 1200 });
+    await page.waitForFunction(() => {
+      const root = document.querySelector('.sf-rail-timeline');
+      if (!root) return false;
+      const labelWidth = Number.parseFloat(getComputedStyle(root).getPropertyValue('--sf-rail-label-width'));
+      return labelWidth > 0 && labelWidth < 280;
+    }, { timeout: 10000 });
+
+    const resizedMetrics = await page.locator('.sf-rail-timeline').evaluate((root) => ({
+      labelWidth: Number.parseFloat(getComputedStyle(root).getPropertyValue('--sf-rail-label-width')),
+      supportedViewportWidth: root.dataset.supportedViewportWidth,
+    }));
+
+    assert.equal(resizedMetrics.labelWidth < 280, true);
+    assert.equal(resizedMetrics.supportedViewportWidth, 'true');
+
+    assertNoBrowserErrors();
+  });
+}
+
 (async function main() {
   try {
     await runCheck('full-surface demo', checkFullSurface);
     await runCheck('timeline demo', checkTimelineDemo);
+    await runCheck('timeline demo without ResizeObserver', checkTimelineDemoWithoutResizeObserver);
     await runCheck('rail demo', checkRailDemo);
   } catch (error) {
     process.exit(1);

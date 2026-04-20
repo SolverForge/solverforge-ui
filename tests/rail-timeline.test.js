@@ -284,6 +284,100 @@ test('timeline compacts the label column before collapsing the visible track', (
   assert.equal(root.dataset.supportedViewportWidth, 'true');
 });
 
+test('timeline renders after append when ResizeObserver is unavailable', async () => {
+  const { SF, document } = loadSf(
+    ['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js'],
+    { ResizeObserver: undefined }
+  );
+
+  const timeline = SF.rail.createTimeline({
+    model: {
+      axis: buildAxis(28, { startMinute: 0, endMinute: 14 * 1440 }),
+      lanes: [
+        {
+          id: 'employee-h',
+          label: 'Employee H',
+          mode: 'detailed',
+          items: [
+            { id: 'shift-1', startMinute: 60, endMinute: 240, label: 'Shift 1', tone: 'blue' },
+          ],
+        },
+      ],
+    },
+  });
+
+  const host = document.createElement('div');
+  host.clientWidth = 1400;
+  host.offsetWidth = 1400;
+  document.body.appendChild(host);
+  host.appendChild(timeline.el);
+
+  const bodyViewport = timeline.el.querySelector('.sf-rail-timeline-body-viewport');
+  bodyViewport.clientWidth = 1364;
+  bodyViewport.offsetWidth = 1364;
+
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-row').length, 1);
+  assert.equal(timeline.el.querySelector('.sf-rail-timeline-header-row').children.length, 2);
+  assert.equal(bodyViewport.scrollWidth > bodyViewport.clientWidth, true);
+});
+
+test('timeline assigns stable fallback labels and ordering for unlabeled items and detail items', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  const timeline = SF.rail.createTimeline({
+    model: {
+      axis: buildAxis(7, { startMinute: 0, endMinute: 3 * 1440 }),
+      lanes: [
+        {
+          id: 'detailed-lane',
+          label: 'Detailed lane',
+          mode: 'detailed',
+          items: [
+            { id: 'detail-a', startMinute: 60, endMinute: 180, tone: 'blue' },
+            { id: 'detail-b', startMinute: 60, endMinute: 180, tone: 'amber' },
+          ],
+        },
+        {
+          id: 'overview-lane',
+          label: 'Overview lane',
+          mode: 'overview',
+          items: [
+            {
+              id: 'cluster-root',
+              clusterId: 'rush',
+              startMinute: 240,
+              endMinute: 420,
+              tone: 'emerald',
+              detailItems: [
+                { id: 'rush-a', startMinute: 240, endMinute: 300, tone: 'emerald' },
+                { id: 'rush-b', startMinute: 240, endMinute: 300, tone: 'rose' },
+              ],
+            },
+            { id: 'later', startMinute: 600, endMinute: 720, label: 'Later', tone: 'cyan' },
+          ],
+        },
+      ],
+    },
+  });
+
+  const detailedLabels = timeline.el.querySelectorAll('.sf-rail-timeline-item--detail')
+    .filter((node) => node.dataset.laneId === 'detailed-lane')
+    .map((node) => node.textContent.trim());
+
+  assert.deepEqual(detailedLabels, ['Item 1', 'Item 2']);
+
+  timeline.expandCluster('overview-lane', 'rush');
+
+  const expandedLabels = timeline.el.querySelectorAll('.sf-rail-timeline-item--detail')
+    .filter((node) => node.dataset.laneId === 'overview-lane')
+    .map((node) => node.textContent.trim());
+
+  assert.equal(expandedLabels[0].startsWith('Item 1'), true);
+  assert.equal(expandedLabels[1].startsWith('Item 2'), true);
+});
+
 test('timeline rejects non-numeric minute inputs instead of coercing them', () => {
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
 
@@ -343,12 +437,45 @@ test('timeline rejects non-numeric minute inputs instead of coercing them', () =
       model: {
         axis: {
           ...buildAxis(7),
+          ticks: [{ label: '06:00' }],
+        },
+        lanes: [],
+      },
+    });
+  }, /createTimeline\(model\.axis\.ticks\[0\]\.minute\) is required/);
+
+  assert.throws(() => {
+    SF.rail.createTimeline({
+      model: {
+        axis: {
+          ...buildAxis(7),
           ticks: [{ minute: '360', label: '06:00' }],
         },
         lanes: [],
       },
     });
   }, /createTimeline\(model\.axis\.ticks\[0\]\.minute\) must be a finite number/);
+
+  assert.throws(() => {
+    SF.rail.createTimeline({
+      model: {
+        axis: buildAxis(7),
+        lanes: [
+          {
+            id: 'employee-f',
+            label: 'Employee F',
+            mode: 'detailed',
+            overlays: [
+              { startMinute: 60, label: 'Broken overlay', tone: 'red' },
+            ],
+            items: [
+              { id: 'shift-1', startMinute: 60, endMinute: 180, label: 'Shift 1', tone: 'blue' },
+            ],
+          },
+        ],
+      },
+    });
+  }, /createTimeline\(model\.lanes\[\]\.overlays\[0\]\) requires startMinute\/endMinute or dayIndex\/dayCount/);
 
   assert.throws(() => {
     SF.rail.createTimeline({
