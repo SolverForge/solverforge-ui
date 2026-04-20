@@ -284,6 +284,117 @@ test('timeline compacts the label column before collapsing the visible track', (
   assert.equal(root.dataset.supportedViewportWidth, 'true');
 });
 
+test('timeline rejects non-numeric minute inputs instead of coercing them', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  assert.throws(() => {
+    SF.rail.createTimeline({
+      model: {
+        axis: {
+          startMinute: '2026-04-20T00:00:00Z',
+          endMinute: 7 * 1440,
+        },
+        lanes: [],
+      },
+    });
+  }, /createTimeline\(model\.axis\.startMinute\) must be a finite number/);
+
+  assert.throws(() => {
+    SF.rail.createTimeline({
+      model: {
+        axis: {
+          ...buildAxis(7),
+          initialViewport: {
+            startMinute: '0',
+            endMinute: 7 * 1440,
+          },
+        },
+        lanes: [],
+      },
+    });
+  }, /createTimeline\(model\.axis\.initialViewport\)\.startMinute must be a finite number/);
+
+  assert.throws(() => {
+    SF.rail.createTimeline({
+      model: {
+        axis: buildAxis(7),
+        lanes: [
+          {
+            id: 'employee-e',
+            label: 'Employee E',
+            mode: 'detailed',
+            items: [
+              {
+                id: 'shift-1',
+                startMinute: '2026-04-20T08:00:00Z',
+                endMinute: '2026-04-20T16:00:00Z',
+                label: 'Shift 1',
+                tone: 'amber',
+              },
+            ],
+          },
+        ],
+      },
+    });
+  }, /createTimeline\(model\.lanes\[\]\.items\[\]\.startMinute\) must be a finite number/);
+
+  assert.throws(() => {
+    SF.rail.createTimeline({
+      model: {
+        axis: {
+          ...buildAxis(7),
+          ticks: [{ minute: '360', label: '06:00' }],
+        },
+        lanes: [],
+      },
+    });
+  }, /createTimeline\(model\.axis\.ticks\[0\]\.minute\) must be a finite number/);
+
+  assert.throws(() => {
+    SF.rail.createTimeline({
+      model: {
+        axis: buildAxis(7),
+        lanes: [
+          {
+            id: 'employee-f',
+            label: 'Employee F',
+            mode: 'detailed',
+            overlays: [
+              { dayIndex: '2', label: 'Unavailable', tone: 'red' },
+            ],
+            items: [
+              { id: 'shift-1', startMinute: 60, endMinute: 180, label: 'Shift 1', tone: 'blue' },
+            ],
+          },
+        ],
+      },
+    });
+  }, /createTimeline\(model\.lanes\[\]\.overlays\[0\]\)\.dayIndex must be a finite number/);
+
+  const timeline = SF.rail.createTimeline({
+    model: {
+      axis: buildAxis(7),
+      lanes: [
+        {
+          id: 'employee-g',
+          label: 'Employee G',
+          mode: 'detailed',
+          items: [
+            { id: 'shift-1', startMinute: 120, endMinute: 300, label: 'Shift 1', tone: 'blue' },
+          ],
+        },
+      ],
+    },
+  });
+
+  assert.throws(() => {
+    timeline.setViewport({
+      startMinute: '0',
+      endMinute: 1440,
+    });
+  }, /rail\.createTimeline\(\)\.setViewport\(viewport\)\.startMinute must be a finite number/);
+});
+
 test('timeline renders weekend shading and default 6-hour ticks without explicit tick input', () => {
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
 

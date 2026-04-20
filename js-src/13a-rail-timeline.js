@@ -75,7 +75,10 @@
   sf.rail.createTimeline = function (config) {
     sf.assert(config && config.model, 'rail.createTimeline(config.model) requires a normalized model');
 
-    var labelWidth = config.labelWidth || 280;
+    var labelWidth = config.labelWidth == null
+      ? 280
+      : assertFiniteNumber(config.labelWidth, 'rail.createTimeline(labelWidth)');
+    sf.assert(labelWidth > 0, 'rail.createTimeline(labelWidth) must be greater than zero');
     var state = {
       cleanup: [],
       config: config,
@@ -238,7 +241,10 @@
         syncScrollToViewport();
       },
       setViewport: function (nextViewport) {
-        state.viewport = clampViewport(state.model.axis, nextViewport);
+        state.viewport = clampViewport(
+          state.model.axis,
+          normalizeViewportInput(nextViewport, 'rail.createTimeline().setViewport(viewport)')
+        );
         render();
         syncScrollToViewport();
       },
@@ -582,17 +588,25 @@
       endMinute: axis.endMinute,
     };
     var duration = next.endMinute - next.startMinute;
-    if (!(duration > 0)) duration = totalDuration;
     duration = Math.min(duration, totalDuration);
 
-    var start = next.startMinute;
-    if (start == null || !isFinite(start)) start = axis.startMinute;
-    start = clampNumber(start, axis.startMinute, axis.endMinute - duration);
+    var start = clampNumber(next.startMinute, axis.startMinute, axis.endMinute - duration);
 
     return {
       endMinute: start + duration,
       startMinute: start,
     };
+  }
+
+  function assertFiniteNumber(value, label) {
+    sf.assert(typeof value === 'number' && isFinite(value), label + ' must be a finite number');
+    return value;
+  }
+
+  function assertInteger(value, label) {
+    var number = assertFiniteNumber(value, label);
+    sf.assert(Math.floor(number) === number, label + ' must be an integer');
+    return number;
   }
 
   function describeMeta(meta) {
@@ -639,19 +653,24 @@
 
   function normalizeAxis(axis) {
     sf.assert(axis && axis.startMinute != null && axis.endMinute != null, 'createTimeline(model.axis.startMinute/endMinute) are required');
-    sf.assert(axis.endMinute > axis.startMinute, 'createTimeline(model.axis.endMinute) must be greater than startMinute');
+    var startMinute = assertFiniteNumber(axis.startMinute, 'createTimeline(model.axis.startMinute)');
+    var endMinute = assertFiniteNumber(axis.endMinute, 'createTimeline(model.axis.endMinute)');
+    sf.assert(endMinute > startMinute, 'createTimeline(model.axis.endMinute) must be greater than startMinute');
 
     var normalized = {
-      endMinute: Number(axis.endMinute),
-      startMinute: Number(axis.startMinute),
+      endMinute: endMinute,
+      startMinute: startMinute,
     };
 
     normalized.days = normalizeDays(axis.days, normalized.startMinute, normalized.endMinute);
     normalized.ticks = normalizeTicks(axis.ticks, normalized.startMinute, normalized.endMinute);
-    normalized.initialViewport = clampViewport(normalized, axis.initialViewport || {
-      startMinute: normalized.startMinute,
-      endMinute: normalized.endMinute,
-    });
+    normalized.initialViewport = clampViewport(
+      normalized,
+      normalizeViewportInput(axis.initialViewport, 'createTimeline(model.axis.initialViewport)') || {
+        startMinute: normalized.startMinute,
+        endMinute: normalized.endMinute,
+      }
+    );
 
     return normalized;
   }
@@ -699,8 +718,13 @@
         return;
       }
 
-      var nextStart = day.startMinute != null ? Number(day.startMinute) : cursor;
-      var nextEnd = day.endMinute != null ? Number(day.endMinute) : Math.min(nextStart + DAY_MINUTES, endMinute);
+      var nextStart = day.startMinute != null
+        ? assertFiniteNumber(day.startMinute, 'createTimeline(model.axis.days[' + dayIndex + '].startMinute)')
+        : cursor;
+      var nextEnd = day.endMinute != null
+        ? assertFiniteNumber(day.endMinute, 'createTimeline(model.axis.days[' + dayIndex + '].endMinute)')
+        : Math.min(nextStart + DAY_MINUTES, endMinute);
+      sf.assert(nextEnd > nextStart, 'createTimeline(model.axis.days[' + dayIndex + '].endMinute) must be greater than startMinute');
       list.push(makeDay({
         endMinute: nextEnd,
         isWeekend: day.isWeekend != null ? !!day.isWeekend : inferWeekend(day.label),
@@ -716,7 +740,9 @@
 
   function normalizeItem(item, index) {
     sf.assert(item && item.startMinute != null && item.endMinute != null, 'timeline items require startMinute/endMinute');
-    sf.assert(item.endMinute > item.startMinute, 'timeline items must have endMinute > startMinute');
+    var startMinute = assertFiniteNumber(item.startMinute, 'createTimeline(model.lanes[].items[].startMinute)');
+    var endMinute = assertFiniteNumber(item.endMinute, 'createTimeline(model.lanes[].items[].endMinute)');
+    sf.assert(endMinute > startMinute, 'timeline items must have endMinute > startMinute');
 
     return {
       clusterId: item.clusterId != null ? String(item.clusterId) : null,
@@ -725,12 +751,12 @@
           return normalizeItem(detailItem, index + '-' + detailIndex);
         })
         : [],
-      endMinute: Number(item.endMinute),
+      endMinute: endMinute,
       id: item.id != null ? String(item.id) : 'item-' + index,
       label: item.label || 'Item ' + (Number(index) + 1),
       meta: item.meta != null ? item.meta : '',
       originalIndex: Number(index),
-      startMinute: Number(item.startMinute),
+      startMinute: startMinute,
       tone: resolveTone(item.tone || item.color || 'slate'),
     };
   }
@@ -787,24 +813,30 @@
 
     var startMinute = overlay.startMinute;
     var endMinute = overlay.endMinute;
+    var label = 'createTimeline(model.lanes[].overlays[' + index + '])';
 
     if ((startMinute == null || endMinute == null) && overlay.dayIndex != null) {
-      var day = axis.days[overlay.dayIndex];
-      if (!day) return null;
-      var dayCount = overlay.dayCount || 1;
-      var lastDay = axis.days[Math.min(axis.days.length - 1, overlay.dayIndex + dayCount - 1)] || day;
+      var dayIndex = assertInteger(overlay.dayIndex, label + '.dayIndex');
+      var day = axis.days[dayIndex];
+      sf.assert(day, label + '.dayIndex must reference an existing day');
+      var dayCount = overlay.dayCount == null ? 1 : assertInteger(overlay.dayCount, label + '.dayCount');
+      sf.assert(dayCount > 0, label + '.dayCount must be greater than zero');
+      var lastDay = axis.days[Math.min(axis.days.length - 1, dayIndex + dayCount - 1)] || day;
       startMinute = day.startMinute;
       endMinute = lastDay.endMinute;
     }
 
-    if (startMinute == null || endMinute == null || endMinute <= startMinute) return null;
+    if (startMinute == null || endMinute == null) return null;
+    startMinute = assertFiniteNumber(startMinute, label + '.startMinute');
+    endMinute = assertFiniteNumber(endMinute, label + '.endMinute');
+    sf.assert(endMinute > startMinute, label + '.endMinute must be greater than startMinute');
 
     return {
-      endMinute: Number(endMinute),
+      endMinute: endMinute,
       id: overlay.id != null ? String(overlay.id) : 'overlay-' + index,
       label: overlay.label || '',
       meta: overlay.meta || '',
-      startMinute: Number(startMinute),
+      startMinute: startMinute,
       tone: resolveTone(overlay.tone || overlay.color || 'slate'),
     };
   }
@@ -815,14 +847,16 @@
     if (Array.isArray(ticks) && ticks.length > 0) {
       ticks.forEach(function (tick, index) {
         if (typeof tick === 'number') {
-          list.push({ id: 'tick-' + index, label: formatClock(tick), minute: tick });
+          var numericTick = assertFiniteNumber(tick, 'createTimeline(model.axis.ticks[' + index + '])');
+          list.push({ id: 'tick-' + index, label: formatClock(numericTick), minute: numericTick });
           return;
         }
         if (!tick || tick.minute == null) return;
+        var minute = assertFiniteNumber(tick.minute, 'createTimeline(model.axis.ticks[' + index + '].minute)');
         list.push({
           id: tick.id != null ? String(tick.id) : 'tick-' + index,
-          label: tick.label || formatClock(tick.minute),
-          minute: Number(tick.minute),
+          label: tick.label || formatClock(minute),
+          minute: minute,
         });
       });
       return list;
@@ -1190,6 +1224,20 @@
       return;
     }
     style[name] = value;
+  }
+
+  function normalizeViewportInput(viewport, label) {
+    if (viewport == null) return null;
+    sf.assert(typeof viewport === 'object', label + ' must be an object');
+
+    var startMinute = assertFiniteNumber(viewport.startMinute, label + '.startMinute');
+    var endMinute = assertFiniteNumber(viewport.endMinute, label + '.endMinute');
+    sf.assert(endMinute > startMinute, label + '.endMinute must be greater than startMinute');
+
+    return {
+      endMinute: endMinute,
+      startMinute: startMinute,
+    };
   }
 
   function showTooltip(tooltip, root, payload, event) {

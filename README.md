@@ -262,6 +262,9 @@ SF.createButton({ text: 'Sm',       variant: 'primary', size: 'small' })
 `SF.rail.createTimeline()` is the canonical read-only scheduling surface.
 It accepts a normalized numeric model only; backend timestamp parsing and
 timezone policy stay outside the library.
+Every minute field and viewport boundary must already be a finite number.
+String timestamps, `Date` objects, and numeric strings are rejected instead of
+being coerced inside the library.
 Layout density is derived from the actual timeline body viewport, not padded
 wrappers or outer card chrome.
 `labelWidth` is the preferred sticky-label width; supported embeds with a body
@@ -274,6 +277,11 @@ Model shape:
 - `model.lanes[]`: `id`, `label`, optional `badges`, optional `stats`, optional `overlays`, `mode`, `items[]`
 - `items[]`: `id`, `startMinute`, `endMinute`, `label`, optional `meta`, `tone`, optional `clusterId`, optional `detailItems[]`
 - `overlays[]`: either numeric spans via `startMinute/endMinute` or full-day bands via `dayIndex/dayCount`
+
+Integer-only fields remain integer-only:
+
+- `model.lanes[].overlays[].dayIndex`
+- `model.lanes[].overlays[].dayCount`
 
 If you want stable programmatic expansion through `expandCluster(laneId, clusterId)`,
 provide `clusterId` on the overlapping overview items that should expand together.
