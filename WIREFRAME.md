@@ -305,65 +305,79 @@ Shipped runtime expectations:
 
 ---
 
-## 14. Timeline Rail (Shipped Core)
+## 14. Rail Scheduling Timeline (Shipped Core)
 
 ```
-  .sf-timeline-header
-  ┌────────────┬──────────┬──────────┬──────────┬──────────┬──────────┐
-  │  RESOURCE  │   Mon    │   Tue    │   Wed    │   Thu    │   Fri    │
-  └────────────┴──────────┴──────────┴──────────┴──────────┴──────────┘
+  .sf-rail-timeline
+  ┌─────────────────────────────────────────────────────────────────────────────┐
+  │  [1W] [2W] [4W] [Reset]                         drag to pan · read only     │
+  ├───────────────┬─────────────────────────────────────────────────────────────┤
+  │ Staffing lane │  Mon 20      Tue 21      Wed 22      Thu 23      Fri 24    │  sticky top time header
+  │               │  00 06 12 18 00 06 12 18 00 06 12 18 00 06 12 18 ...       │  6-hour tick marks
+  ├───────────────┼─────────────────────────────────────────────────────────────┤
+  │ Ward East     │  ███ cluster ███            █ cardio block █                │  overview lane
+  │ Coverage 92%  │  overlaps collapse into one readable block                  │
+  ├───────────────┼─────────────────────────────────────────────────────────────┤
+  │ Ward West     │      ███ cluster ███                     █ handoff █        │  overview lane
+  │ Coverage 88%  │  background overlays show desired / unavailable spans       │
+  ├───────────────┼─────────────────────────────────────────────────────────────┤
+  │ Ada           │  █ primary █                                                │
+  │ Hours 38h     │      █ overlap █                                            │  detailed lane
+  │               │  track 0                     track 1                         │  interval packed
+  ├───────────────┼─────────────────────────────────────────────────────────────┤
+  │ Marco         │           █ primary █                                        │  detailed lane
+  │ Hours 42h     │              █ late coverage █                               │
+  └───────────────┴─────────────────────────────────────────────────────────────┘
 
-  .sf-resource-card                                        ← one per resource
-  ┌────────────┬──────────────────────────────────────────────────────┐
-  │ FORNO 1    │  ░░░░ gauge bars ░░░░░                              │
-  │ ┌────────┐ │  Temp ████████░░░  850/1000°C                      │
-  │ │CAMERA  │ │  Load ██████░░░░░  120/200 kg                      │
-  ├────────────┼──────────────────────────────────────────────────────┤
-  │ Jobs   12  │  ┌──────┐   ┌────────────┐  ┌────┐   ┌──────────┐  │
-  │ Prod 840kg │  │ODL-14│   │  ODL-2847  │  │late│   │ ODL-991  │  │
-  │ Procs T,R  │  │Rossi │   │  Bianchi   │  │glow│   │ Verdi    │  │
-  │            │  └──────┘   └────────────┘  └────┘   └──────────┘  │
-  │ .sf-       │  ↑ .sf-block (positioned by start/end %)           │
-  │ resource-  │     color per process, late blocks glow red        │
-  │ stats      │                                                     │
-  │            │  ╲╲╲╲  .sf-changeover  (diagonal amber stripes)     │
-  └────────────┴──────────────────────────────────────────────────────┘
-     200px fixed    ← remaining width is the rail →
+  sticky left lane labels
+  hidden native scrollbar
+  weekend shading behind the axis
 ```
 
 **JS:**
 ```
-var header = SF.rail.createHeader({
-  label: 'Forno', labelWidth: 200,
-  columns: ['Lun', 'Mar', 'Mer', 'Gio', 'Ven'],
+var timeline = SF.rail.createTimeline({
+  label: 'Staffing lane',
+  labelWidth: 280,
+  model: {
+    axis: {
+      startMinute: 0,
+      endMinute: 28 * 1440,
+      days: buildDays(28),
+      ticks: buildSixHourTicks(28),
+      initialViewport: { startMinute: 0, endMinute: 14 * 1440 },
+    },
+    lanes: [
+      {
+        id: 'ward-east',
+        label: 'By location · Ward East',
+        mode: 'overview',
+        overlays: [{ dayIndex: 5, label: 'Unavailable', tone: 'red' }],
+        items: [
+          { id: 'east-1', clusterId: 'east-rush', startMinute: 360, endMinute: 840, label: 'ER intake', tone: 'blue' },
+          { id: 'east-2', clusterId: 'east-rush', startMinute: 420, endMinute: 960, label: 'Trauma hold', tone: 'blue' },
+        ],
+      },
+      {
+        id: 'employee-ada',
+        label: 'By employee · Ada',
+        mode: 'detailed',
+        items: [
+          { id: 'ada-1', startMinute: 2 * 1440 + 360, endMinute: 2 * 1440 + 840, label: 'Primary shift', tone: 'amber' },
+          { id: 'ada-2', startMinute: 2 * 1440 + 660, endMinute: 2 * 1440 + 1020, label: 'Handoff overlap', tone: 'amber' },
+        ],
+      },
+    ],
+  },
 });
 
-var card = SF.rail.createCard({
-  id: 'furnace-1', name: 'FORNO 1', labelWidth: 200,
-  type: 'CAMERA', typeStyle: { bg: 'rgba(59,130,246,0.15)', color: '#1d4ed8' },
-  badges: ['TEMPRA', { label: 'HOT', style: { bg: 'rgba(239,68,68,0.12)', color: '#b91c1c' } }],
-  columns: 5,
-  gauges: [
-    { label: 'Temp', pct: 85, style: 'heat', text: '850/1000°C' },
-    { label: 'Load', pct: 60, style: 'load', text: '120/200 kg' },
-  ],
-  stats: [
-    { label: 'Jobs', value: 12 },
-    { label: 'Prod', value: '840 kg' },
-  ],
-});
-
-card.addBlock({
-  start: 120, end: 360, horizon: 4800,
-  label: 'ODL-2847', meta: 'Bianchi',
-  color: 'rgba(59,130,246,0.6)', borderColor: '#3b82f6',
-  late: false,
-  onHover: function (e, cfg) { showTooltip(e, cfg); },
-});
-
-card.setSolving(true);   // breathing emerald glow
-card.clearBlocks();
+timeline.setViewport({ startMinute: 7 * 1440, endMinute: 21 * 1440 });
+timeline.expandCluster('ward-east', 'east-rush');
 ```
+
+The original `createHeader/createCard/addBlock/addChangeover` APIs remain
+shipped as low-level primitives, but they are no longer the recommended
+integration path for dense scheduling UIs.
 
 ---
 
@@ -425,14 +439,14 @@ gantt.highlightTask('task-1');
 
 Requires: `/sf/vendor/frappe-gantt/` + `/sf/vendor/split/`
 
-## 16. Planned Rail Extensions
+## 16. Low-Level Rail Add-ons (Shipped)
 
-These ideas are intentionally not part of the shipped API surface yet:
+These helpers remain shipped for custom primitive rail compositions:
 
-- Heatmap strips rendered via `.sf-heatmap` and `.sf-heatmap-segment`
-- Unassigned task pills rendered via `.sf-unassigned-pill`
+- `.sf-heatmap` / `.sf-heatmap-segment` via `SF.rail.createHeatmap(config)`
+- `.sf-unassigned-pill` via `SF.rail.createUnassignedRail(tasks, onTaskClick)` or `card.setUnassigned(items)`
 
-Treat those as design direction until they are wired into `js-src/13-rail.js` and added to the README API reference.
+Treat them as low-level add-ons, not the canonical dense scheduling entrypoint.
 
 ---
 

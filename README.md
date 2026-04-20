@@ -149,14 +149,17 @@ Default content is always text-rendered. Use these fields only with trusted HTML
 | `SF.createTable(config)` | `cells[].unsafeHtml` |
 | `SF.gantt.create(config)` | `unsafePopupHtml`, `columns[].render(task).unsafeHtml` |
 
-### Timeline Rail
+### Rail Scheduling
 
 | Factory | Returns | Description |
 |---------|---------|-------------|
-| `SF.rail.createHeader(config)` | `HTMLElement` | Day/period column header above resource cards |
-| `SF.rail.createCard(config)` | `{el, rail, addBlock, clearBlocks, setSolving}` | Resource lane with identity, gauges, stats, and block rail |
-| `SF.rail.addBlock(rail, config)` | `HTMLElement` | Positioned block (task/job) inside a rail |
-| `SF.rail.addChangeover(rail, config)` | `HTMLElement` | Diagonal-striped gap between blocks |
+| `SF.rail.createTimeline(config)` | `{el, setModel, setViewport, expandCluster, destroy}` | Canonical dense scheduling timeline with sticky time header, sticky lane labels, synchronized horizontal viewport, drag-to-pan, zoom presets, weekend shading, overlays, overview clustering, and packed detailed lanes |
+| `SF.rail.createHeader(config)` | `HTMLElement` | Low-level day/period header primitive for furnace-style rail layouts |
+| `SF.rail.createCard(config)` | `{el, rail, addBlock, clearBlocks, setSolving, setUnassigned}` | Low-level resource lane primitive with identity, gauges, stats, and block rail |
+| `SF.rail.addBlock(rail, config)` | `HTMLElement` | Low-level positioned block (task/job) inside a primitive rail |
+| `SF.rail.addChangeover(rail, config)` | `HTMLElement` | Low-level diagonal-striped gap between primitive blocks |
+| `SF.rail.createHeatmap(config)` | `HTMLElement \| null` | Optional low-level heatmap strip aligned with a rail card |
+| `SF.rail.createUnassignedRail(tasks, onTaskClick)` | `HTMLElement` | Optional low-level unassigned-pill row |
 
 ### Gantt (Frappe Gantt)
 
@@ -254,32 +257,99 @@ SF.createButton({ text: 'Delete',   variant: 'danger', outline: true })
 SF.createButton({ text: 'Sm',       variant: 'primary', size: 'small' })
 ```
 
-## Timeline Rail
+## Rail Scheduling
 
-The scheduling hero view. Resource lanes with positioned task blocks,
-gauges, stats, and changeover indicators.
+`SF.rail.createTimeline()` is the canonical read-only scheduling surface.
+It accepts a normalized numeric model only; backend timestamp parsing and
+timezone policy stay outside the library.
+
+Model shape:
+
+- `model.axis`: `startMinute`, `endMinute`, `days[]`, `ticks[]`, `initialViewport`
+- `model.lanes[]`: `id`, `label`, optional `badges`, optional `stats`, optional `overlays`, `mode`, `items[]`
+- `items[]`: `id`, `startMinute`, `endMinute`, `label`, optional `meta`, `tone`, optional `clusterId`, optional `detailItems[]`
+- `overlays[]`: either numeric spans via `startMinute/endMinute` or full-day bands via `dayIndex/dayCount`
+
+If you want stable programmatic expansion through `expandCluster(laneId, clusterId)`,
+provide `clusterId` on the overlapping overview items that should expand together.
+The example below assumes small consumer-side helpers such as `buildDays()` and
+`buildSixHourTicks()` that normalize backend timestamps into numeric axis data.
 
 ```javascript
-// Day header
+var timeline = SF.rail.createTimeline({
+  label: 'Staffing lane',
+  labelWidth: 280,
+  model: {
+    axis: {
+      startMinute: 0,
+      endMinute: 28 * 1440,
+      days: buildDays(28),
+      ticks: buildSixHourTicks(28),
+      initialViewport: { startMinute: 0, endMinute: 14 * 1440 },
+    },
+    lanes: [
+      {
+        id: 'ward-east',
+        label: 'By location · Ward East',
+        mode: 'overview',
+        badges: ['default'],
+        overlays: [
+          { dayIndex: 5, label: 'Unavailable', tone: 'red' },
+          { dayIndex: 11, dayCount: 2, label: 'Desired', tone: 'emerald' },
+        ],
+        items: [
+          { id: 'east-1', clusterId: 'east-rush', startMinute: 360, endMinute: 840, label: 'ER intake', meta: '8 clinicians', tone: 'blue' },
+          { id: 'east-2', clusterId: 'east-rush', startMinute: 420, endMinute: 960, label: 'Trauma hold', meta: '6 clinicians', tone: 'blue' },
+          { id: 'east-3', startMinute: 2 * 1440 + 360, endMinute: 2 * 1440 + 1080, label: 'Cardio block', meta: '5 clinicians', tone: 'emerald' },
+        ],
+      },
+      {
+        id: 'employee-ada',
+        label: 'By employee · Ada',
+        mode: 'detailed',
+        badges: ['detailed'],
+        items: [
+          { id: 'ada-1', startMinute: 2 * 1440 + 360, endMinute: 2 * 1440 + 840, label: 'Primary shift', meta: 'Ward East', tone: 'amber' },
+          { id: 'ada-2', startMinute: 2 * 1440 + 660, endMinute: 2 * 1440 + 1020, label: 'Handoff overlap', meta: 'Safety round', tone: 'amber' },
+        ],
+      },
+    ],
+  },
+});
+container.appendChild(timeline.el);
+
+timeline.setViewport({ startMinute: 7 * 1440, endMinute: 21 * 1440 });
+timeline.expandCluster('ward-east', 'east-rush');
+```
+
+Returned timeline API:
+
+- `el`
+- `setModel(model)`
+- `setViewport(viewport)`
+- `expandCluster(laneId, clusterId | null)`
+- `destroy()`
+
+### Low-Level Rail Primitives
+
+Use these when you want to assemble a custom furnace-style resource rail
+manually instead of using the higher-level scheduling timeline.
+
+```javascript
 var header = SF.rail.createHeader({
   label: 'Resource',
-  labelWidth: 200,
+  labelWidth: 220,
   columns: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
 });
 container.appendChild(header);
 
-// One card per resource (furnace, vehicle, employee, machine...)
 var card = SF.rail.createCard({
   id: 'furnace-1',
   name: 'FORNO 1',
-  labelWidth: 200,
+  labelWidth: 220,
   columns: 5,
   type: 'CAMERA',
-  typeStyle: { bg: 'rgba(59,130,246,0.15)', color: '#1d4ed8', border: '1px solid rgba(59,130,246,0.3)' },
-  badges: [
-    'TEMPRA',
-    { label: 'HOT', style: { bg: 'rgba(239,68,68,0.12)', color: '#b91c1c', border: '1px solid rgba(239,68,68,0.3)' } },
-  ],
+  badges: ['TEMPRA'],
   gauges: [
     { label: 'Temp', pct: 85, style: 'heat', text: '850/1000°C' },
     { label: 'Load', pct: 60, style: 'load', text: '120/200 kg' },
@@ -291,23 +361,18 @@ var card = SF.rail.createCard({
 });
 container.appendChild(card.el);
 
-// Add task blocks (positioned by start/end within horizon)
 card.addBlock({
-  start: 120,              // minutes from horizon start
+  start: 120,
   end: 360,
-  horizon: 4800,           // total horizon in same units
+  horizon: 4800,
   label: 'ODL-2847',
   meta: 'Bianchi',
   color: 'rgba(59,130,246,0.6)',
   borderColor: '#3b82f6',
-  late: false,
-  onHover: function (e, cfg) { /* show tooltip */ },
 });
 
-// Changeover gap between blocks
 SF.rail.addChangeover(card.rail, { start: 360, end: 400, horizon: 4800 });
-
-// Solving state (breathing emerald glow)
+card.setUnassigned([{ id: 'late-queue', label: 'ODL-991' }]);
 card.setSolving(true);
 ```
 
@@ -501,7 +566,7 @@ solverforge-ui/
 ├── src/lib.rs              # routes() + asset serving
 ├── Makefile                # bundles css-src/ + js-src/ into sf.css + sf.js
 ├── .github/workflows/      # CI, release, and publish automation
-├── css-src/                # 19 CSS source files (numbered for concat order)
+├── css-src/                # 20 CSS source files (numbered for concat order)
 │   ├── 00-tokens.css       #   design system variables
 │   ├── 01-reset.css        #   box-sizing reset
 │   ├── 02-typography.css   #   @font-face declarations
@@ -520,8 +585,9 @@ solverforge-ui/
 │   ├── 15-rail-resources.css # resource cards, gauges, resource layout
 │   ├── 16-rail-blocks.css  #   rail blocks, changeovers, unassigned styles
 │   ├── 17-gantt-layout.css #   split layout, grid table, view controls
-│   └── 18-gantt-bars.css   #   Frappe bar overrides, pinned/highlighted bars
-├── js-src/                 # 16 JS source files
+│   ├── 18-gantt-bars.css   #   Frappe bar overrides, pinned/highlighted bars
+│   └── 19-rail-timeline.css #  canonical scheduling timeline
+├── js-src/                 # 17 JS source files
 │   ├── 00-core.js          #   SF namespace, escHtml, el()
 │   ├── 01-score.js         #   score parsing
 │   ├── 02-colors.js        #   Tango palette + project colors
@@ -535,7 +601,8 @@ solverforge-ui/
 │   ├── 10-backend.js       #   createBackend() — axum/tauri/fetch
 │   ├── 11-solver.js        #   createSolver() — SSE state machine
 │   ├── 12-api-guide.js     #   createApiGuide()
-│   ├── 13-rail.js          #   timeline rail header, cards, blocks, changeovers
+│   ├── 13-rail.js          #   low-level rail header, cards, blocks, changeovers
+│   ├── 13a-rail-timeline.js #  canonical scheduling timeline
 │   ├── 14-gantt.js         #   Frappe Gantt wrapper (split pane, grid, chart)
 │   └── 15-footer.js        #   createFooter()
 └── static/sf/              # Embedded assets (include_dir!)
@@ -612,9 +679,10 @@ Bundling writes both stable compatibility assets (`static/sf/sf.css`,
 Runnable demo fixtures live in `demos/`.
 
 - `demos/full-surface.html` exercises the primary shipped component surface together.
-- `demos/rail.html` focuses on resource cards, blocks, gauges, and changeovers.
+- `demos/timeline.html` is the focused dense scheduling example built with `SF.rail.createTimeline()`.
+- `demos/rail.html` focuses on the low-level rail primitives: resource cards, blocks, gauges, and changeovers.
 - `make demo-serve` serves the repository at `http://localhost:8000/demos/` for local validation.
-- `make test-browser` runs browser-level smoke tests against both demo fixtures.
+- `make test-browser` runs browser-level smoke tests against the shipped demo fixtures.
 - Run `make browser-setup` once on a machine to install the Playwright test dependency and Chromium.
 
 ## Acknowledgments
