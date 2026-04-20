@@ -2459,8 +2459,7 @@ const SF = (function () {
       },
       el: root,
       expandCluster: function (laneId, clusterId) {
-        if (clusterId == null) delete state.expandedClusters[laneId];
-        else state.expandedClusters[laneId] = String(clusterId);
+        setExpandedCluster(state, laneId, clusterId);
         rerenderTimeline();
       },
       setModel: function (nextModel) {
@@ -2629,27 +2628,64 @@ const SF = (function () {
     state.scrollSync = null;
   }
 
-  function buildDetailedRender(lane, items) {
-    var packed = packItems(items);
-    var height = packed.trackCount > 0
+  function measurePackedHeight(packed) {
+    return packed.trackCount > 0
       ? TRACK_PADDING * 2 + packed.trackCount * TRACK_HEIGHT + Math.max(0, packed.trackCount - 1) * TRACK_GAP
       : OVERVIEW_HEIGHT;
+  }
+
+  function buildDetailBlockConfig(item, lane, trackIndex, top, options) {
+    var config = options || {};
+    return {
+      clusterId: config.clusterId || null,
+      detailHint: config.detailHint || '',
+      endMinute: item.endMinute,
+      height: TRACK_HEIGHT,
+      itemId: item.id,
+      kindClass: 'sf-rail-timeline-item--detail',
+      label: item.label,
+      metaLabel: describeMeta(item.meta),
+      startMinute: item.startMinute,
+      top: top,
+      ariaLabel: buildItemAriaLabel(item, lane),
+      tooltip: buildItemTooltip(item, lane),
+      tone: item.tone,
+      trackIndex: trackIndex,
+    };
+  }
+
+  function buildOverviewBlockConfig(group, height, options) {
+    var config = options || {};
+    return {
+      clusterId: config.clusterId || null,
+      endMinute: group.endMinute,
+      height: OVERVIEW_BLOCK_HEIGHT,
+      itemId: config.itemId,
+      kindClass: config.kindClass,
+      label: group.summary.primaryLabel,
+      metaLabel: group.summary.secondaryLabel,
+      onClick: config.onClick || null,
+      startMinute: group.startMinute,
+      summary: buildOverviewBlockSummary(group),
+      top: Math.max(Math.round((height - OVERVIEW_BLOCK_HEIGHT) / 2), TRACK_PADDING),
+      ariaLabel: buildOverviewAriaLabel(group, group.lane, !!config.expanded),
+      expanded: !!config.expanded,
+      tooltip: config.tooltip,
+      tone: group.tone,
+    };
+  }
+
+  function buildDetailedRender(lane, items) {
+    var packed = packItems(items);
+    var height = measurePackedHeight(packed);
 
     var blocks = packed.items.map(function (entry) {
-      return {
-        endMinute: entry.item.endMinute,
-        height: TRACK_HEIGHT,
-        itemId: entry.item.id,
-        kindClass: 'sf-rail-timeline-item--detail',
-        label: entry.item.label,
-        metaLabel: describeMeta(entry.item.meta),
-        startMinute: entry.item.startMinute,
-        top: TRACK_PADDING + entry.trackIndex * (TRACK_HEIGHT + TRACK_GAP),
-        ariaLabel: buildItemAriaLabel(entry.item, lane),
-        tooltip: buildItemTooltip(entry.item, lane),
-        tone: entry.item.tone,
-        trackIndex: entry.trackIndex,
-      };
+      return buildDetailBlockConfig(
+        entry.item,
+        lane,
+        entry.trackIndex,
+        TRACK_PADDING + entry.trackIndex * (TRACK_HEIGHT + TRACK_GAP)
+      );
     });
 
     return {
@@ -2675,82 +2711,52 @@ const SF = (function () {
       packedExpanded = packItems(expandedGroup.detailItems);
     }
 
-    var height = OVERVIEW_HEIGHT;
-    if (packedExpanded && packedExpanded.trackCount > 0) {
-      height = Math.max(
-        OVERVIEW_HEIGHT,
-        TRACK_PADDING * 2 + packedExpanded.trackCount * TRACK_HEIGHT + Math.max(0, packedExpanded.trackCount - 1) * TRACK_GAP
-      );
-    }
+    var height = packedExpanded ? Math.max(OVERVIEW_HEIGHT, measurePackedHeight(packedExpanded)) : OVERVIEW_HEIGHT;
 
     var blocks = [];
     groups.forEach(function (group) {
       if (expandedGroup && group.id === expandedGroup.id) {
         packedExpanded.items.forEach(function (entry) {
-          blocks.push({
-            clusterId: group.id,
-            detailHint: 'Expanded',
-            endMinute: entry.item.endMinute,
-            height: TRACK_HEIGHT,
-            itemId: entry.item.id,
-            kindClass: 'sf-rail-timeline-item--detail',
-            label: entry.item.label,
-            metaLabel: describeMeta(entry.item.meta),
-            startMinute: entry.item.startMinute,
-            top: TRACK_PADDING + entry.trackIndex * (TRACK_HEIGHT + TRACK_GAP),
-            ariaLabel: buildItemAriaLabel(entry.item, lane),
-            tooltip: buildItemTooltip(entry.item, lane),
-            tone: entry.item.tone,
-            trackIndex: entry.trackIndex,
-          });
+          blocks.push(buildDetailBlockConfig(
+            entry.item,
+            lane,
+            entry.trackIndex,
+            TRACK_PADDING + entry.trackIndex * (TRACK_HEIGHT + TRACK_GAP),
+            {
+              clusterId: group.id,
+              detailHint: 'Expanded',
+            }
+          ));
         });
         return;
       }
 
       if (group.isCluster) {
-        var summary = buildOverviewBlockSummary(group, false);
-        blocks.push({
+        blocks.push(buildOverviewBlockConfig(group, height, {
           clusterId: group.id,
-          endMinute: group.endMinute,
-          height: OVERVIEW_BLOCK_HEIGHT,
           itemId: group.id,
           kindClass: 'sf-rail-timeline-item--cluster',
-          label: group.summary.primaryLabel,
-          metaLabel: group.summary.secondaryLabel,
           onClick: function () {
-            state.expandedClusters[lane.id] = state.expandedClusters[lane.id] === group.id ? null : group.id;
-            if (!state.expandedClusters[lane.id]) delete state.expandedClusters[lane.id];
+            setExpandedCluster(
+              state,
+              lane.id,
+              state.expandedClusters[lane.id] === group.id ? null : group.id
+            );
             if (state.config && state.config.onClusterToggle) {
               state.config.onClusterToggle(lane.id, state.expandedClusters[lane.id] || null);
             }
             if (typeof rerender === 'function') rerender();
           },
-          startMinute: group.startMinute,
-          summary: summary,
-          top: Math.max(Math.round((height - OVERVIEW_BLOCK_HEIGHT) / 2), TRACK_PADDING),
-          ariaLabel: buildOverviewAriaLabel(group, lane, false),
-          expanded: false,
           tooltip: buildClusterTooltip(group, lane),
-          tone: group.tone,
-        });
+        }));
         return;
       }
 
-      var summaryBlock = buildOverviewBlockSummary(group, false);
-      blocks.push({
-        endMinute: group.endMinute,
-        height: OVERVIEW_BLOCK_HEIGHT,
+      blocks.push(buildOverviewBlockConfig(group, height, {
         itemId: group.items[0].id,
         kindClass: 'sf-rail-timeline-item--overview',
-        label: group.summary.primaryLabel,
-        metaLabel: group.summary.secondaryLabel,
-        startMinute: group.startMinute,
-        summary: summaryBlock,
-        top: Math.max(Math.round((height - OVERVIEW_BLOCK_HEIGHT) / 2), TRACK_PADDING),
-        ariaLabel: buildOverviewAriaLabel(group, lane, false),
         tooltip: buildOverviewTooltip(group, lane),
-        tone: group.tone,
-      });
+      }));
     });
 
     return {
@@ -2946,15 +2952,37 @@ const SF = (function () {
     }
   }
 
-  function normalizeAxis(axis) {
-    sf.assert(axis && axis.startMinute != null && axis.endMinute != null, 'createTimeline(model.axis.startMinute/endMinute) are required');
-    var startMinute = assertFiniteNumber(axis.startMinute, 'createTimeline(model.axis.startMinute)');
-    var endMinute = assertFiniteNumber(axis.endMinute, 'createTimeline(model.axis.endMinute)');
-    sf.assert(endMinute > startMinute, 'createTimeline(model.axis.endMinute) must be greater than startMinute');
-
-    var normalized = {
+  function normalizeMinuteRange(startValue, endValue, startLabel, endLabel) {
+    var startMinute = assertFiniteNumber(startValue, startLabel);
+    var endMinute = assertFiniteNumber(endValue, endLabel);
+    sf.assert(endMinute > startMinute, endLabel + ' must be greater than startMinute');
+    return {
       endMinute: endMinute,
       startMinute: startMinute,
+    };
+  }
+
+  function normalizeId(value, prefix, suffix) {
+    return value != null ? String(value) : prefix + suffix;
+  }
+
+  function setExpandedCluster(state, laneId, clusterId) {
+    if (clusterId == null) delete state.expandedClusters[laneId];
+    else state.expandedClusters[laneId] = String(clusterId);
+  }
+
+  function normalizeAxis(axis) {
+    sf.assert(axis && axis.startMinute != null && axis.endMinute != null, 'createTimeline(model.axis.startMinute/endMinute) are required');
+    var axisRange = normalizeMinuteRange(
+      axis.startMinute,
+      axis.endMinute,
+      'createTimeline(model.axis.startMinute)',
+      'createTimeline(model.axis.endMinute)'
+    );
+
+    var normalized = {
+      endMinute: axisRange.endMinute,
+      startMinute: axisRange.startMinute,
     };
 
     normalized.days = normalizeDays(axis.days, normalized.startMinute, normalized.endMinute);
@@ -3014,20 +3042,25 @@ const SF = (function () {
       }
 
       var nextStart = day.startMinute != null
-        ? assertFiniteNumber(day.startMinute, 'createTimeline(model.axis.days[' + dayIndex + '].startMinute)')
+        ? day.startMinute
         : cursor;
       var nextEnd = day.endMinute != null
-        ? assertFiniteNumber(day.endMinute, 'createTimeline(model.axis.days[' + dayIndex + '].endMinute)')
+        ? day.endMinute
         : Math.min(nextStart + DAY_MINUTES, endMinute);
-      sf.assert(nextEnd > nextStart, 'createTimeline(model.axis.days[' + dayIndex + '].endMinute) must be greater than startMinute');
+      var dayRange = normalizeMinuteRange(
+        nextStart,
+        nextEnd,
+        'createTimeline(model.axis.days[' + dayIndex + '].startMinute)',
+        'createTimeline(model.axis.days[' + dayIndex + '].endMinute)'
+      );
       list.push(makeDay({
-        endMinute: nextEnd,
+        endMinute: dayRange.endMinute,
         isWeekend: day.isWeekend != null ? !!day.isWeekend : inferWeekend(day.label),
         label: day.label || 'Day ' + (dayIndex + 1),
-        startMinute: nextStart,
+        startMinute: dayRange.startMinute,
         subLabel: day.subLabel || day.meta || '',
       }, dayIndex));
-      cursor = nextEnd;
+      cursor = dayRange.endMinute;
     });
 
     return list;
@@ -3035,9 +3068,12 @@ const SF = (function () {
 
   function normalizeItem(item, pathKey, ordinal) {
     sf.assert(item && item.startMinute != null && item.endMinute != null, 'timeline items require startMinute/endMinute');
-    var startMinute = assertFiniteNumber(item.startMinute, 'createTimeline(model.lanes[].items[].startMinute)');
-    var endMinute = assertFiniteNumber(item.endMinute, 'createTimeline(model.lanes[].items[].endMinute)');
-    sf.assert(endMinute > startMinute, 'timeline items must have endMinute > startMinute');
+    var itemRange = normalizeMinuteRange(
+      item.startMinute,
+      item.endMinute,
+      'createTimeline(model.lanes[].items[].startMinute)',
+      'createTimeline(model.lanes[].items[].endMinute)'
+    );
 
     return {
       clusterId: item.clusterId != null ? String(item.clusterId) : null,
@@ -3046,13 +3082,13 @@ const SF = (function () {
           return normalizeItem(detailItem, pathKey + '-' + detailIndex, detailIndex);
         })
         : [],
-      endMinute: endMinute,
-      id: item.id != null ? String(item.id) : 'item-' + pathKey,
+      endMinute: itemRange.endMinute,
+      id: normalizeId(item.id, 'item-', pathKey),
       label: item.label || 'Item ' + (ordinal + 1),
       meta: item.meta != null ? item.meta : '',
       originalIndex: ordinal,
       summary: normalizeOverviewSummary(item.summary, 'createTimeline(model.lanes[].items[].summary)'),
-      startMinute: startMinute,
+      startMinute: itemRange.startMinute,
       tone: resolveTone(item.tone || item.color || 'slate'),
     };
   }
@@ -3063,7 +3099,7 @@ const SF = (function () {
     var normalizedLane = {
       axis: axis,
       badges: [],
-      id: lane.id != null ? String(lane.id) : 'lane-' + index,
+      id: normalizeId(lane.id, 'lane-', index),
       items: lane.items.map(function (item, itemIndex) {
         return normalizeItem(item, index + '-' + itemIndex, itemIndex);
       }),
@@ -3126,16 +3162,19 @@ const SF = (function () {
       startMinute != null && endMinute != null,
       label + ' requires startMinute/endMinute or dayIndex/dayCount'
     );
-    startMinute = assertFiniteNumber(startMinute, label + '.startMinute');
-    endMinute = assertFiniteNumber(endMinute, label + '.endMinute');
-    sf.assert(endMinute > startMinute, label + '.endMinute must be greater than startMinute');
+    var overlayRange = normalizeMinuteRange(
+      startMinute,
+      endMinute,
+      label + '.startMinute',
+      label + '.endMinute'
+    );
 
     return {
-      endMinute: endMinute,
-      id: overlay.id != null ? String(overlay.id) : 'overlay-' + index,
+      endMinute: overlayRange.endMinute,
+      id: normalizeId(overlay.id, 'overlay-', index),
       label: overlay.label || '',
       meta: overlay.meta || '',
-      startMinute: startMinute,
+      startMinute: overlayRange.startMinute,
       tone: resolveTone(overlay.tone || overlay.color || 'slate'),
     };
   }
@@ -3154,7 +3193,7 @@ const SF = (function () {
         sf.assert(tick.minute != null, 'createTimeline(model.axis.ticks[' + index + '].minute) is required');
         var minute = assertFiniteNumber(tick.minute, 'createTimeline(model.axis.ticks[' + index + '].minute)');
         list.push({
-          id: tick.id != null ? String(tick.id) : 'tick-' + index,
+          id: normalizeId(tick.id, 'tick-', index),
           label: tick.label || formatClock(minute),
           minute: minute,
         });
@@ -3176,7 +3215,7 @@ const SF = (function () {
   function makeDay(day, index) {
     return {
       endMinute: day.endMinute,
-      id: day.id != null ? String(day.id) : 'day-' + index,
+      id: normalizeId(day.id, 'day-', index),
       isWeekend: !!day.isWeekend,
       label: day.label || 'Day ' + (index + 1),
       startMinute: day.startMinute,
@@ -3310,7 +3349,6 @@ const SF = (function () {
     groups.forEach(function (group, groupIndex) {
       finalizeGroup(group, lane, groupIndex);
     });
-
     return groups;
   }
 
@@ -3440,7 +3478,7 @@ const SF = (function () {
     return left.tone.id < right.tone.id ? -1 : 1;
   }
 
-  function buildOverviewBlockSummary(group, expanded) {
+  function buildOverviewBlockSummary(group) {
     var badges = [];
     if (group.summary.count > 1) {
       badges.push({ kind: 'count', text: group.summary.count + ' total' });
@@ -3449,7 +3487,7 @@ const SF = (function () {
       badges.push({ kind: 'open', text: group.summary.openCount + ' open' });
     }
     if (group.isCluster) {
-      badges.push({ kind: 'action', text: expanded ? 'Expanded' : 'Enter to inspect' });
+      badges.push({ kind: 'action', text: 'Enter to inspect' });
     }
     return {
       badges: badges,
@@ -3738,14 +3776,12 @@ const SF = (function () {
     if (viewport == null) return null;
     sf.assert(typeof viewport === 'object', label + ' must be an object');
 
-    var startMinute = assertFiniteNumber(viewport.startMinute, label + '.startMinute');
-    var endMinute = assertFiniteNumber(viewport.endMinute, label + '.endMinute');
-    sf.assert(endMinute > startMinute, label + '.endMinute must be greater than startMinute');
-
-    return {
-      endMinute: endMinute,
-      startMinute: startMinute,
-    };
+    return normalizeMinuteRange(
+      viewport.startMinute,
+      viewport.endMinute,
+      label + '.startMinute',
+      label + '.endMinute'
+    );
   }
 
   function showTooltip(tooltip, root, payload, event) {
