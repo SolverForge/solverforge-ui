@@ -95,7 +95,7 @@
   color: var(--sf-gray-600);
   border: none;
   padding: 2px 8px;
-  border-radius: 2px;
+  border-radius: var(--sf-radius-base);
   font-size: 10px;
   font-family: var(--sf-font-mono);
   cursor: pointer;

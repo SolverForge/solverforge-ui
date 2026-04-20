@@ -173,13 +173,13 @@
   --sf-border-2: 2px;
 
   --sf-radius-none: 0;
-  --sf-radius-sm: 0.125rem;
-  --sf-radius-base: 0.25rem;
-  --sf-radius-md: 0.375rem;
-  --sf-radius-lg: 0.5rem;
-  --sf-radius-xl: 0.75rem;
-  --sf-radius-2xl: 1rem;
-  --sf-radius-full: 9999px;
+  --sf-radius-sm: 5px;
+  --sf-radius-base: 5px;
+  --sf-radius-md: 5px;
+  --sf-radius-lg: 5px;
+  --sf-radius-xl: 5px;
+  --sf-radius-2xl: 5px;
+  --sf-radius-full: 5px;
 
   /* ========================================================================
      Shadows
@@ -789,7 +789,7 @@ body {
 .sf-ov-dot-hard { background: var(--sf-red-500); }
 .sf-ov-dot-soft { background: var(--sf-amber-400); }
 .sf-ov-dot-ok { background: var(--sf-emerald-400); }
-.sf-ov-type { font-family: var(--sf-font-mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: 700; letter-spacing: .05em; }
+.sf-ov-type { font-family: var(--sf-font-mono); font-size: 9px; padding: 2px 6px; border-radius: var(--sf-radius-base); font-weight: 700; letter-spacing: .05em; }
 .sf-ov-type-hard { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
 .sf-ov-type-soft { background: #fffbeb; color: #b45309; border: 1px solid #fcd34d; }
 .sf-ov-score-hard { color: #b91c1c; }
@@ -839,7 +839,7 @@ body {
   font-family: var(--sf-font-mono);
   font-size: 9px;
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: var(--sf-radius-base);
   font-weight: 700;
   letter-spacing: .05em;
   background: #fef2f2;
@@ -851,7 +851,7 @@ body {
   font-family: var(--sf-font-mono);
   font-size: 9px;
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: var(--sf-radius-base);
   font-weight: 700;
   letter-spacing: .05em;
   background: #fffbeb;
@@ -862,7 +862,7 @@ body {
 /* Process badge (colored by process) */
 .sf-badge--process {
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--sf-radius-base);
   border: 1px solid;
   font-size: 11px;
   font-weight: var(--sf-font-semibold);
@@ -942,7 +942,7 @@ body {
   font-size: 10px;
   font-family: var(--sf-font-mono);
   padding: 2px 8px;
-  border-radius: 2px;
+  border-radius: var(--sf-radius-base);
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -953,7 +953,7 @@ body {
   color: var(--sf-gray-800);
   font-size: 9px;
   padding: 0 4px;
-  border-radius: 2px;
+  border-radius: var(--sf-radius-base);
   font-weight: var(--sf-font-semibold);
 }
 /* ============================================================================
@@ -1052,7 +1052,7 @@ body {
 
 .sf-app ::-webkit-scrollbar-thumb {
   background: var(--sf-gray-300);
-  border-radius: 4px;
+  border-radius: var(--sf-radius-base);
 }
 
 .sf-app ::-webkit-scrollbar-thumb:hover {
@@ -1155,7 +1155,7 @@ body {
   color: var(--sf-gray-600);
   border: none;
   padding: 2px 8px;
-  border-radius: 2px;
+  border-radius: var(--sf-radius-base);
   font-size: 10px;
   font-family: var(--sf-font-mono);
   cursor: pointer;
@@ -1341,7 +1341,7 @@ body {
   font-weight: var(--sf-font-semibold);
   letter-spacing: 0.04em;
   padding: 1px 5px;
-  border-radius: 2px;
+  border-radius: var(--sf-radius-base);
   text-transform: uppercase;
 }
 
@@ -1374,14 +1374,14 @@ body {
   flex: 1;
   height: 6px;
   background: var(--sf-gray-300);
-  border-radius: 3px;
+  border-radius: var(--sf-radius-base);
   overflow: hidden;
   max-width: 120px;
 }
 
 .sf-gauge-fill {
   height: 100%;
-  border-radius: 3px;
+  border-radius: var(--sf-radius-base);
   transition: width 0.6s var(--sf-ease-out);
 }
 
@@ -1493,7 +1493,7 @@ body {
   position: absolute;
   top: 6px;
   bottom: 6px;
-  border-radius: 3px;
+  border-radius: var(--sf-radius-base);
   border-left: 3px solid transparent;
   cursor: pointer;
   transition: filter 0.2s, transform 0.15s;
@@ -1607,7 +1607,7 @@ body {
   font-size: 9px;
   font-family: var(--sf-font-mono);
   padding: 2px 6px;
-  border-radius: 2px;
+  border-radius: var(--sf-radius-base);
   white-space: nowrap;
 }
 /* ============================================================================
@@ -1981,7 +1981,7 @@ body {
     radial-gradient(circle at top right, rgba(16, 185, 129, 0.10), transparent 34%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 250, 251, 0.98));
   border: 1px solid var(--sf-gray-200);
-  border-radius: 18px;
+  border-radius: var(--sf-radius-base);
   box-shadow: var(--sf-shadow-lg);
   display: grid;
   inline-size: 100%;
@@ -2030,7 +2030,7 @@ body {
   appearance: none;
   background: rgba(255, 255, 255, 0.10);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
+  border-radius: var(--sf-radius-base);
   color: rgba(255, 255, 255, 0.88);
   cursor: pointer;
   font-family: var(--sf-font-mono);
@@ -2178,7 +2178,7 @@ body {
 .sf-rail-timeline-lane-badge {
   background: rgba(16, 185, 129, 0.10);
   border: 1px solid rgba(16, 185, 129, 0.18);
-  border-radius: 999px;
+  border-radius: var(--sf-radius-base);
   color: var(--sf-emerald-800);
   font-family: var(--sf-font-mono);
   font-size: 9px;
@@ -2326,7 +2326,7 @@ body {
 .sf-rail-timeline .sf-block {
   backdrop-filter: blur(10px);
   border-left-width: 4px;
-  border-radius: 12px;
+  border-radius: var(--sf-radius-base);
   box-shadow:
     0 10px 18px rgba(15, 23, 42, 0.10),
     inset 0 1px 0 rgba(255, 255, 255, 0.45);
@@ -2402,7 +2402,7 @@ body {
 .sf-rail-timeline-detail-hint {
   align-self: flex-start;
   background: rgba(15, 23, 42, 0.10);
-  border-radius: 999px;
+  border-radius: var(--sf-radius-base);
   color: inherit;
   display: inline-flex;
   font-family: var(--sf-font-mono);
@@ -2432,7 +2432,7 @@ body {
 
 .sf-rail-timeline-summary-tonebar {
   background: rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
+  border-radius: var(--sf-radius-base);
   display: flex;
   gap: 2px;
   min-height: 6px;

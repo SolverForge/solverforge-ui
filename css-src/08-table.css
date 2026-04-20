@@ -74,7 +74,7 @@
 .sf-ov-dot-hard { background: var(--sf-red-500); }
 .sf-ov-dot-soft { background: var(--sf-amber-400); }
 .sf-ov-dot-ok { background: var(--sf-emerald-400); }
-.sf-ov-type { font-family: var(--sf-font-mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: 700; letter-spacing: .05em; }
+.sf-ov-type { font-family: var(--sf-font-mono); font-size: 9px; padding: 2px 6px; border-radius: var(--sf-radius-base); font-weight: 700; letter-spacing: .05em; }
 .sf-ov-type-hard { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
 .sf-ov-type-soft { background: #fffbeb; color: #b45309; border: 1px solid #fcd34d; }
 .sf-ov-score-hard { color: #b91c1c; }

@@ -42,7 +42,7 @@
   font-family: var(--sf-font-mono);
   font-size: 9px;
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: var(--sf-radius-base);
   font-weight: 700;
   letter-spacing: .05em;
   background: #fef2f2;
@@ -54,7 +54,7 @@
   font-family: var(--sf-font-mono);
   font-size: 9px;
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: var(--sf-radius-base);
   font-weight: 700;
   letter-spacing: .05em;
   background: #fffbeb;
@@ -65,7 +65,7 @@
 /* Process badge (colored by process) */
 .sf-badge--process {
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--sf-radius-base);
   border: 1px solid;
   font-size: 11px;
   font-weight: var(--sf-font-semibold);

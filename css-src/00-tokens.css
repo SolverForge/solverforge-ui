@@ -173,13 +173,13 @@
   --sf-border-2: 2px;
 
   --sf-radius-none: 0;
-  --sf-radius-sm: 0.125rem;
-  --sf-radius-base: 0.25rem;
-  --sf-radius-md: 0.375rem;
-  --sf-radius-lg: 0.5rem;
-  --sf-radius-xl: 0.75rem;
-  --sf-radius-2xl: 1rem;
-  --sf-radius-full: 9999px;
+  --sf-radius-sm: 5px;
+  --sf-radius-base: 5px;
+  --sf-radius-md: 5px;
+  --sf-radius-lg: 5px;
+  --sf-radius-xl: 5px;
+  --sf-radius-2xl: 5px;
+  --sf-radius-full: 5px;
 
   /* ========================================================================
      Shadows

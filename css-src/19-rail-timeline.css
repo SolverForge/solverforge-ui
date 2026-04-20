@@ -8,7 +8,7 @@
     radial-gradient(circle at top right, rgba(16, 185, 129, 0.10), transparent 34%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 250, 251, 0.98));
   border: 1px solid var(--sf-gray-200);
-  border-radius: 18px;
+  border-radius: var(--sf-radius-base);
   box-shadow: var(--sf-shadow-lg);
   display: grid;
   inline-size: 100%;
@@ -57,7 +57,7 @@
   appearance: none;
   background: rgba(255, 255, 255, 0.10);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
+  border-radius: var(--sf-radius-base);
   color: rgba(255, 255, 255, 0.88);
   cursor: pointer;
   font-family: var(--sf-font-mono);
@@ -205,7 +205,7 @@
 .sf-rail-timeline-lane-badge {
   background: rgba(16, 185, 129, 0.10);
   border: 1px solid rgba(16, 185, 129, 0.18);
-  border-radius: 999px;
+  border-radius: var(--sf-radius-base);
   color: var(--sf-emerald-800);
   font-family: var(--sf-font-mono);
   font-size: 9px;
@@ -353,7 +353,7 @@
 .sf-rail-timeline .sf-block {
   backdrop-filter: blur(10px);
   border-left-width: 4px;
-  border-radius: 12px;
+  border-radius: var(--sf-radius-base);
   box-shadow:
     0 10px 18px rgba(15, 23, 42, 0.10),
     inset 0 1px 0 rgba(255, 255, 255, 0.45);
@@ -429,7 +429,7 @@
 .sf-rail-timeline-detail-hint {
   align-self: flex-start;
   background: rgba(15, 23, 42, 0.10);
-  border-radius: 999px;
+  border-radius: var(--sf-radius-base);
   color: inherit;
   display: inline-flex;
   font-family: var(--sf-font-mono);
@@ -459,7 +459,7 @@
 
 .sf-rail-timeline-summary-tonebar {
   background: rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
+  border-radius: var(--sf-radius-base);
   display: flex;
   gap: 2px;
   min-height: 6px;

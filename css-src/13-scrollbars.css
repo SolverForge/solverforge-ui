@@ -13,7 +13,7 @@
 
 .sf-app ::-webkit-scrollbar-thumb {
   background: var(--sf-gray-300);
-  border-radius: 4px;
+  border-radius: var(--sf-radius-base);
 }
 
 .sf-app ::-webkit-scrollbar-thumb:hover {

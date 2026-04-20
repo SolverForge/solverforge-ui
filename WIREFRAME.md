@@ -241,7 +241,7 @@ Shorthand: `SF.showError(title, detail)`
 
 ```
 +------------------------------------------------------------------------+
-|  SolverForge  │  Documentation  │  GitHub        v0.5.0                |
+|  SolverForge  │  Documentation  │  GitHub        v0.5.1                |
 |  ↑ links with hover emerald                      ↑ right-aligned      |
 +------------------------------------------------------------------------+
 ```
