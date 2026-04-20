@@ -155,9 +155,12 @@ test('timeline overview lanes cluster overlaps and expand only the targeted regi
   timeline.expandCluster('location-east', 'morning-rush');
 
   const row = timeline.el.querySelector('.sf-rail-timeline-row');
+  const expandedCluster = timeline.el.querySelector('.sf-rail-timeline-item--cluster');
 
   assert.equal(row.dataset.expandedClusterId, 'morning-rush');
-  assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-item--cluster').length, 0);
+  assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-item--cluster').length, 1);
+  assert.equal(expandedCluster.attributes['aria-expanded'], 'true');
+  assert.equal(expandedCluster.textContent.includes('Enter to collapse'), true);
   assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-item--detail').length, 2);
   assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-item--overview').length, 1);
 
@@ -237,6 +240,115 @@ test('timeline overview summaries accept additive summary metadata and render co
   assert.equal(toneSegments.length, 3);
   assert.equal(block.attributes['aria-label'].includes('12 assignments'), true);
   assert.equal(block.attributes['aria-label'].includes('3 open'), true);
+});
+
+test('timeline overview summaries aggregate raw and summarized items in the same group', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  const timeline = SF.rail.createTimeline({
+    model: {
+      axis: buildAxis(14, { startMinute: 0, endMinute: 7 * 1440 }),
+      lanes: [
+        {
+          id: 'ward-mixed',
+          label: 'Ward mixed',
+          mode: 'overview',
+          items: [
+            {
+              id: 'surge',
+              startMinute: dayMinute(1, 6),
+              endMinute: dayMinute(1, 12),
+              label: 'Surge',
+              tone: 'blue',
+              summary: {
+                primaryLabel: 'Monday intake surge',
+                count: 12,
+                openCount: 3,
+                toneSegments: [
+                  { tone: 'blue', count: 7 },
+                  { tone: 'amber', count: 3 },
+                  { tone: 'rose', count: 2 },
+                ],
+              },
+            },
+            {
+              id: 'float-pool',
+              startMinute: dayMinute(1, 12, 15),
+              endMinute: dayMinute(1, 16),
+              label: 'Float pool',
+              tone: 'emerald',
+              meta: { open: true },
+            },
+          ],
+        },
+      ],
+    },
+  });
+
+  const block = timeline.el.querySelector('.sf-rail-timeline-item--cluster');
+  const pills = timeline.el.querySelectorAll('.sf-rail-timeline-summary-pill').map((node) => node.textContent.trim());
+  const toneSegments = timeline.el.querySelectorAll('.sf-rail-timeline-summary-tone-segment');
+
+  assert.equal(block.textContent.includes('Monday intake surge'), true);
+  assert.deepEqual(pills, ['13 total', '4 open', 'Enter to inspect']);
+  assert.equal(toneSegments.length, 4);
+  assert.equal(block.attributes['aria-label'].includes('13 assignments'), true);
+  assert.equal(block.attributes['aria-label'].includes('4 open'), true);
+  assert.equal(block.attributes['aria-label'].includes('1 emerald'), true);
+});
+
+test('timeline overview summaries fall back per field when summary metadata is partial', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  const timeline = SF.rail.createTimeline({
+    model: {
+      axis: buildAxis(14, { startMinute: 0, endMinute: 7 * 1440 }),
+      lanes: [
+        {
+          id: 'ward-partial',
+          label: 'Ward partial',
+          mode: 'overview',
+          items: [
+            {
+              id: 'surge',
+              startMinute: dayMinute(1, 6),
+              endMinute: dayMinute(1, 12),
+              label: 'Surge',
+              tone: 'blue',
+              summary: {
+                primaryLabel: 'Monday intake surge',
+              },
+            },
+            {
+              id: 'float-a',
+              startMinute: dayMinute(1, 12, 15),
+              endMinute: dayMinute(1, 14),
+              label: 'Float A',
+              tone: 'emerald',
+              meta: { open: true },
+            },
+            {
+              id: 'float-b',
+              startMinute: dayMinute(1, 14, 10),
+              endMinute: dayMinute(1, 16),
+              label: 'Float B',
+              tone: 'emerald',
+            },
+          ],
+        },
+      ],
+    },
+  });
+
+  const block = timeline.el.querySelector('.sf-rail-timeline-item--cluster');
+  const pills = timeline.el.querySelectorAll('.sf-rail-timeline-summary-pill').map((node) => node.textContent.trim());
+  const toneSegments = timeline.el.querySelectorAll('.sf-rail-timeline-summary-tone-segment');
+
+  assert.equal(block.textContent.includes('Monday intake surge'), true);
+  assert.deepEqual(pills, ['3 total', '1 open', 'Enter to inspect']);
+  assert.equal(toneSegments.length, 2);
+  assert.equal(block.attributes['aria-label'].includes('3 assignments'), true);
+  assert.equal(block.attributes['aria-label'].includes('1 open'), true);
 });
 
 test('timeline overview lanes cluster tightly adjacent items into one aggregate block', () => {
@@ -612,6 +724,42 @@ test('timeline assigns stable fallback labels and ordering for unlabeled items a
 
   assert.equal(expandedLabels[0].startsWith('Item 1'), true);
   assert.equal(expandedLabels[1].startsWith('Item 2'), true);
+});
+
+test('timeline cluster blocks stay clickable so users can collapse expanded groups from the UI', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  const timeline = SF.rail.createTimeline({
+    model: {
+      axis: buildAxis(7, { startMinute: 0, endMinute: 3 * 1440 }),
+      lanes: [
+        {
+          id: 'overview-lane',
+          label: 'Overview lane',
+          mode: 'overview',
+          items: [
+            { id: 'rush-a', clusterId: 'rush', startMinute: 240, endMinute: 360, label: 'Rush A', tone: 'emerald' },
+            { id: 'rush-b', clusterId: 'rush', startMinute: 300, endMinute: 420, label: 'Rush B', tone: 'rose' },
+          ],
+        },
+      ],
+    },
+  });
+
+  const cluster = timeline.el.querySelector('.sf-rail-timeline-item--cluster');
+  cluster.click();
+
+  const expandedCluster = timeline.el.querySelector('.sf-rail-timeline-item--cluster');
+  assert.equal(expandedCluster.attributes['aria-expanded'], 'true');
+  assert.equal(expandedCluster.textContent.includes('Enter to collapse'), true);
+  assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-item--detail').length, 2);
+
+  expandedCluster.dispatchEvent({ type: 'keydown', key: 'Enter' });
+
+  const collapsedCluster = timeline.el.querySelector('.sf-rail-timeline-item--cluster');
+  assert.equal(collapsedCluster.attributes['aria-expanded'], 'false');
+  assert.equal(collapsedCluster.textContent.includes('Enter to inspect'), true);
+  assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-item--detail').length, 0);
 });
 
 test('timeline scopes lane heading ids so aria-labelledby stays valid across instances', () => {

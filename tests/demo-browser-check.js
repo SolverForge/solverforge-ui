@@ -298,10 +298,41 @@ async function checkTimelineDemo() {
 
     await captureScreenshot(page.locator('.sf-rail-timeline-row').first(), 'rail-timeline-overview.png');
 
+    const baselineDetailCount = await page.locator('.sf-rail-timeline-item--detail').count();
+
     await page.locator('.sf-rail-timeline-item--cluster').first().click();
 
+    const expandedClusterState = await page.locator('.sf-rail-timeline').evaluate((root) => {
+      const cluster = root.querySelector('.sf-rail-timeline-item--cluster');
+      return {
+        actionText: cluster ? cluster.textContent : '',
+        ariaExpanded: cluster ? cluster.getAttribute('aria-expanded') : null,
+        detailCount: root.querySelectorAll('.sf-rail-timeline-item--detail').length,
+      };
+    });
+
+    assert.equal(expandedClusterState.ariaExpanded, 'true');
+    assert.equal(expandedClusterState.actionText.includes('Enter to collapse'), true);
+
     const detailCount = await page.locator('.sf-rail-timeline-item--detail').count();
-    assert.equal(detailCount >= 4, true);
+    assert.equal(detailCount > baselineDetailCount, true);
+
+    await page.locator('.sf-rail-timeline-item--cluster').first().click();
+
+    const collapsedClusterState = await page.locator('.sf-rail-timeline').evaluate((root) => {
+      const cluster = root.querySelector('.sf-rail-timeline-item--cluster');
+      return {
+        actionText: cluster ? cluster.textContent : '',
+        ariaExpanded: cluster ? cluster.getAttribute('aria-expanded') : null,
+        detailCount: root.querySelectorAll('.sf-rail-timeline-item--detail').length,
+      };
+    });
+
+    assert.equal(collapsedClusterState.ariaExpanded, 'false');
+    assert.equal(collapsedClusterState.actionText.includes('Enter to inspect'), true);
+    assert.equal(collapsedClusterState.detailCount, baselineDetailCount);
+
+    await page.locator('.sf-rail-timeline-item--cluster').first().click();
 
     await captureScreenshot(page.locator('.sf-rail-timeline-row').first(), 'rail-timeline-expanded.png');
     await captureScreenshot(page.locator('.sf-rail-timeline-row').nth(2), 'rail-timeline-detailed.png');

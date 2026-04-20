@@ -295,9 +295,11 @@ Additive overview summary contract:
 - `summary.openCount`: optional explicit open or unassigned count
 - `summary.toneSegments[]`: optional additive tone-composition hint with `{ tone, count }`
 
-If `summary` is omitted, the library computes count and tone composition from
-the grouped detail items. Use explicit `summary` when the app already knows the
-aggregate staffing signal it wants overview users to see first.
+These fields are additive per field, not an all-or-nothing summary mode. If a
+group mixes summarized and unsummarized items, the library combines the explicit
+summary fields with derived count/open/tone data from the remaining grouped
+items. Use explicit `summary` when the app already knows the aggregate staffing
+signal it wants overview users to see first.
 
 Integer-only fields remain integer-only:
 
@@ -309,6 +311,8 @@ If you want stable programmatic expansion through `expandCluster(laneId, cluster
 provide `clusterId` on the overlapping overview items that should expand together.
 Each lane may produce at most one overview group for a given `clusterId`; reusing
 the same `clusterId` for disjoint groups is rejected as ambiguous input.
+Expanded overview clusters remain clickable inside the component and use the
+same block as the collapse affordance.
 The example below assumes small consumer-side helpers such as `buildDays()` and
 `buildSixHourTicks()` that normalize backend timestamps into numeric axis data.
 
@@ -741,7 +745,7 @@ Bundling writes both stable compatibility assets (`static/sf/sf.css`,
 Runnable demo fixtures live in `demos/`.
 
 - `demos/full-surface.html` exercises the primary shipped component surface together.
-- `demos/timeline.html` is the focused dense scheduling example built with `SF.rail.createTimeline()`, including additive overview summaries and inline expansion.
+- `demos/timeline.html` is the focused dense scheduling example built with `SF.rail.createTimeline()`, including additive overview summaries and inline expand/collapse.
 - `demos/timeline-dense.html` is the repeatable 28-day, 100-lane, 1500-item dense validation fixture for hospital-like schedule acceptance.
 - `demos/rail.html` focuses on the low-level rail primitives: resource cards, blocks, gauges, and changeovers.
 - `make demo-serve` serves the repository at `http://localhost:8000/demos/` for local validation.

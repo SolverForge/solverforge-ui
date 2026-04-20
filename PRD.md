@@ -190,6 +190,9 @@ Where:
   - `count`
 
 If `summary` is absent, the library must compute a sensible default from clustered detail items.
+If a group mixes summarized and unsummarized items, the library must combine
+explicit summary fields with derived count/open/tone data from the remaining
+grouped items rather than switching to a summary-only aggregate mode.
 
 This is additive. Do not require consumer apps to provide it up front.
 
@@ -215,6 +218,7 @@ Requirements:
   - open/unassigned state when supplied or inferable
   - tone composition when supplied or inferable
 - aggregate blocks must expand inline into packed detailed items
+- the expanded aggregate block must remain visible and act as the in-place collapse affordance
 - only one expanded cluster per lane at a time
 - expansion must preserve row alignment and viewport continuity
 
@@ -386,6 +390,7 @@ Required docs updates:
 
 ### DOM/render tests
 - overview blocks render count/open state when available
+- overview expansion is reversible from the same in-UI cluster block
 - overview expansion swaps only the selected local cluster into detailed items
 - detailed lanes render packed items with non-overlapping vertical positions
 - sticky header and sticky labels remain intact

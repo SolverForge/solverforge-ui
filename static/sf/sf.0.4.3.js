@@ -2672,8 +2672,8 @@ const SF = (function () {
       metaLabel: group.summary.secondaryLabel,
       onClick: config.onClick || null,
       startMinute: group.startMinute,
-      summary: buildOverviewBlockSummary(group),
-      top: Math.max(Math.round((height - OVERVIEW_BLOCK_HEIGHT) / 2), TRACK_PADDING),
+      summary: buildOverviewBlockSummary(group, !!config.expanded),
+      top: config.top != null ? config.top : Math.max(Math.round((height - OVERVIEW_BLOCK_HEIGHT) / 2), TRACK_PADDING),
       ariaLabel: buildOverviewAriaLabel(group, group.lane, !!config.expanded),
       expanded: !!config.expanded,
       tooltip: config.tooltip,
@@ -2706,6 +2706,7 @@ const SF = (function () {
     var expandedClusterId = state.expandedClusters[lane.id] || null;
     var expandedGroup = null;
     var packedExpanded = null;
+    var expandedDetailsTop = 0;
 
     groups.forEach(function (group) {
       if (!expandedGroup && expandedClusterId && group.clusterKey === expandedClusterId && group.isCluster) {
@@ -2715,33 +2716,22 @@ const SF = (function () {
 
     if (expandedGroup) {
       packedExpanded = packItems(expandedGroup.detailItems);
+      expandedDetailsTop = TRACK_PADDING + OVERVIEW_BLOCK_HEIGHT + TRACK_GAP;
     }
 
-    var height = packedExpanded ? Math.max(OVERVIEW_HEIGHT, measurePackedHeight(packedExpanded)) : OVERVIEW_HEIGHT;
+    var height = packedExpanded
+      ? Math.max(OVERVIEW_HEIGHT, expandedDetailsTop + measurePackedHeight(packedExpanded))
+      : OVERVIEW_HEIGHT;
 
     var blocks = [];
     groups.forEach(function (group) {
-      if (expandedGroup && group.renderId === expandedGroup.renderId) {
-        packedExpanded.items.forEach(function (entry) {
-          blocks.push(buildDetailBlockConfig(
-            entry.item,
-            lane,
-            entry.trackIndex,
-            TRACK_PADDING + entry.trackIndex * (TRACK_HEIGHT + TRACK_GAP),
-            {
-              clusterId: group.clusterKey,
-              detailHint: 'Expanded',
-            }
-          ));
-        });
-        return;
-      }
-
       if (group.isCluster) {
+        var isExpanded = !!(expandedGroup && group.renderId === expandedGroup.renderId);
         blocks.push(buildOverviewBlockConfig(group, height, {
           clusterId: group.clusterKey,
           itemId: group.renderId,
           kindClass: 'sf-rail-timeline-item--cluster',
+          expanded: isExpanded,
           onClick: function () {
             setExpandedCluster(
               state,
@@ -2753,8 +2743,23 @@ const SF = (function () {
             }
             if (typeof rerender === 'function') rerender();
           },
+          top: isExpanded ? TRACK_PADDING : null,
           tooltip: buildClusterTooltip(group, lane),
         }));
+        if (isExpanded) {
+          packedExpanded.items.forEach(function (entry) {
+            blocks.push(buildDetailBlockConfig(
+              entry.item,
+              lane,
+              entry.trackIndex,
+              expandedDetailsTop + TRACK_PADDING + entry.trackIndex * (TRACK_HEIGHT + TRACK_GAP),
+              {
+                clusterId: group.clusterKey,
+                detailHint: 'Expanded',
+              }
+            ));
+          });
+        }
         return;
       }
 
@@ -3416,29 +3421,35 @@ const SF = (function () {
     return toneSegments[0].tone;
   }
 
+  function effectiveOverviewItems(item) {
+    return item.detailItems.length > 0 ? item.detailItems : [item];
+  }
+
+  function deriveOverviewContribution(item) {
+    var items = effectiveOverviewItems(item);
+    var summary = item.summary;
+
+    return {
+      count: summary && summary.count != null ? summary.count : items.length,
+      openCount: summary && summary.openCount != null ? summary.openCount : inferOpenCount(items),
+      toneSegments: summary && summary.toneSegments.length > 0 ? summary.toneSegments : buildToneSegmentsFromItems(items),
+    };
+  }
+
   function deriveOverviewSummary(group) {
+    var contributions = group.items.map(deriveOverviewContribution);
     var summaries = group.items.map(function (item) {
       return item.summary;
     }).filter(Boolean);
-    var count = summaries.length > 0
-      ? summaries.reduce(function (sum, summary) {
-        return sum + (summary.count != null ? summary.count : 1);
-      }, 0)
-      : group.detailItems.length;
-    var openCount = summaries.some(function (summary) {
-      return summary.openCount != null;
-    })
-      ? summaries.reduce(function (sum, summary) {
-        return sum + (summary.openCount || 0);
-      }, 0)
-      : inferOpenCount(group.detailItems);
-    var toneSegments = summaries.some(function (summary) {
-      return summary.toneSegments.length > 0;
-    })
-      ? mergeToneSegments(summaries.reduce(function (segments, summary) {
-        return segments.concat(summary.toneSegments);
-      }, []))
-      : buildToneSegmentsFromItems(group.detailItems);
+    var count = contributions.reduce(function (sum, contribution) {
+      return sum + contribution.count;
+    }, 0);
+    var openCount = contributions.reduce(function (sum, contribution) {
+      return sum + contribution.openCount;
+    }, 0);
+    var toneSegments = mergeToneSegments(contributions.reduce(function (segments, contribution) {
+      return segments.concat(contribution.toneSegments);
+    }, []));
     var primarySummary = summaries.length === 1 ? summaries[0] : null;
 
     return {
@@ -3508,7 +3519,7 @@ const SF = (function () {
     return left.tone.id < right.tone.id ? -1 : 1;
   }
 
-  function buildOverviewBlockSummary(group) {
+  function buildOverviewBlockSummary(group, expanded) {
     var badges = [];
     if (group.summary.count > 1) {
       badges.push({ kind: 'count', text: group.summary.count + ' total' });
@@ -3517,7 +3528,7 @@ const SF = (function () {
       badges.push({ kind: 'open', text: group.summary.openCount + ' open' });
     }
     if (group.isCluster) {
-      badges.push({ kind: 'action', text: 'Enter to inspect' });
+      badges.push({ kind: 'action', text: expanded ? 'Enter to collapse' : 'Enter to inspect' });
     }
     return {
       badges: badges,
@@ -3546,7 +3557,7 @@ const SF = (function () {
     if (group.summary.count > 1) parts.push(group.summary.count + ' assignments');
     if (group.summary.openCount > 0) parts.push(group.summary.openCount + ' open');
     if (group.summary.toneSegments.length > 0) parts.push(describeToneSegments(group.summary.toneSegments));
-    if (group.isCluster) parts.push(expanded ? 'Expanded' : 'Press Enter to expand');
+    if (group.isCluster) parts.push(expanded ? 'Expanded. Press Enter to collapse' : 'Press Enter to expand');
     return parts.join(' · ');
   }
 
