@@ -274,13 +274,29 @@ wrappers or outer card chrome.
 `labelWidth` is the preferred sticky-label width; supported embeds with a body
 viewport of `500px` or wider compact that label column as needed to preserve at
 least `320px` of visible schedule track.
+Use `mode: 'overview'` for scanable location or resource lanes, and
+`mode: 'detailed'` for precise per-person or per-assignment inspection.
+Overview blocks can carry additive summary metadata and expose the same detail
+via keyboard focus that hover reveals with a mouse.
 
 Model shape:
 
 - `model.axis`: `startMinute`, `endMinute`, `days[]`, `ticks[]`, `initialViewport`
 - `model.lanes[]`: `id`, `label`, optional `badges`, optional `stats`, optional `overlays`, `mode`, `items[]`
-- `items[]`: `id`, `startMinute`, `endMinute`, `label`, optional `meta`, `tone`, optional `clusterId`, optional `detailItems[]`
+- `items[]`: `id`, `startMinute`, `endMinute`, `label`, optional `meta`, optional `summary`, `tone`, optional `clusterId`, optional `detailItems[]`
 - `overlays[]`: either numeric spans via `startMinute/endMinute` or full-day bands via `dayIndex/dayCount`
+
+Additive overview summary contract:
+
+- `summary.primaryLabel`: optional aggregate block headline
+- `summary.secondaryLabel`: optional aggregate block subline
+- `summary.count`: optional explicit total count for the overview block
+- `summary.openCount`: optional explicit open or unassigned count
+- `summary.toneSegments[]`: optional additive tone-composition hint with `{ tone, count }`
+
+If `summary` is omitted, the library computes count and tone composition from
+the grouped detail items. Use explicit `summary` when the app already knows the
+aggregate staffing signal it wants overview users to see first.
 
 Integer-only fields remain integer-only:
 
@@ -315,9 +331,31 @@ var timeline = SF.rail.createTimeline({
           { dayIndex: 11, dayCount: 2, label: 'Desired', tone: 'emerald' },
         ],
         items: [
-          { id: 'east-1', clusterId: 'east-rush', startMinute: 360, endMinute: 840, label: 'ER intake', meta: '8 clinicians', tone: 'blue' },
-          { id: 'east-2', clusterId: 'east-rush', startMinute: 420, endMinute: 960, label: 'Trauma hold', meta: '6 clinicians', tone: 'blue' },
-          { id: 'east-3', startMinute: 2 * 1440 + 360, endMinute: 2 * 1440 + 1080, label: 'Cardio block', meta: '5 clinicians', tone: 'emerald' },
+          {
+            id: 'east-rush',
+            clusterId: 'east-rush',
+            startMinute: 360,
+            endMinute: 1080,
+            label: 'Monday intake surge',
+            tone: 'blue',
+            summary: {
+              primaryLabel: 'Monday intake surge',
+              secondaryLabel: 'ER intake · trauma hold · overflow beds',
+              count: 24,
+              openCount: 3,
+              toneSegments: [
+                { tone: 'blue', count: 15 },
+                { tone: 'amber', count: 6 },
+                { tone: 'rose', count: 3 },
+              ],
+            },
+            detailItems: [
+              { id: 'east-1', startMinute: 360, endMinute: 840, label: 'ER intake', meta: '8 clinicians', tone: 'blue' },
+              { id: 'east-2', startMinute: 420, endMinute: 960, label: 'Trauma hold', meta: '6 clinicians', tone: 'amber' },
+              { id: 'east-3', startMinute: 480, endMinute: 1080, label: 'Overflow beds', meta: '10 clinicians', tone: 'rose' },
+            ],
+          },
+          { id: 'east-4', startMinute: 2 * 1440 + 360, endMinute: 2 * 1440 + 1080, label: 'Cardio block', meta: '5 clinicians', tone: 'emerald' },
         ],
       },
       {
@@ -699,10 +737,11 @@ Bundling writes both stable compatibility assets (`static/sf/sf.css`,
 Runnable demo fixtures live in `demos/`.
 
 - `demos/full-surface.html` exercises the primary shipped component surface together.
-- `demos/timeline.html` is the focused dense scheduling example built with `SF.rail.createTimeline()`.
+- `demos/timeline.html` is the focused dense scheduling example built with `SF.rail.createTimeline()`, including additive overview summaries and inline expansion.
+- `demos/timeline-dense.html` is the repeatable 28-day, 100-lane, 1500-item dense validation fixture for hospital-like schedule acceptance.
 - `demos/rail.html` focuses on the low-level rail primitives: resource cards, blocks, gauges, and changeovers.
 - `make demo-serve` serves the repository at `http://localhost:8000/demos/` for local validation.
-- `make test-browser` runs browser-level smoke tests against the shipped demo fixtures.
+- `make test-browser` runs browser-level smoke tests against the shipped demo fixtures and refreshes the timeline acceptance screenshots in `screenshots/`.
 - Run `make browser-setup` once on a machine to install the Playwright test dependency and Chromium.
 
 ## Acknowledgments

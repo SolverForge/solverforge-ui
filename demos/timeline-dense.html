@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>solverforge-ui dense timeline demo</title>
+  <link rel="stylesheet" href="../static/sf/vendor/fontawesome/css/fontawesome.min.css">
+  <link rel="stylesheet" href="../static/sf/vendor/fontawesome/css/solid.min.css">
+  <link rel="stylesheet" href="../static/sf/sf.css">
+  <script src="../static/sf/sf.js"></script>
+  <style>
+    body { margin: 0; }
+    .demo-wrap { max-width: 1600px; margin: 0 auto; padding: 24px; }
+    .demo-stack { display: grid; gap: 16px; }
+    .demo-card {
+      background: white;
+      border: 1px solid var(--sf-gray-200);
+      border-radius: 16px;
+      box-shadow: var(--sf-shadow-base);
+      padding: 18px;
+    }
+    .demo-card h1,
+    .demo-card h2 { margin: 0 0 10px; }
+    .demo-card p {
+      color: var(--sf-gray-600);
+      line-height: 1.6;
+      margin: 0;
+      max-width: 88ch;
+    }
+    .demo-metrics {
+      color: var(--sf-gray-500);
+      font-family: var(--sf-font-mono);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      margin-top: 10px;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body class="sf-app">
+  <main class="sf-main">
+    <div class="demo-wrap demo-stack" id="app"></div>
+  </main>
+
+  <script>
+    function dayMinute(dayIndex, hour, minute) {
+      return dayIndex * 1440 + hour * 60 + (minute || 0);
+    }
+
+    function buildAxis(dayCount) {
+      var weekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      var days = [];
+      var ticks = [];
+
+      for (var dayIndex = 0; dayIndex < dayCount; dayIndex += 1) {
+        days.push({
+          label: weekday[dayIndex % 7] + ' ' + (20 + dayIndex),
+          startMinute: dayIndex * 1440,
+          endMinute: (dayIndex + 1) * 1440,
+          isWeekend: dayIndex % 7 === 5 || dayIndex % 7 === 6,
+          subLabel: dayIndex % 7 === 0 ? 'Roster refresh' : '',
+        });
+      }
+
+      for (var minute = 0; minute < dayCount * 1440; minute += 360) {
+        var hour = Math.floor((minute % 1440) / 60);
+        ticks.push({ minute: minute, label: (hour < 10 ? '0' + hour : String(hour)) + ':00' });
+      }
+
+      return {
+        startMinute: 0,
+        endMinute: dayCount * 1440,
+        days: days,
+        ticks: ticks,
+        initialViewport: {
+          startMinute: 0,
+          endMinute: 14 * 1440,
+        },
+      };
+    }
+
+    function buildDenseModel() {
+      var laneCount = 100;
+      var totalItems = 1500;
+      var lanes = [];
+      var assignedItems = 0;
+
+      for (var laneIndex = 0; laneIndex < laneCount; laneIndex += 1) {
+        var overview = laneIndex < 40;
+        var perLane = laneIndex < laneCount - 1
+          ? Math.floor(totalItems / laneCount) + (laneIndex < totalItems % laneCount ? 1 : 0)
+          : totalItems - assignedItems;
+        var items = [];
+
+        for (var itemIndex = 0; itemIndex < perLane; itemIndex += 1) {
+          var clusterOffset = itemIndex % 3;
+          var dayIndex = overview
+            ? (laneIndex * 3 + Math.floor(itemIndex / 3)) % 28
+            : (laneIndex * 3 + itemIndex) % 28;
+          var startHour = 6 + (overview ? Math.floor(itemIndex / 3) % 4 : (itemIndex + laneIndex) % 6);
+          var startMinute = overview
+            ? dayMinute(dayIndex, startHour, clusterOffset * 45)
+            : dayMinute(dayIndex, startHour);
+          var endMinute = overview
+            ? startMinute + 300 + clusterOffset * 30
+            : startMinute + 360 + ((itemIndex + laneIndex) % 3) * 60;
+          var tone = ['blue', 'emerald', 'amber', 'violet'][itemIndex % 4];
+
+          items.push(overview ? {
+            id: 'location-' + laneIndex + '-item-' + itemIndex,
+            clusterId: 'cluster-' + laneIndex + '-' + Math.floor(itemIndex / 3),
+            startMinute: startMinute,
+            endMinute: endMinute,
+            label: 'Coverage ' + (itemIndex + 1),
+            tone: tone,
+          } : {
+            id: 'employee-' + laneIndex + '-item-' + itemIndex,
+            startMinute: startMinute,
+            endMinute: endMinute,
+            label: 'Shift ' + (itemIndex + 1),
+            meta: 'Unit ' + (laneIndex % 8),
+            tone: tone,
+          });
+
+          assignedItems += 1;
+        }
+
+        lanes.push({
+          id: overview ? 'location-' + laneIndex : 'employee-' + laneIndex,
+          label: overview ? 'By location · Unit ' + (laneIndex + 1) : 'By employee · Clinician ' + (laneIndex + 1),
+          mode: overview ? 'overview' : 'detailed',
+          overlays: laneIndex % 9 === 0 ? [{ dayIndex: (laneIndex * 2) % 28, label: 'Unavailable', tone: 'red' }] : [],
+          stats: overview
+            ? [{ label: 'Coverage', value: (88 + laneIndex % 8) + '%' }]
+            : [{ label: 'Hours', value: (34 + laneIndex % 10) + 'h' }],
+          items: items,
+        });
+      }
+
+      return {
+        axis: buildAxis(28),
+        lanes: lanes,
+      };
+    }
+
+    var app = document.getElementById('app');
+
+    var intro = document.createElement('section');
+    intro.className = 'demo-card';
+    intro.innerHTML = '<h1>Dense validation fixture</h1><p>This scenario is the PRD acceptance harness for a hospital-like 28 day schedule with 100 lanes and 1500 scheduled items. It mixes overview location lanes, detailed employee lanes, overlays, clusterable dense windows, and the same production timeline code path used by the smaller demo.</p>';
+    app.appendChild(intro);
+
+    var denseCard = document.createElement('section');
+    denseCard.className = 'demo-card';
+    denseCard.innerHTML = '<h2>100 lanes / 1500 items</h2>';
+
+    var renderStart = performance.now();
+    var model = buildDenseModel();
+    var timeline = SF.rail.createTimeline({
+      title: 'Dense schedule validation',
+      subtitle: '28 days, 100 lanes, 1500 items, overview by location, detailed by employee.',
+      label: 'Staffing lane',
+      labelWidth: 280,
+      model: model,
+    });
+    denseCard.appendChild(timeline.el);
+
+    var renderMs = Math.round((performance.now() - renderStart) * 100) / 100;
+    window.__denseTimelineMetrics = {
+      itemCount: model.lanes.reduce(function (sum, lane) { return sum + lane.items.length; }, 0),
+      laneCount: model.lanes.length,
+      renderMs: renderMs,
+    };
+
+    var metrics = document.createElement('div');
+    metrics.className = 'demo-metrics';
+    metrics.textContent = '100 lanes · 1500 items · render ' + renderMs + ' ms';
+    denseCard.appendChild(metrics);
+
+    app.appendChild(denseCard);
+  </script>
+</body>
+</html>

@@ -315,11 +315,11 @@ Shipped runtime expectations:
   │ Staffing lane │  Mon 20      Tue 21      Wed 22      Thu 23      Fri 24    │  sticky top time header
   │               │  00 06 12 18 00 06 12 18 00 06 12 18 00 06 12 18 ...       │  6-hour tick marks
   ├───────────────┼─────────────────────────────────────────────────────────────┤
-  │ Ward East     │  ███ cluster ███            █ cardio block █                │  overview lane
-  │ Coverage 92%  │  overlaps collapse into one readable block                  │
+  │ Ward East     │  ███ summary ███            █ cardio block █                │  overview lane
+  │ Coverage 92%  │  count/open chips + tone mix bar keep dense windows legible │
   ├───────────────┼─────────────────────────────────────────────────────────────┤
-  │ Ward West     │      ███ cluster ███                     █ handoff █        │  overview lane
-  │ Coverage 88%  │  background overlays show desired / unavailable spans       │
+  │ Ward West     │      ███ summary ███                     █ handoff █        │  overview lane
+  │ Coverage 88%  │  overlays stay behind the schedule; focus reveals tooltip   │
   ├───────────────┼─────────────────────────────────────────────────────────────┤
   │ Ada           │  █ primary █                                                │
   │ Hours 38h     │      █ overlap █                                            │  detailed lane
@@ -354,8 +354,30 @@ var timeline = SF.rail.createTimeline({
         mode: 'overview',
         overlays: [{ dayIndex: 5, label: 'Unavailable', tone: 'red' }],
         items: [
-          { id: 'east-1', clusterId: 'east-rush', startMinute: 360, endMinute: 840, label: 'ER intake', tone: 'blue' },
-          { id: 'east-2', clusterId: 'east-rush', startMinute: 420, endMinute: 960, label: 'Trauma hold', tone: 'blue' },
+          {
+            id: 'east-rush',
+            clusterId: 'east-rush',
+            startMinute: 360,
+            endMinute: 1080,
+            label: 'Monday intake surge',
+            tone: 'blue',
+            summary: {
+              primaryLabel: 'Monday intake surge',
+              secondaryLabel: 'ER intake · trauma hold · overflow beds',
+              count: 24,
+              openCount: 3,
+              toneSegments: [
+                { tone: 'blue', count: 15 },
+                { tone: 'amber', count: 6 },
+                { tone: 'rose', count: 3 },
+              ],
+            },
+            detailItems: [
+              { id: 'east-1', startMinute: 360, endMinute: 840, label: 'ER intake', tone: 'blue' },
+              { id: 'east-2', startMinute: 420, endMinute: 960, label: 'Trauma hold', tone: 'amber' },
+              { id: 'east-3', startMinute: 480, endMinute: 1080, label: 'Overflow beds', tone: 'rose' },
+            ],
+          },
         ],
       },
       {
@@ -378,6 +400,13 @@ timeline.expandCluster('ward-east', 'east-rush');
 The original `createHeader/createCard/addBlock/addChangeover` APIs remain
 shipped as low-level primitives, but they are no longer the recommended
 integration path for dense scheduling UIs.
+
+Shipped dense overview rules:
+
+- overview lanes are for scanability, not raw-label dumps
+- additive `summary` metadata can provide explicit headline, count, open state, and tone mix
+- if `summary` is omitted, the timeline computes a default aggregate summary from grouped detail items
+- focus and hover expose the same tooltip content for overview and detailed blocks
 
 ---
 

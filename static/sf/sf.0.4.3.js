@@ -2219,6 +2219,7 @@ const SF = (function () {
   var TRACK_PADDING = 12;
   var OVERVIEW_HEIGHT = 68;
   var OVERVIEW_BLOCK_HEIGHT = 34;
+  var OVERVIEW_GROUP_GAP_MINUTES = 30;
   var MIN_LABEL_WIDTH = 180;
   var MIN_VISIBLE_TRACK_WIDTH = 320;
   var MIN_CONTENT_TRACK_WIDTH = 480;
@@ -2226,48 +2227,56 @@ const SF = (function () {
 
   var TONE_MAP = {
     emerald: {
+      id: 'emerald',
       background: 'rgba(16, 185, 129, 0.22)',
       border: '#059669',
       text: '#064e3b',
       overlay: 'rgba(16, 185, 129, 0.10)',
     },
     blue: {
+      id: 'blue',
       background: 'rgba(59, 130, 246, 0.22)',
       border: '#2563eb',
       text: '#1e40af',
       overlay: 'rgba(59, 130, 246, 0.10)',
     },
     amber: {
+      id: 'amber',
       background: 'rgba(245, 158, 11, 0.24)',
       border: '#d97706',
       text: '#92400e',
       overlay: 'rgba(245, 158, 11, 0.10)',
     },
     rose: {
+      id: 'rose',
       background: 'rgba(244, 63, 94, 0.22)',
       border: '#e11d48',
       text: '#9f1239',
       overlay: 'rgba(244, 63, 94, 0.10)',
     },
     violet: {
+      id: 'violet',
       background: 'rgba(139, 92, 246, 0.22)',
       border: '#7c3aed',
       text: '#5b21b6',
       overlay: 'rgba(139, 92, 246, 0.10)',
     },
     cyan: {
+      id: 'cyan',
       background: 'rgba(6, 182, 212, 0.22)',
       border: '#0891b2',
       text: '#155e75',
       overlay: 'rgba(6, 182, 212, 0.10)',
     },
     red: {
+      id: 'red',
       background: 'rgba(239, 68, 68, 0.22)',
       border: '#dc2626',
       text: '#991b1b',
       overlay: 'rgba(239, 68, 68, 0.10)',
     },
     slate: {
+      id: 'slate',
       background: 'rgba(100, 116, 139, 0.20)',
       border: '#475569',
       text: '#1e293b',
@@ -2305,6 +2314,8 @@ const SF = (function () {
         labelWidth: String(labelWidth),
       },
     });
+    root.setAttribute('role', 'region');
+    root.setAttribute('aria-label', config.title || 'Scheduling timeline');
 
     var toolbar = sf.el('div', { className: 'sf-rail-timeline-toolbar' });
     var toolbarCopy = sf.el('div', { className: 'sf-rail-timeline-toolbar-copy' });
@@ -2345,6 +2356,9 @@ const SF = (function () {
     root.appendChild(shell);
 
     var tooltip = sf.el('div', { className: 'sf-tooltip sf-rail-timeline-tooltip' });
+    tooltip.id = sf.uid('sf-rail-timeline-tooltip');
+    tooltip.setAttribute('role', 'tooltip');
+    tooltip.setAttribute('aria-hidden', 'true');
     root.appendChild(tooltip);
 
     bindScrollSync(headerViewport, bodyViewport, state, root, zoomButtons);
@@ -2353,18 +2367,20 @@ const SF = (function () {
     bindResizeObserver(bodyViewport, state, syncLayoutFromViewport);
     bindWindowResize(state, syncLayoutFromViewport);
 
-    function render() {
-      state.layout = measureLayout(bodyViewport, state);
-      applyLayout(root, headerRow, lanes, state.layout);
+    function renderStructure() {
       renderHeader();
       renderLanes();
+    }
+
+    function applyMeasuredLayout() {
+      state.layout = measureLayout(bodyViewport, state);
+      applyLayout(root, headerRow, lanes, state.layout);
       updateViewportMetadata(root, state);
       updateZoomButtons(zoomButtons, state);
     }
 
     function renderHeader() {
       headerRow.innerHTML = '';
-      if (!state.layout) return;
 
       var corner = sf.el('div', { className: 'sf-rail-timeline-label-corner' }, config.label || 'Lane');
       headerRow.appendChild(corner);
@@ -2377,13 +2393,11 @@ const SF = (function () {
 
     function renderLanes() {
       lanes.innerHTML = '';
-      if (!state.layout) return;
 
       state.model.lanes.forEach(function (lane) {
         var laneRender = lane.mode === 'overview'
           ? buildOverviewRender(lane, state, function () {
-            render();
-            syncScrollToViewport();
+            rerenderTimeline();
           })
           : buildDetailedRender(lane, lane.items);
 
@@ -2398,9 +2412,9 @@ const SF = (function () {
         if (laneRender.expandedClusterId) {
           row.dataset.expandedClusterId = laneRender.expandedClusterId;
         }
-        row.style.width = state.layout.contentWidth + 'px';
+        row.setAttribute('role', 'group');
 
-        var label = buildLaneLabel(lane, laneRender);
+        var label = buildLaneLabel(lane, laneRender, row);
         row.appendChild(label);
 
         var track = sf.el('div', { className: 'sf-rail-timeline-track' });
@@ -2415,8 +2429,13 @@ const SF = (function () {
       });
     }
 
+    function rerenderTimeline() {
+      renderStructure();
+      syncLayoutFromViewport();
+    }
+
     function syncLayoutFromViewport() {
-      render();
+      applyMeasuredLayout();
       syncScrollToViewport();
     }
 
@@ -2442,13 +2461,13 @@ const SF = (function () {
       expandCluster: function (laneId, clusterId) {
         if (clusterId == null) delete state.expandedClusters[laneId];
         else state.expandedClusters[laneId] = String(clusterId);
-        syncLayoutFromViewport();
+        rerenderTimeline();
       },
       setModel: function (nextModel) {
         state.model = normalizeModel(nextModel);
         state.viewport = clampViewport(state.model.axis, state.viewport);
         pruneExpandedClusters(state);
-        syncLayoutFromViewport();
+        rerenderTimeline();
       },
       setViewport: function (nextViewport) {
         state.viewport = clampViewport(
@@ -2459,6 +2478,7 @@ const SF = (function () {
       },
     };
 
+    renderStructure();
     syncLayoutFromViewport();
     queuePostMountSync(state, syncLayoutFromViewport);
 
@@ -2490,13 +2510,20 @@ const SF = (function () {
     block.style.height = blockConfig.height + 'px';
     block.style.bottom = 'auto';
     block.style.color = tone.text;
+    block.tabIndex = 0;
     block.dataset.itemId = blockConfig.itemId;
     block.dataset.laneId = lane.id;
     if (blockConfig.trackIndex != null) block.dataset.trackIndex = String(blockConfig.trackIndex);
     if (blockConfig.clusterId) block.dataset.clusterId = blockConfig.clusterId;
-    if (blockConfig.countLabel) {
-      block.appendChild(sf.el('span', { className: 'sf-rail-timeline-cluster-count' }, blockConfig.countLabel));
+    if (blockConfig.onClick) {
+      block.setAttribute('role', 'button');
+      block.setAttribute('aria-expanded', blockConfig.expanded ? 'true' : 'false');
+    } else {
+      block.setAttribute('role', 'group');
     }
+    if (blockConfig.ariaLabel) block.setAttribute('aria-label', blockConfig.ariaLabel);
+    block.setAttribute('aria-describedby', tooltip.id);
+    if (blockConfig.summary) appendOverviewSummary(block, blockConfig.summary);
     if (blockConfig.detailHint) {
       block.appendChild(sf.el('span', { className: 'sf-rail-timeline-detail-hint' }, blockConfig.detailHint));
     }
@@ -2504,6 +2531,45 @@ const SF = (function () {
     block.addEventListener('mousemove', function (event) {
       showTooltip(tooltip, root, blockConfig.tooltip, event);
     });
+    block.addEventListener('focus', function () {
+      showTooltipForElement(tooltip, root, blockConfig.tooltip, block);
+    });
+    block.addEventListener('blur', function () {
+      hideTooltip(tooltip);
+    });
+    block.addEventListener('keydown', function (event) {
+      if (event && event.key === 'Escape') hideTooltip(tooltip);
+    });
+  }
+
+  function appendOverviewSummary(block, summary) {
+    var footer = sf.el('div', { className: 'sf-rail-timeline-summary-footer' });
+    if (summary.badges.length > 0) {
+      var badgeRail = sf.el('div', { className: 'sf-rail-timeline-summary-badges' });
+      summary.badges.forEach(function (badge) {
+        badgeRail.appendChild(sf.el('span', {
+          className: 'sf-rail-timeline-summary-pill sf-rail-timeline-summary-pill--' + badge.kind,
+        }, badge.text));
+      });
+      footer.appendChild(badgeRail);
+    }
+    if (summary.toneSegments.length > 0) {
+      var toneBar = sf.el('div', {
+        className: 'sf-rail-timeline-summary-tonebar',
+        'aria-hidden': 'true',
+      });
+      var total = summary.toneSegments.reduce(function (sum, segment) {
+        return sum + segment.count;
+      }, 0) || 1;
+      summary.toneSegments.forEach(function (segment) {
+        var toneSegment = sf.el('span', { className: 'sf-rail-timeline-summary-tone-segment' });
+        toneSegment.style.background = segment.tone.border;
+        toneSegment.style.width = ((segment.count / total) * 100) + '%';
+        toneBar.appendChild(toneSegment);
+      });
+      footer.appendChild(toneBar);
+    }
+    if (footer.children.length > 0) block.appendChild(footer);
   }
 
   function bindScrollSync(source, target, state, root, zoomButtons) {
@@ -2579,6 +2645,7 @@ const SF = (function () {
         metaLabel: describeMeta(entry.item.meta),
         startMinute: entry.item.startMinute,
         top: TRACK_PADDING + entry.trackIndex * (TRACK_HEIGHT + TRACK_GAP),
+        ariaLabel: buildItemAriaLabel(entry.item, lane),
         tooltip: buildItemTooltip(entry.item, lane),
         tone: entry.item.tone,
         trackIndex: entry.trackIndex,
@@ -2631,6 +2698,7 @@ const SF = (function () {
             metaLabel: describeMeta(entry.item.meta),
             startMinute: entry.item.startMinute,
             top: TRACK_PADDING + entry.trackIndex * (TRACK_HEIGHT + TRACK_GAP),
+            ariaLabel: buildItemAriaLabel(entry.item, lane),
             tooltip: buildItemTooltip(entry.item, lane),
             tone: entry.item.tone,
             trackIndex: entry.trackIndex,
@@ -2640,15 +2708,15 @@ const SF = (function () {
       }
 
       if (group.isCluster) {
+        var summary = buildOverviewBlockSummary(group, false);
         blocks.push({
           clusterId: group.id,
-          countLabel: String(group.count),
           endMinute: group.endMinute,
           height: OVERVIEW_BLOCK_HEIGHT,
           itemId: group.id,
           kindClass: 'sf-rail-timeline-item--cluster',
-          label: group.label,
-          metaLabel: group.metaLabel,
+          label: group.summary.primaryLabel,
+          metaLabel: group.summary.secondaryLabel,
           onClick: function () {
             state.expandedClusters[lane.id] = state.expandedClusters[lane.id] === group.id ? null : group.id;
             if (!state.expandedClusters[lane.id]) delete state.expandedClusters[lane.id];
@@ -2658,23 +2726,29 @@ const SF = (function () {
             if (typeof rerender === 'function') rerender();
           },
           startMinute: group.startMinute,
+          summary: summary,
           top: Math.max(Math.round((height - OVERVIEW_BLOCK_HEIGHT) / 2), TRACK_PADDING),
+          ariaLabel: buildOverviewAriaLabel(group, lane, false),
+          expanded: false,
           tooltip: buildClusterTooltip(group, lane),
           tone: group.tone,
         });
         return;
       }
 
+      var summaryBlock = buildOverviewBlockSummary(group, false);
       blocks.push({
         endMinute: group.endMinute,
         height: OVERVIEW_BLOCK_HEIGHT,
         itemId: group.items[0].id,
         kindClass: 'sf-rail-timeline-item--overview',
-        label: group.items[0].label,
-        metaLabel: describeMeta(group.items[0].meta),
+        label: group.summary.primaryLabel,
+        metaLabel: group.summary.secondaryLabel,
         startMinute: group.startMinute,
+        summary: summaryBlock,
         top: Math.max(Math.round((height - OVERVIEW_BLOCK_HEIGHT) / 2), TRACK_PADDING),
-        tooltip: buildItemTooltip(group.items[0], lane),
+        ariaLabel: buildOverviewAriaLabel(group, lane, false),
+        tooltip: buildOverviewTooltip(group, lane),
         tone: group.tone,
       });
     });
@@ -2687,7 +2761,7 @@ const SF = (function () {
     };
   }
 
-  function buildLaneLabel(lane, laneRender) {
+  function buildLaneLabel(lane, laneRender, row) {
     var label = sf.el('div', {
       className: 'sf-rail-timeline-lane-label',
       dataset: { laneId: lane.id },
@@ -2695,11 +2769,14 @@ const SF = (function () {
     label.style.minHeight = laneRender.height + 'px';
 
     var heading = sf.el('div', { className: 'sf-rail-timeline-lane-heading' });
-    heading.appendChild(sf.el('div', { className: 'sf-rail-timeline-lane-title' }, lane.label));
+    var title = sf.el('div', { className: 'sf-rail-timeline-lane-title' }, lane.label);
+    title.id = 'sf-rail-timeline-lane-title-' + lane.id;
+    heading.appendChild(title);
     if (lane.mode) {
       heading.appendChild(sf.el('div', { className: 'sf-rail-timeline-lane-mode' }, lane.mode));
     }
     label.appendChild(heading);
+    if (row) row.setAttribute('aria-labelledby', title.id);
 
     if (lane.badges.length > 0) {
       var badges = sf.el('div', { className: 'sf-rail-timeline-lane-badges' });
@@ -2735,10 +2812,17 @@ const SF = (function () {
       rows: [
         { key: 'Lane', value: lane.label },
         { key: 'Window', value: formatMinuteRange(group.startMinute, group.endMinute, lane.axis) },
-        { key: 'Items', value: String(group.count) },
+        { key: 'Items', value: String(group.summary.count) },
       ],
       title: group.label,
     };
+
+    if (group.summary.openCount > 0) {
+      payload.rows.push({ key: 'Open', value: String(group.summary.openCount) });
+    }
+    if (group.summary.toneSegments.length > 0) {
+      payload.rows.push({ key: 'Mix', value: describeToneSegments(group.summary.toneSegments) });
+    }
 
     if (first && first.meta) {
       payload.rows.push({ key: 'Sample', value: describeMeta(first.meta) });
@@ -2761,12 +2845,8 @@ const SF = (function () {
     };
   }
 
-  function buildOverviewBlockLabel(group) {
-    if (group.count === 1) return group.items[0].label;
-    return group.count + ' assignments';
-  }
-
   function buildOverviewBlockMeta(group) {
+    if (group.summary && group.summary.secondaryLabel) return group.summary.secondaryLabel;
     var labels = [];
     group.items.slice(0, 2).forEach(function (item) {
       labels.push(item.label);
@@ -2815,6 +2895,12 @@ const SF = (function () {
   function assertInteger(value, label) {
     var number = assertFiniteNumber(value, label);
     sf.assert(Math.floor(number) === number, label + ' must be an integer');
+    return number;
+  }
+
+  function assertNonNegativeInteger(value, label) {
+    var number = assertInteger(value, label);
+    sf.assert(number >= 0, label + ' must be greater than or equal to zero');
     return number;
   }
 
@@ -2965,6 +3051,7 @@ const SF = (function () {
       label: item.label || 'Item ' + (ordinal + 1),
       meta: item.meta != null ? item.meta : '',
       originalIndex: ordinal,
+      summary: normalizeOverviewSummary(item.summary, 'createTimeline(model.lanes[].items[].summary)'),
       startMinute: startMinute,
       tone: resolveTone(item.tone || item.color || 'slate'),
     };
@@ -3104,6 +3191,35 @@ const SF = (function () {
     return left.originalIndex - right.originalIndex;
   }
 
+  function normalizeOverviewSummary(summary, label) {
+    if (summary == null) return null;
+    sf.assert(summary && typeof summary === 'object', label + ' must be an object');
+
+    var normalized = {
+      count: summary.count == null ? null : assertNonNegativeInteger(summary.count, label + '.count'),
+      openCount: summary.openCount == null ? null : assertNonNegativeInteger(summary.openCount, label + '.openCount'),
+      primaryLabel: summary.primaryLabel == null ? '' : String(summary.primaryLabel),
+      secondaryLabel: summary.secondaryLabel == null ? '' : String(summary.secondaryLabel),
+      toneSegments: Array.isArray(summary.toneSegments)
+        ? summary.toneSegments.map(function (segment, index) {
+          sf.assert(segment && typeof segment === 'object', label + '.toneSegments[' + index + '] must be an object');
+          return {
+            count: assertNonNegativeInteger(segment.count, label + '.toneSegments[' + index + '].count'),
+            tone: resolveTone(segment.tone || segment.color || 'slate'),
+          };
+        }).filter(function (segment) {
+          return segment.count > 0;
+        })
+        : [],
+    };
+
+    if (normalized.count != null && normalized.openCount != null) {
+      sf.assert(normalized.openCount <= normalized.count, label + '.openCount must not exceed count');
+    }
+
+    return normalized;
+  }
+
   function renderAxisDecor(track, axis, includeLabels) {
     appendWeekendBands(track, axis);
     appendDayDividers(track, axis);
@@ -3174,7 +3290,7 @@ const SF = (function () {
     var current = null;
 
     lane.items.forEach(function (item) {
-      if (!current || item.startMinute >= current.endMinute) {
+      if (!current || item.startMinute > current.endMinute + OVERVIEW_GROUP_GAP_MINUTES) {
         if (current) groups.push(current);
         current = {
           clusterId: item.clusterId,
@@ -3213,21 +3329,170 @@ const SF = (function () {
 
     detailItems.sort(compareItems);
     group.detailItems = detailItems;
-    group.count = detailItems.length;
-    group.isCluster = group.count > 1 || group.items.some(function (item) {
+    group.isCluster = detailItems.length > 1 || group.items.some(function (item) {
       return item.detailItems.length > 0;
     });
     group.id = group.clusterId || (group.isCluster
       ? 'cluster:' + lane.id + ':' + (group.items[0] ? group.items[0].id : index)
       : (group.items[0] ? group.items[0].id : 'group-' + index));
-    group.label = group.isCluster ? buildOverviewBlockLabel(group) : group.items[0].label;
-    group.metaLabel = group.isCluster ? buildOverviewBlockMeta(group) : describeMeta(group.items[0].meta);
-    group.tone = dominantTone(group.detailItems);
+    group.summary = deriveOverviewSummary(group);
+    group.count = group.summary.count;
+    group.label = group.summary.primaryLabel;
+    group.metaLabel = group.summary.secondaryLabel;
+    group.tone = group.summary.primaryTone || dominantTone(group.detailItems);
   }
 
   function dominantTone(items) {
-    if (!items.length) return resolveTone('slate');
-    return items[0].tone;
+    var toneSegments = buildToneSegmentsFromItems(items);
+    if (!toneSegments.length) return resolveTone('slate');
+    return toneSegments[0].tone;
+  }
+
+  function deriveOverviewSummary(group) {
+    var summaries = group.items.map(function (item) {
+      return item.summary;
+    }).filter(Boolean);
+    var count = summaries.length > 0
+      ? summaries.reduce(function (sum, summary) {
+        return sum + (summary.count != null ? summary.count : 1);
+      }, 0)
+      : group.detailItems.length;
+    var openCount = summaries.some(function (summary) {
+      return summary.openCount != null;
+    })
+      ? summaries.reduce(function (sum, summary) {
+        return sum + (summary.openCount || 0);
+      }, 0)
+      : inferOpenCount(group.detailItems);
+    var toneSegments = summaries.some(function (summary) {
+      return summary.toneSegments.length > 0;
+    })
+      ? mergeToneSegments(summaries.reduce(function (segments, summary) {
+        return segments.concat(summary.toneSegments);
+      }, []))
+      : buildToneSegmentsFromItems(group.detailItems);
+    var primarySummary = summaries.length === 1 ? summaries[0] : null;
+
+    return {
+      count: count,
+      openCount: openCount,
+      primaryLabel: primarySummary && primarySummary.primaryLabel
+        ? primarySummary.primaryLabel
+        : count > 1
+          ? count + ' assignments'
+          : group.items[0].label,
+      primaryTone: toneSegments[0] ? toneSegments[0].tone : dominantTone(group.detailItems),
+      secondaryLabel: primarySummary && primarySummary.secondaryLabel
+        ? primarySummary.secondaryLabel
+        : count > 1
+          ? buildOverviewBlockMeta({
+            count: count,
+            items: group.detailItems,
+          })
+          : describeMeta(group.items[0].meta),
+      toneSegments: toneSegments,
+    };
+  }
+
+  function inferOpenCount(items) {
+    return items.reduce(function (count, item) {
+      if (!item) return count;
+      if (item.summary && item.summary.openCount != null) return count + item.summary.openCount;
+      if (!item.meta || typeof item.meta !== 'object' || Array.isArray(item.meta)) return count;
+      if (typeof item.meta.openCount === 'number' && isFinite(item.meta.openCount)) return count + item.meta.openCount;
+      if (typeof item.meta.unassignedCount === 'number' && isFinite(item.meta.unassignedCount)) return count + item.meta.unassignedCount;
+      if (item.meta.open === true || item.meta.unassigned === true) return count + 1;
+      if (typeof item.meta.status === 'string' && /open|unassigned/i.test(item.meta.status)) return count + 1;
+      return count;
+    }, 0);
+  }
+
+  function mergeToneSegments(segments) {
+    var byTone = {};
+    segments.forEach(function (segment) {
+      if (!segment || !(segment.count > 0)) return;
+      var toneId = segment.tone.id || segment.tone.border || 'slate';
+      if (!byTone[toneId]) {
+        byTone[toneId] = {
+          count: 0,
+          tone: segment.tone,
+        };
+      }
+      byTone[toneId].count += segment.count;
+    });
+    return Object.keys(byTone).map(function (toneId) {
+      return byTone[toneId];
+    }).sort(compareToneSegments);
+  }
+
+  function buildToneSegmentsFromItems(items) {
+    return mergeToneSegments(items.map(function (item) {
+      return {
+        count: 1,
+        tone: item.tone,
+      };
+    }));
+  }
+
+  function compareToneSegments(left, right) {
+    if (left.count !== right.count) return right.count - left.count;
+    if (left.tone.id === right.tone.id) return 0;
+    return left.tone.id < right.tone.id ? -1 : 1;
+  }
+
+  function buildOverviewBlockSummary(group, expanded) {
+    var badges = [];
+    if (group.summary.count > 1) {
+      badges.push({ kind: 'count', text: group.summary.count + ' total' });
+    }
+    if (group.summary.openCount > 0) {
+      badges.push({ kind: 'open', text: group.summary.openCount + ' open' });
+    }
+    if (group.isCluster) {
+      badges.push({ kind: 'action', text: expanded ? 'Expanded' : 'Enter to inspect' });
+    }
+    return {
+      badges: badges,
+      toneSegments: group.summary.toneSegments,
+    };
+  }
+
+  function buildItemAriaLabel(item, lane) {
+    var parts = [
+      lane.label,
+      item.label,
+      formatMinuteRange(item.startMinute, item.endMinute, lane.axis),
+    ];
+    var meta = describeMeta(item.meta);
+    if (meta) parts.push(meta);
+    return parts.join(' · ');
+  }
+
+  function buildOverviewAriaLabel(group, lane, expanded) {
+    var parts = [
+      lane.label,
+      group.summary.primaryLabel,
+      formatMinuteRange(group.startMinute, group.endMinute, lane.axis),
+    ];
+    if (group.summary.secondaryLabel) parts.push(group.summary.secondaryLabel);
+    if (group.summary.count > 1) parts.push(group.summary.count + ' assignments');
+    if (group.summary.openCount > 0) parts.push(group.summary.openCount + ' open');
+    if (group.summary.toneSegments.length > 0) parts.push(describeToneSegments(group.summary.toneSegments));
+    if (group.isCluster) parts.push(expanded ? 'Expanded' : 'Press Enter to expand');
+    return parts.join(' · ');
+  }
+
+  function describeToneSegments(segments) {
+    return segments.map(function (segment) {
+      return segment.count + ' ' + segment.tone.id;
+    }).join(', ');
+  }
+
+  function buildOverviewTooltip(group, lane) {
+    if (group.summary.count > 1 || group.summary.openCount > 0 || group.summary.toneSegments.length > 1) {
+      return buildClusterTooltip(group, lane);
+    }
+    return buildItemTooltip(group.items[0], lane);
   }
 
   function packItems(items) {
@@ -3302,6 +3567,7 @@ const SF = (function () {
   function resolveTone(tone) {
     if (tone && typeof tone === 'object') {
       return {
+        id: tone.id || tone.name || tone.borderColor || tone.color || 'custom',
         background: tone.background || tone.bg || tone.color || TONE_MAP.slate.background,
         border: tone.border || tone.borderColor || tone.color || TONE_MAP.slate.border,
         overlay: tone.overlay || tone.band || tone.background || tone.bg || TONE_MAP.slate.overlay,
@@ -3311,6 +3577,7 @@ const SF = (function () {
     if (TONE_MAP[tone]) return TONE_MAP[tone];
     if (isColorString(tone)) {
       return {
+        id: String(tone),
         background: tone,
         border: tone,
         overlay: tone,
@@ -3483,6 +3750,7 @@ const SF = (function () {
 
   function showTooltip(tooltip, root, payload, event) {
     if (!payload) return;
+    tooltip.setAttribute('aria-hidden', 'false');
     tooltip.innerHTML = '';
     tooltip.appendChild(sf.el('div', { className: 'sf-tooltip-title' }, payload.title));
     (payload.rows || []).forEach(function (row) {
@@ -3500,7 +3768,18 @@ const SF = (function () {
     tooltip.classList.add('visible');
   }
 
+  function showTooltipForElement(tooltip, root, payload, element) {
+    var rect = element && typeof element.getBoundingClientRect === 'function'
+      ? element.getBoundingClientRect()
+      : null;
+    showTooltip(tooltip, root, payload, rect ? {
+      clientX: rect.left + rect.width / 2,
+      clientY: rect.top + rect.height / 2,
+    } : null);
+  }
+
   function hideTooltip(tooltip) {
+    tooltip.setAttribute('aria-hidden', 'true');
     tooltip.classList.remove('visible');
   }
 

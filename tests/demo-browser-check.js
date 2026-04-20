@@ -4,6 +4,7 @@ const http = require('node:http');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
+const SCREENSHOT_DIR = path.join(ROOT, 'screenshots');
 
 function contentTypeFor(filePath) {
   switch (path.extname(filePath).toLowerCase()) {
@@ -145,6 +146,14 @@ async function runCheck(name, fn) {
   }
 }
 
+async function captureScreenshot(target, filename) {
+  fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+  const screenshotPath = path.join(SCREENSHOT_DIR, filename);
+  await target.screenshot({ path: screenshotPath });
+  assert.equal(fs.existsSync(screenshotPath), true);
+  assert.equal(fs.statSync(screenshotPath).size > 0, true);
+}
+
 async function checkFullSurface() {
   await withPage(async ({ goto, page, assertNoBrowserErrors }) => {
     const response = await goto('/demos/full-surface.html');
@@ -214,10 +223,12 @@ async function checkTimelineDemo() {
     const timelineCount = await page.locator('.sf-rail-timeline').count();
     const clusterCount = await page.locator('.sf-rail-timeline-item--cluster').count();
     const weekendBandCount = await page.locator('.sf-rail-timeline-weekend-band').count();
+    const summaryPillCount = await page.locator('.sf-rail-timeline-summary-pill').count();
 
     assert.equal(timelineCount, 1);
     assert.equal(clusterCount >= 2, true);
     assert.equal(weekendBandCount > 0, true);
+    assert.equal(summaryPillCount > 0, true);
 
     const layoutMetrics = await page.locator('.sf-rail-timeline').evaluate((root) => {
       const header = root.querySelector('.sf-rail-timeline-header-viewport');
@@ -268,10 +279,71 @@ async function checkTimelineDemo() {
     assert.equal(syncedScroll.headerScrollLeft, 240);
     assert.notEqual(syncedScroll.viewportStartMinute, 0);
 
+    await page.locator('.sf-rail-timeline-item--cluster').first().focus();
+
+    const focusTooltip = await page.locator('.sf-rail-timeline').evaluate((root) => {
+      const tooltip = root.querySelector('.sf-rail-timeline-tooltip');
+      const block = root.querySelector('.sf-rail-timeline-item--cluster');
+      return {
+        describedBy: block.getAttribute('aria-describedby'),
+        tooltipId: tooltip.id,
+        tooltipVisible: tooltip.classList.contains('visible'),
+        tooltipHiddenAttr: tooltip.getAttribute('aria-hidden'),
+      };
+    });
+
+    assert.equal(focusTooltip.describedBy, focusTooltip.tooltipId);
+    assert.equal(focusTooltip.tooltipVisible, true);
+    assert.equal(focusTooltip.tooltipHiddenAttr, 'false');
+
+    await captureScreenshot(page.locator('.sf-rail-timeline-row').first(), 'rail-timeline-overview.png');
+
     await page.locator('.sf-rail-timeline-item--cluster').first().click();
 
     const detailCount = await page.locator('.sf-rail-timeline-item--detail').count();
     assert.equal(detailCount >= 4, true);
+
+    await captureScreenshot(page.locator('.sf-rail-timeline-row').first(), 'rail-timeline-expanded.png');
+    await captureScreenshot(page.locator('.sf-rail-timeline-row').nth(2), 'rail-timeline-detailed.png');
+
+    await page.setViewportSize({ width: 700, height: 1200 });
+    await page.waitForFunction(() => {
+      const root = document.querySelector('.sf-rail-timeline');
+      if (!root) return false;
+      const labelWidth = Number.parseFloat(getComputedStyle(root).getPropertyValue('--sf-rail-label-width'));
+      return labelWidth > 0 && labelWidth < 280;
+    }, { timeout: 10000 });
+    await captureScreenshot(page.locator('.sf-rail-timeline'), 'rail-timeline-narrow.png');
+
+    assertNoBrowserErrors();
+  });
+}
+
+async function checkDenseTimelineDemo() {
+  await withPage(async ({ goto, page, assertNoBrowserErrors }) => {
+    await page.setViewportSize({ width: 1600, height: 1200 });
+
+    const response = await goto('/demos/timeline-dense.html');
+    assert.equal(response.status(), 200);
+
+    await page.waitForSelector('.sf-rail-timeline-row', { timeout: 10000 });
+    await page.waitForFunction(() => {
+      return window.__denseTimelineMetrics && window.__denseTimelineMetrics.laneCount === 100;
+    }, { timeout: 10000 });
+
+    const metrics = await page.evaluate(() => window.__denseTimelineMetrics);
+    const denseCounts = await page.locator('.sf-rail-timeline').evaluate((root) => ({
+      clusterCount: root.querySelectorAll('.sf-rail-timeline-item--cluster').length,
+      rowCount: root.querySelectorAll('.sf-rail-timeline-row').length,
+      summaryPillCount: root.querySelectorAll('.sf-rail-timeline-summary-pill').length,
+    }));
+
+    assert.equal(metrics.laneCount, 100);
+    assert.equal(metrics.itemCount, 1500);
+    assert.equal(Number.isFinite(metrics.renderMs), true);
+    assert.equal(denseCounts.rowCount, 100);
+    assert.equal(denseCounts.clusterCount > 0, true);
+    assert.equal(denseCounts.summaryPillCount > 0, true);
 
     assertNoBrowserErrors();
   });
@@ -323,6 +395,7 @@ async function checkTimelineDemoWithoutResizeObserver() {
   try {
     await runCheck('full-surface demo', checkFullSurface);
     await runCheck('timeline demo', checkTimelineDemo);
+    await runCheck('dense timeline demo', checkDenseTimelineDemo);
     await runCheck('timeline demo without ResizeObserver', checkTimelineDemoWithoutResizeObserver);
     await runCheck('rail demo', checkRailDemo);
   } catch (error) {

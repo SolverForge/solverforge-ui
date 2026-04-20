@@ -102,9 +102,30 @@
               { dayIndex: 11, dayCount: 2, label: 'Desired weekend', tone: 'emerald' }
             ],
             items: [
-              { id: 'east-1', clusterId: 'east-rush', startMinute: dayMinute(0, 6), endMinute: dayMinute(0, 14), label: 'ER intake', meta: '8 clinicians', tone: 'blue' },
-              { id: 'east-2', clusterId: 'east-rush', startMinute: dayMinute(0, 7), endMinute: dayMinute(0, 16), label: 'Trauma hold', meta: '6 clinicians', tone: 'blue' },
-              { id: 'east-3', clusterId: 'east-rush', startMinute: dayMinute(0, 8), endMinute: dayMinute(0, 18), label: 'Overflow beds', meta: '10 clinicians', tone: 'blue' },
+              {
+                id: 'east-rush',
+                clusterId: 'east-rush',
+                startMinute: dayMinute(0, 6),
+                endMinute: dayMinute(0, 18),
+                label: 'Monday intake surge',
+                tone: 'blue',
+                summary: {
+                  primaryLabel: 'Monday intake surge',
+                  secondaryLabel: 'ER intake · trauma hold · overflow beds',
+                  count: 24,
+                  openCount: 3,
+                  toneSegments: [
+                    { tone: 'blue', count: 15 },
+                    { tone: 'amber', count: 6 },
+                    { tone: 'rose', count: 3 }
+                  ]
+                },
+                detailItems: [
+                  { id: 'east-1', startMinute: dayMinute(0, 6), endMinute: dayMinute(0, 14), label: 'ER intake', meta: '8 clinicians', tone: 'blue' },
+                  { id: 'east-2', startMinute: dayMinute(0, 7), endMinute: dayMinute(0, 16), label: 'Trauma hold', meta: '6 clinicians', tone: 'amber' },
+                  { id: 'east-3', startMinute: dayMinute(0, 8), endMinute: dayMinute(0, 18), label: 'Overflow beds', meta: '10 clinicians', tone: 'rose' }
+                ]
+              },
               { id: 'east-4', startMinute: dayMinute(2, 6), endMinute: dayMinute(2, 18), label: 'Cardio block', meta: '5 clinicians', tone: 'emerald' }
             ]
           },
@@ -122,8 +143,29 @@
               { dayIndex: 15, dayCount: 3, label: 'Preferred span', tone: 'emerald' }
             ],
             items: [
-              { id: 'west-1', clusterId: 'west-rush', startMinute: dayMinute(1, 6), endMinute: dayMinute(1, 13), label: 'Pediatrics triage', meta: '4 clinicians', tone: 'violet' },
-              { id: 'west-2', clusterId: 'west-rush', startMinute: dayMinute(1, 8), endMinute: dayMinute(1, 15), label: 'Float pool', meta: '3 clinicians', tone: 'violet' },
+              {
+                id: 'west-rush',
+                clusterId: 'west-rush',
+                startMinute: dayMinute(1, 6),
+                endMinute: dayMinute(1, 15),
+                label: 'Tuesday reassignment wave',
+                tone: 'violet',
+                summary: {
+                  primaryLabel: 'Tuesday reassignment wave',
+                  secondaryLabel: 'Pediatrics triage · float pool',
+                  count: 9,
+                  openCount: 1,
+                  toneSegments: [
+                    { tone: 'violet', count: 6 },
+                    { tone: 'cyan', count: 2 },
+                    { tone: 'rose', count: 1 }
+                  ]
+                },
+                detailItems: [
+                  { id: 'west-1', startMinute: dayMinute(1, 6), endMinute: dayMinute(1, 13), label: 'Pediatrics triage', meta: '4 clinicians', tone: 'violet' },
+                  { id: 'west-2', startMinute: dayMinute(1, 8), endMinute: dayMinute(1, 15), label: 'Float pool', meta: '3 clinicians', tone: 'cyan' }
+                ]
+              },
               { id: 'west-3', startMinute: dayMinute(4, 7), endMinute: dayMinute(4, 19), label: 'Ward reset', meta: '2 clinicians', tone: 'cyan' },
               { id: 'west-4', startMinute: dayMinute(7, 6), endMinute: dayMinute(7, 18), label: 'Rotation handoff', meta: '5 clinicians', tone: 'blue' }
             ]
@@ -155,7 +197,7 @@
     function buildRailTimeline() {
       return SF.rail.createTimeline({
         title: 'Read-only schedule',
-        subtitle: 'Overview by location, detailed by employee, hover for detail, drag to pan.',
+        subtitle: 'Overview by location, detailed by employee, focus or hover for detail, drag to pan.',
         label: 'Staffing lane',
         labelWidth: 280,
         model: buildTimelineModel()

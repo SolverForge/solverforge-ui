@@ -26,6 +26,71 @@ function blockTrackMap(root, className) {
   );
 }
 
+function dayMinute(dayIndex, hour, minute = 0) {
+  return dayIndex * 1440 + hour * 60 + minute;
+}
+
+function buildDenseHospitalLikeModel() {
+  const laneCount = 100;
+  const totalItems = 1500;
+  let itemCounter = 0;
+
+  return {
+    axis: buildAxis(28, { startMinute: 0, endMinute: 14 * 1440 }),
+    lanes: Array.from({ length: laneCount }, (_, laneIndex) => {
+      const overview = laneIndex < 40;
+      const laneItems = [];
+      const perLane = laneIndex < laneCount - 1
+        ? Math.floor(totalItems / laneCount) + (laneIndex < totalItems % laneCount ? 1 : 0)
+        : totalItems - itemCounter;
+
+      for (let itemIndex = 0; itemIndex < perLane; itemIndex += 1) {
+        const clusterOffset = itemIndex % 3;
+        const dayIndex = overview
+          ? (laneIndex * 3 + Math.floor(itemIndex / 3)) % 28
+          : (laneIndex * 3 + itemIndex) % 28;
+        const startHour = 6 + (overview ? Math.floor(itemIndex / 3) % 4 : (itemIndex + laneIndex) % 6);
+        const startMinute = overview
+          ? dayMinute(dayIndex, startHour, clusterOffset * 45)
+          : dayMinute(dayIndex, startHour);
+        const endMinute = overview
+          ? startMinute + 300 + clusterOffset * 30
+          : startMinute + 360 + ((itemIndex + laneIndex) % 3) * 60;
+        const tone = ['blue', 'emerald', 'amber', 'violet'][itemIndex % 4];
+        const itemId = `lane-${laneIndex}-item-${itemIndex}`;
+
+        if (overview) {
+          laneItems.push({
+            id: itemId,
+            clusterId: `cluster-${laneIndex}-${Math.floor(itemIndex / 3)}`,
+            startMinute,
+            endMinute,
+            label: `Coverage ${itemIndex + 1}`,
+            tone,
+          });
+        } else {
+          laneItems.push({
+            id: itemId,
+            startMinute,
+            endMinute,
+            label: `Shift ${itemIndex + 1}`,
+            meta: { zone: `Unit ${laneIndex % 8}` },
+            tone,
+          });
+        }
+        itemCounter += 1;
+      }
+
+      return {
+        id: overview ? `location-${laneIndex}` : `employee-${laneIndex}`,
+        label: overview ? `By location · Unit ${laneIndex + 1}` : `By employee · Clinician ${laneIndex + 1}`,
+        mode: overview ? 'overview' : 'detailed',
+        items: laneItems,
+      };
+    }),
+  };
+}
+
 test('timeline detailed lanes pack overlapping items into stable track indices', () => {
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
 
@@ -101,6 +166,77 @@ test('timeline overview lanes cluster overlaps and expand only the targeted regi
   assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-item--cluster').length, 1);
 });
 
+test('timeline overview summaries accept additive summary metadata and render count/open/tone composition', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  const timeline = SF.rail.createTimeline({
+    model: {
+      axis: buildAxis(14, { startMinute: 0, endMinute: 7 * 1440 }),
+      lanes: [
+        {
+          id: 'ward-surge',
+          label: 'Ward surge',
+          mode: 'overview',
+          items: [
+            {
+              id: 'surge',
+              startMinute: dayMinute(1, 6),
+              endMinute: dayMinute(1, 18),
+              label: 'Unused label',
+              tone: 'blue',
+              summary: {
+                primaryLabel: 'Monday intake surge',
+                secondaryLabel: 'ER + trauma + float pool',
+                count: 12,
+                openCount: 3,
+                toneSegments: [
+                  { tone: 'blue', count: 7 },
+                  { tone: 'amber', count: 3 },
+                  { tone: 'rose', count: 2 },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    },
+  });
+
+  const block = timeline.el.querySelector('.sf-rail-timeline-item--overview');
+  const pills = timeline.el.querySelectorAll('.sf-rail-timeline-summary-pill').map((node) => node.textContent.trim());
+  const toneSegments = timeline.el.querySelectorAll('.sf-rail-timeline-summary-tone-segment');
+
+  assert.equal(block.textContent.includes('Monday intake surge'), true);
+  assert.equal(block.textContent.includes('ER + trauma + float pool'), true);
+  assert.deepEqual(pills, ['12 total', '3 open']);
+  assert.equal(toneSegments.length, 3);
+  assert.equal(block.attributes['aria-label'].includes('12 assignments'), true);
+  assert.equal(block.attributes['aria-label'].includes('3 open'), true);
+});
+
+test('timeline overview lanes cluster tightly adjacent items into one aggregate block', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  const timeline = SF.rail.createTimeline({
+    model: {
+      axis: buildAxis(7),
+      lanes: [
+        {
+          id: 'ward-adjacent',
+          label: 'Ward adjacent',
+          mode: 'overview',
+          items: [
+            { id: 'adjacent-a', startMinute: 60, endMinute: 180, label: 'A', tone: 'blue' },
+            { id: 'adjacent-b', startMinute: 195, endMinute: 300, label: 'B', tone: 'amber' },
+          ],
+        },
+      ],
+    },
+  });
+
+  assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-item--cluster').length, 1);
+});
+
 test('timeline syncs header/body scroll, updates zoom presets, and drag-pans from the header', () => {
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
 
@@ -153,6 +289,36 @@ test('timeline syncs header/body scroll, updates zoom presets, and drag-pans fro
 
   assert.notEqual(headerViewport.scrollLeft, beforeDrag);
   assert.equal(bodyViewport.scrollLeft, headerViewport.scrollLeft);
+});
+
+test('timeline updates viewport without rebuilding rows for simple pan changes', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  const timeline = SF.rail.createTimeline({
+    model: {
+      axis: buildAxis(28, { startMinute: 0, endMinute: 14 * 1440 }),
+      lanes: [
+        {
+          id: 'employee-pan',
+          label: 'Employee Pan',
+          mode: 'detailed',
+          items: [
+            { id: 'shift-1', startMinute: 120, endMinute: 360, label: 'Shift 1', tone: 'blue' },
+            { id: 'shift-2', startMinute: 480, endMinute: 720, label: 'Shift 2', tone: 'amber' },
+          ],
+        },
+      ],
+    },
+  });
+
+  const originalRow = timeline.el.querySelector('.sf-rail-timeline-row');
+  const originalBlock = timeline.el.querySelector('.sf-rail-timeline-item--detail');
+
+  timeline.setViewport({ startMinute: 7 * 1440, endMinute: 21 * 1440 });
+
+  assert.equal(timeline.el.querySelector('.sf-rail-timeline-row'), originalRow);
+  assert.equal(timeline.el.querySelector('.sf-rail-timeline-item--detail'), originalBlock);
+  assert.equal(Number(timeline.el.dataset.viewportStartMinute), 7 * 1440);
 });
 
 test('timeline derives content width from the measured body viewport instead of the padded host', () => {
@@ -321,6 +487,51 @@ test('timeline renders after append when ResizeObserver is unavailable', async (
   assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-row').length, 1);
   assert.equal(timeline.el.querySelector('.sf-rail-timeline-header-row').children.length, 2);
   assert.equal(bodyViewport.scrollWidth > bodyViewport.clientWidth, true);
+});
+
+test('timeline exposes keyboard-focus tooltip parity and keyboard expansion for overview blocks', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  const timeline = SF.rail.createTimeline({
+    model: {
+      axis: buildAxis(14, { startMinute: 0, endMinute: 7 * 1440 }),
+      lanes: [
+        {
+          id: 'location-focus',
+          label: 'Location focus',
+          mode: 'overview',
+          items: [
+            { id: 'early-a', clusterId: 'rush', startMinute: 120, endMinute: 300, label: 'Early A', tone: 'blue' },
+            { id: 'early-b', clusterId: 'rush', startMinute: 180, endMinute: 360, label: 'Early B', tone: 'blue' },
+          ],
+        },
+      ],
+    },
+  });
+
+  const clusterBlock = timeline.el.querySelector('.sf-rail-timeline-item--cluster');
+  const tooltip = timeline.el.querySelector('.sf-rail-timeline-tooltip');
+
+  clusterBlock.dispatchEvent({ type: 'focus' });
+
+  assert.equal(clusterBlock.tabIndex, 0);
+  assert.equal(clusterBlock.attributes.role, 'button');
+  assert.equal(clusterBlock.attributes['aria-describedby'], tooltip.id);
+  assert.equal(tooltip.classList.contains('visible'), true);
+  assert.equal(tooltip.attributes['aria-hidden'], 'false');
+
+  clusterBlock.dispatchEvent({
+    type: 'keydown',
+    key: 'Enter',
+    preventDefault() {},
+  });
+
+  assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-item--detail').length, 2);
+
+  clusterBlock.dispatchEvent({ type: 'blur' });
+
+  assert.equal(tooltip.classList.contains('visible'), false);
+  assert.equal(tooltip.attributes['aria-hidden'], 'true');
 });
 
 test('timeline assigns stable fallback labels and ordering for unlabeled items and detail items', () => {
@@ -550,4 +761,17 @@ test('timeline renders weekend shading and default 6-hour ticks without explicit
 
   assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-weekend-band').length, 2);
   assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-tick-label').length, 8);
+});
+
+test('timeline renders the repeatable dense hospital-like validation scenario', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  const denseModel = buildDenseHospitalLikeModel();
+  const timeline = SF.rail.createTimeline({ model: denseModel });
+
+  assert.equal(denseModel.lanes.length, 100);
+  assert.equal(denseModel.lanes.reduce((sum, lane) => sum + lane.items.length, 0), 1500);
+  assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-row').length, 100);
+  assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-item--cluster').length > 0, true);
+  assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-item--detail').length > 0, true);
 });

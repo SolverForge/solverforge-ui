@@ -78,6 +78,11 @@
   transform: translateY(-1px);
 }
 
+.sf-rail-timeline-zoom-button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.94);
+  outline-offset: 2px;
+}
+
 .sf-rail-timeline-shell {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 250, 251, 0.98));
   display: grid;
@@ -369,6 +374,15 @@
   transform: translateY(-1px);
 }
 
+.sf-rail-timeline .sf-block:focus-visible {
+  box-shadow:
+    0 0 0 3px rgba(16, 185, 129, 0.28),
+    0 14px 22px rgba(15, 23, 42, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  outline: none;
+  transform: translateY(-1px);
+}
+
 .sf-rail-timeline-item--cluster {
   background-image:
     linear-gradient(90deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.02)),
@@ -389,7 +403,29 @@
   opacity: 0.94;
 }
 
-.sf-rail-timeline-cluster-count,
+.sf-rail-timeline-item--cluster .sf-block-label,
+.sf-rail-timeline-item--overview .sf-block-label {
+  font-size: 11px;
+}
+
+.sf-rail-timeline-item--cluster .sf-block-meta,
+.sf-rail-timeline-item--overview .sf-block-meta {
+  min-height: 22px;
+}
+
+.sf-rail-timeline-summary-footer {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.sf-rail-timeline-summary-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.sf-rail-timeline-summary-pill,
 .sf-rail-timeline-detail-hint {
   align-self: flex-start;
   background: rgba(15, 23, 42, 0.10);
@@ -400,9 +436,39 @@
   font-size: 8px;
   font-weight: var(--sf-font-semibold);
   letter-spacing: 0.06em;
-  margin-top: 4px;
   padding: 2px 6px;
   text-transform: uppercase;
+}
+
+.sf-rail-timeline-summary-pill--count {
+  background: rgba(255, 255, 255, 0.36);
+}
+
+.sf-rail-timeline-summary-pill--open {
+  background: rgba(244, 63, 94, 0.16);
+}
+
+.sf-rail-timeline-summary-pill--action,
+.sf-rail-timeline-detail-hint {
+  background: rgba(15, 23, 42, 0.14);
+}
+
+.sf-rail-timeline-detail-hint {
+  margin-top: 4px;
+}
+
+.sf-rail-timeline-summary-tonebar {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  display: flex;
+  gap: 2px;
+  min-height: 6px;
+  overflow: hidden;
+}
+
+.sf-rail-timeline-summary-tone-segment {
+  display: block;
+  min-width: 8px;
 }
 
 .sf-rail-timeline .sf-block-label {

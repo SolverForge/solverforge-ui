@@ -15,6 +15,7 @@ Then open:
 - `http://localhost:8000/demos/`
 - `http://localhost:8000/demos/full-surface.html`
 - `http://localhost:8000/demos/timeline.html`
+- `http://localhost:8000/demos/timeline-dense.html`
 - `http://localhost:8000/demos/rail.html`
 
 ## Automated browser verification
@@ -36,5 +37,6 @@ The automated check serves the repository locally, opens the runnable demo fixtu
 ## Coverage
 
 - `full-surface.html`: header, status bar, tabs, buttons, modal, toast, table, canonical scheduling timeline, Gantt, API guide, and footer
-- `timeline.html`: focused dense scheduling example using `SF.rail.createTimeline()` with overview and detailed lanes
+- `timeline.html`: focused dense scheduling example using `SF.rail.createTimeline()` with additive overview summaries, inline expansion, overlays, and detailed lanes
+- `timeline-dense.html`: repeatable 28-day, 100-lane, 1500-item acceptance fixture for dense schedule validation
 - `rail.html`: advanced low-level resource header, cards, gauges, blocks, and changeovers
