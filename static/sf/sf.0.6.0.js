@@ -5,7 +5,7 @@
 const SF = (function () {
   'use strict';
 
-  const sf = { version: '0.5.2' };
+  const sf = { version: '0.6.0' };
   var uidCounter = 0;
 
   /* ── Utilities ── */
@@ -493,8 +493,14 @@ const SF = (function () {
         pauseBtn.style.display = shouldShowPause(normalized) ? '' : 'none';
         pauseBtn.disabled = normalized === 'PAUSE_REQUESTED';
       }
-      if (resumeBtn) resumeBtn.style.display = normalized === 'PAUSED' ? '' : 'none';
-      if (cancelBtn) cancelBtn.style.display = shouldShowCancel(normalized) ? '' : 'none';
+      if (resumeBtn) {
+        resumeBtn.style.display = normalized === 'PAUSED' ? '' : 'none';
+        resumeBtn.disabled = false;
+      }
+      if (cancelBtn) {
+        cancelBtn.style.display = shouldShowCancel(normalized) ? '' : 'none';
+        cancelBtn.disabled = false;
+      }
       if (spinner) spinner.classList.toggle('active', shouldSpin(normalized));
 
       statusEl.textContent = lifecycleLabel(normalized);
@@ -590,18 +596,13 @@ const SF = (function () {
   }
 
   function shouldShowSolve(state) {
-    return state === 'IDLE'
-      || state === 'COMPLETED'
-      || state === 'CANCELLED'
-      || state === 'FAILED'
-      || state === 'TERMINATED_BY_CONFIG';
+    return state === 'IDLE';
   }
 
   function shouldShowPause(state) {
     return state === 'STARTING'
       || state === 'SOLVING'
-      || state === 'PAUSE_REQUESTED'
-      || state === 'RESUMING';
+      || state === 'PAUSE_REQUESTED';
   }
 
   function shouldShowCancel(state) {
@@ -609,8 +610,7 @@ const SF = (function () {
       || state === 'SOLVING'
       || state === 'PAUSE_REQUESTED'
       || state === 'PAUSED'
-      || state === 'RESUMING'
-      || state === 'CANCELLING';
+      || state === 'RESUMING';
   }
 
   function shouldSpin(state) {
@@ -1062,7 +1062,7 @@ const SF = (function () {
         es.onerror = function () {
           if (closed || !onError) return;
           if (typeof EventSource !== 'undefined' && es.readyState === EventSource.CLOSED) {
-            onError(new Error('Event stream closed for ' + url));
+            onError(createSseClosedError(url));
           }
         };
         return function close() {
@@ -1139,6 +1139,14 @@ const SF = (function () {
     };
   }
 
+  function createSseClosedError(url) {
+    var err = new Error('Event stream closed for ' + url);
+    err.code = 'SSE_CLOSED';
+    err.transport = 'sse';
+    err.url = url;
+    return err;
+  }
+
 })(SF);
 /* ============================================================================
    SolverForge UI — Solver Lifecycle
@@ -1157,6 +1165,7 @@ const SF = (function () {
     sf.assert(hasFunction(config.backend, 'pauseJob'), 'createSolver(config.backend.pauseJob) must be a function');
     sf.assert(hasFunction(config.backend, 'resumeJob'), 'createSolver(config.backend.resumeJob) must be a function');
     sf.assert(hasFunction(config.backend, 'cancelJob'), 'createSolver(config.backend.cancelJob) must be a function');
+    sf.assert(hasFunction(config.backend, 'deleteJob'), 'createSolver(config.backend.deleteJob) must be a function');
     sf.assert(hasFunction(config.backend, 'streamJobEvents'), 'createSolver(config.backend.streamJobEvents) must be a function');
     sf.assert(!config.onProgress || typeof config.onProgress === 'function', 'createSolver(config.onProgress) must be a function');
     sf.assert(!config.onSolution || typeof config.onSolution === 'function', 'createSolver(config.onSolution) must be a function');
@@ -1187,6 +1196,9 @@ const SF = (function () {
     var api = {};
 
     api.start = function (data) {
+      if (retainedJobId) {
+        return Promise.reject(new Error('Cannot start a new solve while a retained job exists; wait for a terminal lifecycle state and call delete() first'));
+      }
       if (phase !== 'idle') return Promise.resolve();
 
       resetForStart();
@@ -1205,13 +1217,7 @@ const SF = (function () {
         phase = 'solving';
         applyLifecycleState('SOLVING');
 
-        closeStream = backend.streamJobEvents(id, function (payload) {
-          if (token !== runToken) return;
-          handleEvent(token, id, payload);
-        }, function (err) {
-          if (token !== runToken) return;
-          failTransport(err);
-        });
+        attachStream(token, id);
 
         if (queuedAction === 'pause') {
           queuedAction = null;
@@ -1222,7 +1228,11 @@ const SF = (function () {
         }
       }).catch(function (err) {
         if (token !== runToken) return;
-        failTransport(err);
+        if (retainedJobId) {
+          failTransport(err);
+        } else {
+          failStartup(err);
+        }
         throw err;
       });
     };
@@ -1238,6 +1248,7 @@ const SF = (function () {
       if (phase !== 'solving' || !jobId) return Promise.resolve();
 
       pendingPause = createDeferred();
+      if (!ensureStreamAttached(runToken, jobId, 'pause')) return pendingPause.promise;
       requestPause(runToken, jobId);
       return pendingPause.promise;
     };
@@ -1248,6 +1259,7 @@ const SF = (function () {
       if (phase !== 'paused' || !jobId) return Promise.resolve();
 
       pendingResume = createDeferred();
+      if (!ensureStreamAttached(runToken, jobId, 'resume')) return pendingResume.promise;
       requestResume(runToken, jobId);
       return pendingResume.promise;
     };
@@ -1263,25 +1275,21 @@ const SF = (function () {
       if (!jobId || !isCancelablePhase()) return Promise.resolve();
 
       pendingCancel = createDeferred();
+      if (!ensureStreamAttached(runToken, jobId, 'cancel')) return pendingCancel.promise;
       requestCancel(runToken, jobId);
       return pendingCancel.promise;
     };
 
     api.delete = function () {
-      if (!retainedJobId || !hasFunction(backend, 'deleteJob')) return Promise.resolve();
-      if (api.isRunning() || phase === 'paused') {
-        return Promise.reject(new Error('Cannot delete a live or paused job'));
+      if (!retainedJobId) return Promise.resolve();
+      if (!isTerminalLifecycle(lifecycleState)) {
+        return Promise.reject(new Error('Cannot delete a retained job before it reaches a terminal lifecycle state'));
       }
 
       var jobId = retainedJobId;
       return backend.deleteJob(jobId).then(function () {
         if (retainedJobId !== jobId) return;
-        retainedJobId = null;
-        activeJobId = null;
-        lastSnapshotRevision = null;
-        lastMeta = null;
-        applyLifecycleState('IDLE');
-        updateMoves(null);
+        resetAfterDelete();
       }).catch(function (err) {
         notifyError(err);
         throw err;
@@ -1334,6 +1342,28 @@ const SF = (function () {
       });
     }
 
+    function attachStream(token, id) {
+      closeStream = backend.streamJobEvents(id, function (payload) {
+        if (token !== runToken) return;
+        handleEvent(token, id, payload);
+      }, function (err) {
+        if (token !== runToken) return;
+        failTransport(err);
+      });
+    }
+
+    function ensureStreamAttached(token, id, pendingName) {
+      if (closeStream) return true;
+      try {
+        attachStream(token, id);
+        return true;
+      } catch (err) {
+        failTransport(err);
+        rejectDeferred(pendingName, err);
+        return false;
+      }
+    }
+
     function requestResume(token, id) {
       phase = 'resuming';
       backend.resumeJob(id).catch(function (err) {
@@ -1367,7 +1397,7 @@ const SF = (function () {
 
       if (event.eventType === 'progress') {
         if (!event.meta.currentScore) return;
-        phase = 'solving';
+        phase = phaseForLifecycleState(event.meta.lifecycleState);
         applyEventMeta(event.meta);
         if (config.onProgress) config.onProgress(event.meta);
         return;
@@ -1375,7 +1405,7 @@ const SF = (function () {
 
       if (event.eventType === 'best_solution') {
         if (!event.solution || !event.meta.currentScore) return;
-        phase = 'solving';
+        phase = phaseForLifecycleState(event.meta.lifecycleState);
         applyEventMeta(event.meta);
         if (config.onSolution) {
           config.onSolution(buildLiveSnapshot(event), event.meta);
@@ -1529,6 +1559,20 @@ const SF = (function () {
       retainedJobId = jobId;
       closeCurrentStream();
       activeJobId = null;
+      phase = phaseForLifecycleState(lifecycleState);
+      queuedAction = null;
+      rejectDeferred('pause', err);
+      rejectDeferred('resume', err);
+      rejectDeferred('cancel', err);
+      notifyError(err);
+    }
+
+    function failStartup(err) {
+      closeCurrentStream();
+      activeJobId = null;
+      retainedJobId = null;
+      lastSnapshotRevision = null;
+      lastMeta = null;
       phase = 'idle';
       queuedAction = null;
       rejectDeferred('pause', err);
@@ -1586,6 +1630,23 @@ const SF = (function () {
       pendingCancel = null;
     }
 
+    function resetAfterDelete() {
+      closeCurrentStream();
+      runToken += 1;
+      activeJobId = null;
+      retainedJobId = null;
+      lastSnapshotRevision = null;
+      lastMeta = null;
+      queuedAction = null;
+      pendingPause = null;
+      pendingResume = null;
+      pendingCancel = null;
+      phase = 'idle';
+      applyLifecycleState('IDLE');
+      updateScore(null);
+      updateMoves(null);
+    }
+
     function closeCurrentStream() {
       if (!closeStream) return;
       closeStream();
@@ -1609,7 +1670,24 @@ const SF = (function () {
     }
 
     function isCancelablePhase() {
-      return phase === 'solving' || phase === 'pause-requested' || phase === 'paused' || phase === 'cancelling';
+      return phase === 'solving' || phase === 'pause-requested' || phase === 'paused' || phase === 'resuming';
+    }
+
+    function phaseForLifecycleState(state) {
+      if (state === 'STARTING') return 'starting';
+      if (state === 'SOLVING') return 'solving';
+      if (state === 'PAUSE_REQUESTED') return 'pause-requested';
+      if (state === 'PAUSED') return 'paused';
+      if (state === 'RESUMING') return 'resuming';
+      if (state === 'CANCELLING') return 'cancelling';
+      return 'idle';
+    }
+
+    function isTerminalLifecycle(state) {
+      return state === 'COMPLETED'
+        || state === 'CANCELLED'
+        || state === 'FAILED'
+        || state === 'TERMINATED_BY_CONFIG';
     }
 
     function settlePendingFromTerminal(eventType, bundle, err) {
