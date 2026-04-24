@@ -139,6 +139,32 @@ test('root-scoped showTab only updates the targeted tab container', () => {
   assert.equal(tabsTwo.el.querySelector('[data-tab-id="gantt"]').classList.contains('active'), false);
 });
 
+test('missing tab ids only clear active state inside the targeted tab container', () => {
+  const { SF, document } = loadSf(['js-src/00-core.js', 'js-src/07-tabs.js']);
+
+  const tabsOne = SF.createTabs({
+    tabs: [
+      { id: 'plan', active: true, content: 'Plan A' },
+      { id: 'gantt', content: 'Gantt A' },
+    ],
+  });
+  const tabsTwo = SF.createTabs({
+    tabs: [
+      { id: 'plan', active: true, content: 'Plan B' },
+      { id: 'gantt', content: 'Gantt B' },
+    ],
+  });
+
+  document.body.appendChild(tabsOne.el);
+  document.body.appendChild(tabsTwo.el);
+
+  tabsOne.show('missing');
+  assert.equal(tabsOne.el.querySelector('[data-tab-id="plan"]').classList.contains('active'), false);
+  assert.equal(tabsOne.el.querySelector('[data-tab-id="gantt"]').classList.contains('active'), false);
+  assert.equal(tabsTwo.el.querySelector('[data-tab-id="plan"]').classList.contains('active'), true);
+  assert.equal(tabsTwo.el.querySelector('[data-tab-id="gantt"]').classList.contains('active'), false);
+});
+
 test('gantt instances get unique generated IDs by default', () => {
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js']);
 
