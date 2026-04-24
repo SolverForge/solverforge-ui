@@ -137,9 +137,9 @@
 
       if (config.actions.onCancel) {
         var cancelBtn = sf.createButton({
-          text: 'Cancel',
+          text: 'Stop',
           variant: 'danger',
-          icon: 'fa-ban',
+          icon: 'fa-stop',
           onClick: config.actions.onCancel,
         });
         cancelBtn.style.display = 'none';

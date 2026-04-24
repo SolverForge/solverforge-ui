@@ -41,6 +41,8 @@ test('status bars only toggle the controls on their bound header', () => {
   const barOne = SF.createStatusBar({ header: headerOne });
   const barTwo = SF.createStatusBar({ header: headerTwo });
 
+  assert.equal(headerOne.sfControls.cancelBtn.textContent, 'Stop');
+
   barOne.setLifecycleState('SOLVING');
   assert.equal(headerOne.sfControls.solveBtn.style.display, 'none');
   assert.equal(headerOne.sfControls.pauseBtn.style.display, '');

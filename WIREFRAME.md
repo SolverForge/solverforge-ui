@@ -51,7 +51,7 @@ sticky header, and scrollable main area.
    .sf-header-logo       .sf-header-brand                     .sf-header-actions
    44×44, white filter   .sf-header-title (18px, white)       .sf-btn--success (Solve)
                          .sf-header-subtitle (12px, mono)     .sf-btn--default (Pause, hidden)
-                                                              .sf-btn--danger  (Cancel, hidden)
+                                                              .sf-btn--danger  (Stop, hidden)
                                                               .sf-btn--ghost   (Analyze, circle)
 ```
 
