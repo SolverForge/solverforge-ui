@@ -477,6 +477,7 @@ const SF = (function () {
       } else if (!scoreStr) {
         scoreEl.textContent = '\u2014';
         scoreEl.classList.remove('score-green', 'score-red', 'score-yellow', 'improved');
+        lastScore = null;
       }
     };
 
@@ -596,7 +597,11 @@ const SF = (function () {
   }
 
   function shouldShowSolve(state) {
-    return state === 'IDLE';
+    return state === 'IDLE'
+      || state === 'COMPLETED'
+      || state === 'CANCELLED'
+      || state === 'FAILED'
+      || state === 'TERMINATED_BY_CONFIG';
   }
 
   function shouldShowPause(state) {
@@ -1563,7 +1568,7 @@ const SF = (function () {
 
     function applyEventMeta(meta, analysis) {
       applyLifecycleState(meta && meta.lifecycleState ? meta.lifecycleState : lifecycleState);
-      updateScore(meta && (meta.currentScore || meta.bestScore) ? (meta.currentScore || meta.bestScore) : null);
+      updateScore(readDisplayScore(meta, analysis));
       updateMoves(meta ? readMovesPerSecond(meta.telemetry) : null);
       if (analysis) {
         var constraints = readAnalysisConstraints(analysis);
@@ -1571,6 +1576,12 @@ const SF = (function () {
           statusBar.colorDotsFromAnalysis(constraints);
         }
       }
+    }
+
+    function readDisplayScore(meta, analysis) {
+      if (meta && (meta.currentScore || meta.bestScore)) return meta.currentScore || meta.bestScore;
+      if (analysis && analysis.score != null) return analysis.score;
+      return null;
     }
 
     function applyLifecycleState(state) {
@@ -1843,6 +1854,8 @@ const SF = (function () {
     if (!jobId) return null;
     if (String(jobId) !== String(expectedId)) return null;
 
+    var solution = payload.solution || (payload.data && payload.data.solution) || null;
+    var solutionScore = readField(solution, ['score'], [solution]);
     var meta = {
       id: String(jobId),
       jobId: String(jobId),
@@ -1851,15 +1864,15 @@ const SF = (function () {
       lifecycleState: normalizeLifecycleState(readField(payload, ['lifecycleState', 'lifecycle_state', 'solverStatus', 'solver_status'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]), eventType),
       terminalReason: readField(payload, ['terminalReason', 'terminal_reason'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || null,
       telemetry: normalizeTelemetry(readField(payload, ['telemetry'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]), payload),
-      currentScore: readField(payload, ['currentScore', 'current_score'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || null,
-      bestScore: readField(payload, ['bestScore', 'best_score'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || null,
+      currentScore: readField(payload, ['currentScore', 'current_score'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || solutionScore || null,
+      bestScore: readField(payload, ['bestScore', 'best_score'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || solutionScore || null,
       snapshotRevision: readField(payload, ['snapshotRevision', 'snapshot_revision'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]),
     };
 
     return {
       eventType: eventType,
       meta: meta,
-      solution: payload.solution || (payload.data && payload.data.solution) || null,
+      solution: solution,
       error: readField(payload, ['error'], [payload, payload.data]) || null,
     };
   }
@@ -1868,16 +1881,18 @@ const SF = (function () {
     if (!payload || typeof payload !== 'object') return null;
 
     var jobId = readField(payload, ['jobId', 'job_id', 'id'], [payload, payload.data]) || (fallbackMeta && fallbackMeta.jobId) || null;
+    var solution = payload.solution || (payload.data && payload.data.solution) || null;
+    var solutionScore = readField(solution, ['score'], [solution]);
     return {
       id: jobId != null ? String(jobId) : null,
       jobId: jobId != null ? String(jobId) : null,
       snapshotRevision: readField(payload, ['snapshotRevision', 'snapshot_revision'], [payload, payload.data]),
       lifecycleState: normalizeLifecycleState(readField(payload, ['lifecycleState', 'lifecycle_state'], [payload, payload.data]), fallbackMeta && fallbackMeta.eventType),
       terminalReason: readField(payload, ['terminalReason', 'terminal_reason'], [payload, payload.data]) || null,
-      currentScore: readField(payload, ['currentScore', 'current_score'], [payload, payload.data]) || null,
-      bestScore: readField(payload, ['bestScore', 'best_score'], [payload, payload.data]) || null,
+      currentScore: readField(payload, ['currentScore', 'current_score'], [payload, payload.data]) || solutionScore || null,
+      bestScore: readField(payload, ['bestScore', 'best_score'], [payload, payload.data]) || solutionScore || null,
       telemetry: normalizeTelemetry(readField(payload, ['telemetry'], [payload, payload.data]), payload),
-      solution: payload.solution || (payload.data && payload.data.solution) || null,
+      solution: solution,
     };
   }
 

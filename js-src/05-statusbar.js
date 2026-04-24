@@ -59,6 +59,7 @@
       } else if (!scoreStr) {
         scoreEl.textContent = '\u2014';
         scoreEl.classList.remove('score-green', 'score-red', 'score-yellow', 'improved');
+        lastScore = null;
       }
     };
 
@@ -178,7 +179,11 @@
   }
 
   function shouldShowSolve(state) {
-    return state === 'IDLE';
+    return state === 'IDLE'
+      || state === 'COMPLETED'
+      || state === 'CANCELLED'
+      || state === 'FAILED'
+      || state === 'TERMINATED_BY_CONFIG';
   }
 
   function shouldShowPause(state) {

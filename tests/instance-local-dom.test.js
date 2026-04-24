@@ -71,7 +71,7 @@ test('status bars only toggle the controls on their bound header', () => {
 
   ['COMPLETED', 'CANCELLED', 'FAILED', 'TERMINATED_BY_CONFIG'].forEach((state) => {
     barOne.setLifecycleState(state);
-    assertControls(headerOne, { state, solve: false, pause: false, resume: false, cancel: false, spinner: false });
+    assertControls(headerOne, { state, solve: true, pause: false, resume: false, cancel: false, spinner: false });
   });
 
   barOne.setLifecycleState('IDLE');
@@ -82,6 +82,27 @@ test('status bars only toggle the controls on their bound header', () => {
 
   barTwo.setLifecycleState('SOLVING');
   assertControls(headerTwo, { state: 'SOLVING', solve: false, pause: true, resume: false, cancel: true, spinner: true });
+});
+
+test('status bar can show the same score again after reset', () => {
+  const { SF, document } = loadSf([
+    'js-src/00-core.js',
+    'js-src/01-score.js',
+    'js-src/05-statusbar.js',
+  ]);
+
+  const bar = SF.createStatusBar({});
+  document.body.appendChild(bar.el);
+  const score = document.getElementById('sfScoreDisplay');
+
+  bar.updateScore('0hard/0soft');
+  assert.equal(score.textContent, '0hard/0soft');
+
+  bar.updateScore(null);
+  assert.equal(score.textContent, '\u2014');
+
+  bar.updateScore('0hard/0soft');
+  assert.equal(score.textContent, '0hard/0soft');
 });
 
 test('tab switching stays scoped to the owning tab container', () => {

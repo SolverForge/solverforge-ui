@@ -506,3 +506,113 @@ test('solver delete waits for terminal snapshot settlement before clearing pendi
     ['deleteJob', 'job-slow-terminal'],
   ]);
 });
+
+test('solver derives terminal status score from retained snapshot solution score', async () => {
+  const { SF } = loadSf(SOLVER_FILES);
+  let onMessage;
+  const scoreUpdates = [];
+  const backend = {
+    createJob: async () => 'job-snapshot-score',
+    streamJobEvents(_id, callback) {
+      onMessage = callback;
+      return function () {};
+    },
+    getSnapshot: async (id, revision) => ({
+      id: id,
+      snapshotRevision: revision,
+      lifecycleState: 'COMPLETED',
+      solution: { id: id, score: '0hard/0soft' },
+    }),
+    analyzeSnapshot: async () => null,
+    pauseJob: async () => {},
+    resumeJob: async () => {},
+    cancelJob: async () => {},
+    deleteJob: async () => {},
+  };
+  let resolveCompleted;
+  const completedReady = new Promise((resolve) => {
+    resolveCompleted = resolve;
+  });
+  const solver = SF.createSolver({
+    backend,
+    statusBar: {
+      setLifecycleState() {},
+      updateScore(score) {
+        scoreUpdates.push(score);
+      },
+      updateMoves() {},
+    },
+    onComplete() {
+      resolveCompleted();
+    },
+  });
+
+  await solver.start({});
+  onMessage({
+    eventType: 'completed',
+    lifecycleState: 'COMPLETED',
+    snapshotRevision: 21,
+  });
+  await completedReady;
+
+  assert.equal(scoreUpdates.at(-1), '0hard/0soft');
+  assert.equal(solver.getLifecycleState(), 'COMPLETED');
+});
+
+test('solver derives terminal status score from snapshot-bound analysis score', async () => {
+  const { SF } = loadSf(SOLVER_FILES);
+  let onMessage;
+  const scoreUpdates = [];
+  const backend = {
+    createJob: async () => 'job-analysis-score',
+    streamJobEvents(_id, callback) {
+      onMessage = callback;
+      return function () {};
+    },
+    getSnapshot: async (id, revision) => ({
+      id: id,
+      snapshotRevision: revision,
+      lifecycleState: 'COMPLETED',
+      solution: { id: id },
+    }),
+    analyzeSnapshot: async (id, revision) => ({
+      jobId: id,
+      snapshotRevision: revision,
+      lifecycleState: 'COMPLETED',
+      analysis: { score: '0hard/0soft', constraints: [] },
+    }),
+    pauseJob: async () => {},
+    resumeJob: async () => {},
+    cancelJob: async () => {},
+    deleteJob: async () => {},
+  };
+  let resolveCompleted;
+  const completedReady = new Promise((resolve) => {
+    resolveCompleted = resolve;
+  });
+  const solver = SF.createSolver({
+    backend,
+    statusBar: {
+      setLifecycleState() {},
+      updateScore(score) {
+        scoreUpdates.push(score);
+      },
+      updateMoves() {},
+    },
+    onComplete() {
+      resolveCompleted();
+    },
+    onAnalysis() {},
+  });
+
+  await solver.start({});
+  onMessage({
+    eventType: 'completed',
+    lifecycleState: 'COMPLETED',
+    snapshotRevision: 22,
+  });
+  await completedReady;
+
+  assert.equal(scoreUpdates.at(-1), '0hard/0soft');
+  assert.equal(solver.getLifecycleState(), 'COMPLETED');
+});
