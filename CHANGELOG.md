@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.6.0](///compare/v0.5.2...v0.6.0) (2026-04-24)
+
+
+### Bug Fixes
+
+* **solver:** harden retained terminal synchronization a51223d
+* **solver:** preserve retained lifecycle across transport loss 9890e35
+* **solver:** settle retained cleanup after terminal sync aea3669
+
 ## [0.5.2](///compare/v0.5.1...v0.5.2) (2026-04-24)
 
 
