@@ -227,6 +227,7 @@ Runtime rules:
 - `best_solution` must include `solution` and `snapshotRevision`.
 - `pause_requested` does not imply that a checkpoint is ready yet.
 - `paused`, `completed`, `cancelled`, and `failed` are authoritative lifecycle events. `SF.createSolver()` syncs the retained snapshot before firing the corresponding callbacks.
+- HTTP `EventSource.onerror` is transport state. Reconnecting errors are ignored; a closed stream is surfaced through `onError` and resets local controls to idle while retaining the job id for snapshot and analysis calls.
 - The status bar uses `currentScore` as the live score during solving.
 - Missing or malformed typed lifecycle fields are ignored; they are not silently normalized into the contract.
 

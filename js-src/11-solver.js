@@ -92,19 +92,21 @@
         pendingPause = createDeferred();
         return pendingPause.promise;
       }
-      if (phase !== 'solving' || !activeJobId) return Promise.resolve();
+      var jobId = currentJobId();
+      if (phase !== 'solving' || !jobId) return Promise.resolve();
 
       pendingPause = createDeferred();
-      requestPause(runToken, activeJobId);
+      requestPause(runToken, jobId);
       return pendingPause.promise;
     };
 
     api.resume = function () {
       if (pendingResume) return pendingResume.promise;
-      if (phase !== 'paused' || !activeJobId) return Promise.resolve();
+      var jobId = currentJobId();
+      if (phase !== 'paused' || !jobId) return Promise.resolve();
 
       pendingResume = createDeferred();
-      requestResume(runToken, activeJobId);
+      requestResume(runToken, jobId);
       return pendingResume.promise;
     };
 
@@ -115,10 +117,11 @@
         pendingCancel = createDeferred();
         return pendingCancel.promise;
       }
-      if (!activeJobId || !isCancelablePhase()) return Promise.resolve();
+      var jobId = currentJobId();
+      if (!jobId || !isCancelablePhase()) return Promise.resolve();
 
       pendingCancel = createDeferred();
-      requestCancel(runToken, activeJobId);
+      requestCancel(runToken, jobId);
       return pendingCancel.promise;
     };
 
@@ -380,7 +383,8 @@
     }
 
     function failTransport(err) {
-      retainedJobId = activeJobId || retainedJobId;
+      var jobId = activeJobId || retainedJobId;
+      retainedJobId = jobId;
       closeCurrentStream();
       activeJobId = null;
       phase = 'idle';
@@ -699,4 +703,5 @@
       || state === 'RESUMING'
       || state === 'CANCELLING';
   }
+
 })(SF);

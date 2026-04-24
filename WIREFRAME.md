@@ -302,6 +302,10 @@ Shipped runtime expectations:
 - `best_solution` always includes `solution` plus `snapshotRevision`.
 - `paused`, `completed`, `cancelled`, and `failed` remain authoritative and
   trigger retained snapshot synchronization before downstream callbacks fire.
+- HTTP `EventSource.onerror` is transport state. Reconnecting errors stay local
+  to the browser transport; a closed stream surfaces through `onError`, resets
+  local controls to idle, and retains the job id for snapshot and analysis
+  calls.
 
 ---
 

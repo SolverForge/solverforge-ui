@@ -119,7 +119,9 @@
         };
         es.onerror = function () {
           if (closed || !onError) return;
-          onError(new Error('Event stream failed for ' + url));
+          if (typeof EventSource !== 'undefined' && es.readyState === EventSource.CLOSED) {
+            onError(new Error('Event stream closed for ' + url));
+          }
         };
         return function close() {
           closed = true;

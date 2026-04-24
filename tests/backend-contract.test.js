@@ -136,6 +136,46 @@ test('HTTP backend uses configured job paths and snapshot revision query paramet
   assert.equal(requests[6].opts.method, 'DELETE');
 });
 
+test('HTTP backend lets EventSource reconnect without surfacing transient errors', async () => {
+  let instance;
+  const errors = [];
+  function FakeEventSource(url) {
+    this.url = url;
+    this.readyState = FakeEventSource.OPEN;
+    instance = this;
+  }
+  FakeEventSource.CONNECTING = 0;
+  FakeEventSource.OPEN = 1;
+  FakeEventSource.CLOSED = 2;
+  FakeEventSource.prototype.close = function () {
+    this.readyState = FakeEventSource.CLOSED;
+  };
+
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js'], {
+    EventSource: FakeEventSource,
+  });
+
+  const backend = SF.createBackend({
+    type: 'rails',
+    baseUrl: '/api',
+    jobsPath: '/jobs',
+  });
+
+  const close = backend.streamJobEvents('job-9', function () {}, function (error) {
+    errors.push(error.message);
+  });
+
+  instance.readyState = FakeEventSource.CONNECTING;
+  instance.onerror();
+  assert.deepEqual(errors, []);
+
+  instance.readyState = FakeEventSource.CLOSED;
+  instance.onerror();
+  assert.deepEqual(errors, ['Event stream closed for /api/jobs/job-9/events']);
+
+  close();
+});
+
 test('tauri streamJobEvents keeps id-less updates and filters mismatched job ids', async () => {
   let handler = null;
   const received = [];

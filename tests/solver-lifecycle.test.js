@@ -230,7 +230,7 @@ test('solver lifecycle handles progress, pause, resume, completion, and snapshot
   assert.equal(latestAnalysis.analysis.score, '0hard/0soft');
 });
 
-test('solver surfaces stream errors and resets the lifecycle', async () => {
+test('solver resets local controls after stream transport errors', async () => {
   const { SF } = loadSf(SOLVER_FILES);
   let onStreamError;
   const calls = [];
@@ -245,9 +245,15 @@ test('solver surfaces stream errors and resets the lifecycle', async () => {
     },
     getSnapshot: async () => null,
     analyzeSnapshot: async () => null,
-    pauseJob: async () => {},
-    resumeJob: async () => {},
-    cancelJob: async () => {},
+    pauseJob: async (id) => {
+      calls.push(['pauseJob', id]);
+    },
+    resumeJob: async (id) => {
+      calls.push(['resumeJob', id]);
+    },
+    cancelJob: async (id) => {
+      calls.push(['cancelJob', id]);
+    },
   };
 
   const errors = [];
@@ -265,11 +271,57 @@ test('solver surfaces stream errors and resets the lifecycle', async () => {
 
   assert.equal(solver.isRunning(), false);
   assert.equal(solver.getJobId(), 'job-55');
+  assert.equal(solver.getLifecycleState(), 'IDLE');
   assert.deepEqual(errors, ['stream broke']);
+
+  await solver.pause();
+  await solver.resume();
+  await solver.cancel();
+
   assert.deepEqual(calls, [
     ['streamJobEvents', 'job-55'],
     ['closeStream'],
   ]);
+});
+
+test('solver resets lifecycle state when job creation fails', async () => {
+  const { SF } = loadSf(SOLVER_FILES);
+  const states = [];
+  const errors = [];
+  const backend = {
+    createJob: async () => {
+      throw new Error('create failed');
+    },
+    streamJobEvents() {
+      throw new Error('stream should not open');
+    },
+    getSnapshot: async () => null,
+    analyzeSnapshot: async () => null,
+    pauseJob: async () => {},
+    resumeJob: async () => {},
+    cancelJob: async () => {},
+  };
+
+  const solver = SF.createSolver({
+    backend,
+    statusBar: {
+      setLifecycleState(value) {
+        states.push(value);
+      },
+      updateMoves() {},
+    },
+    onError(message) {
+      errors.push(message);
+    },
+  });
+
+  await assert.rejects(solver.start({}), /create failed/);
+
+  assert.equal(solver.isRunning(), false);
+  assert.equal(solver.getJobId(), null);
+  assert.equal(solver.getLifecycleState(), 'IDLE');
+  assert.deepEqual(states, ['STARTING', 'IDLE']);
+  assert.deepEqual(errors, ['create failed']);
 });
 
 test('solver accepts an initial best_solution event before any progress event', async () => {

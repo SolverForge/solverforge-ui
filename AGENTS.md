@@ -29,6 +29,9 @@ Repository guidance for coding agents and maintainers working in
 - Paused and terminal lifecycle events remain authoritative; `SF.createSolver()`
   synchronizes retained snapshot state before invoking the corresponding
   callbacks.
+- HTTP `EventSource.onerror` represents transport state. Reconnecting errors are
+  ignored; a closed stream is surfaced through `onError` and resets local
+  controls to idle while retaining the job id for snapshot and analysis calls.
 
 ## Working Rules
 
