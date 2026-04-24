@@ -192,7 +192,8 @@
       || state === 'SOLVING'
       || state === 'PAUSE_REQUESTED'
       || state === 'PAUSED'
-      || state === 'RESUMING';
+      || state === 'RESUMING'
+      || state === 'CANCELLING';
   }
 
   function shouldSpin(state) {

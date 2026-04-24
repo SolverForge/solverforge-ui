@@ -610,7 +610,8 @@ const SF = (function () {
       || state === 'SOLVING'
       || state === 'PAUSE_REQUESTED'
       || state === 'PAUSED'
-      || state === 'RESUMING';
+      || state === 'RESUMING'
+      || state === 'CANCELLING';
   }
 
   function shouldSpin(state) {
@@ -1188,11 +1189,12 @@ const SF = (function () {
     var runToken = 0;
     var lastSnapshotRevision = null;
     var lastMeta = null;
+    var lastNotifiedError = null;
     var queuedAction = null;
     var pendingPause = null;
     var pendingResume = null;
     var pendingCancel = null;
-    var terminalSettlement = null;
+    var terminalSync = null;
 
     var api = {};
 
@@ -1293,7 +1295,7 @@ const SF = (function () {
       }
 
       var jobId = retainedJobId;
-      return waitForTerminalSettlement(jobId).then(function () {
+      return ensureTerminalSyncBeforeDelete(jobId).then(function () {
         if (retainedJobId !== jobId) return;
         return backend.deleteJob(jobId);
       }).then(function () {
@@ -1456,55 +1458,21 @@ const SF = (function () {
       if (event.eventType === 'completed') {
         phase = 'idle';
         applyEventMeta(event.meta);
-        trackTerminalSettlement(event.meta.jobId, syncSnapshotBundle(event.meta, true).then(function (bundle) {
-          if (token !== runToken || hasNewerEvent(event.meta)) return;
-          finalizeTerminal(bundle.meta);
-          applyBundle(bundle);
-          if (config.onComplete && bundle.snapshot) config.onComplete(bundle.snapshot, bundle.meta);
-          settlePendingFromTerminal('completed', bundle);
-        }).catch(function (err) {
-          if (token !== runToken || hasNewerEvent(event.meta)) return;
-          finalizeTerminal(event.meta);
-          settlePendingFromTerminal('completed', null, err);
-          notifyError(err);
-        }));
+        runTerminalSync(createTerminalSync(event), token, event, true);
         return;
       }
 
       if (event.eventType === 'cancelled') {
         phase = 'idle';
         applyEventMeta(event.meta);
-        trackTerminalSettlement(event.meta.jobId, syncSnapshotBundle(event.meta, false).then(function (bundle) {
-          if (token !== runToken || hasNewerEvent(event.meta)) return;
-          finalizeTerminal(bundle.meta);
-          applyBundle(bundle);
-          if (config.onCancelled) config.onCancelled(bundle.snapshot, bundle.meta);
-          settlePendingFromTerminal('cancelled', bundle);
-        }).catch(function (err) {
-          if (token !== runToken || hasNewerEvent(event.meta)) return;
-          finalizeTerminal(event.meta);
-          settlePendingFromTerminal('cancelled', null, err);
-          notifyError(err);
-        }));
+        runTerminalSync(createTerminalSync(event), token, event, false);
         return;
       }
 
       if (event.eventType === 'failed') {
         phase = 'idle';
         applyEventMeta(event.meta);
-        trackTerminalSettlement(event.meta.jobId, syncSnapshotBundle(event.meta, false).then(function (bundle) {
-          if (token !== runToken || hasNewerEvent(event.meta)) return;
-          finalizeTerminal(bundle.meta);
-          applyBundle(bundle);
-          if (config.onFailure) config.onFailure(event.error || 'Solver job failed', bundle.meta, bundle.snapshot, bundle.analysis);
-          settlePendingFromTerminal('failed', bundle, new Error(event.error || 'Solver job failed'));
-        }).catch(function (err) {
-          if (token !== runToken || hasNewerEvent(event.meta)) return;
-          finalizeTerminal(event.meta);
-          if (config.onFailure) config.onFailure(event.error || 'Solver job failed', event.meta, null, null);
-          settlePendingFromTerminal('failed', null, err);
-          notifyError(err);
-        }));
+        runTerminalSync(createTerminalSync(event), token, event, false);
       }
     }
 
@@ -1582,6 +1550,7 @@ const SF = (function () {
       retainedJobId = null;
       lastSnapshotRevision = null;
       lastMeta = null;
+      lastNotifiedError = null;
       phase = 'idle';
       queuedAction = null;
       rejectDeferred('pause', err);
@@ -1633,11 +1602,12 @@ const SF = (function () {
       activeJobId = null;
       lastSnapshotRevision = null;
       lastMeta = null;
+      lastNotifiedError = null;
       queuedAction = null;
       pendingPause = null;
       pendingResume = null;
       pendingCancel = null;
-      terminalSettlement = null;
+      terminalSync = null;
     }
 
     function resetAfterDelete() {
@@ -1654,7 +1624,7 @@ const SF = (function () {
       pendingPause = null;
       pendingResume = null;
       pendingCancel = null;
-      terminalSettlement = null;
+      terminalSync = null;
       phase = 'idle';
       applyLifecycleState('IDLE');
       updateScore(null);
@@ -1683,28 +1653,97 @@ const SF = (function () {
       return lastSnapshotRevision;
     }
 
-    function waitForTerminalSettlement(jobId) {
-      if (!terminalSettlement || terminalSettlement.jobId !== jobId) return Promise.resolve();
-      return terminalSettlement.promise;
+    function createTerminalSync(event) {
+      var existing = terminalSync && terminalSync.jobId === event.meta.jobId ? terminalSync : null;
+      terminalSync = {
+        jobId: event.meta.jobId,
+        eventType: event.eventType,
+        meta: event.meta,
+        status: 'pending',
+        promise: null,
+        error: null,
+        callbackDelivered: existing ? existing.callbackDelivered : false,
+      };
+      return terminalSync;
     }
 
-    function trackTerminalSettlement(jobId, promise) {
-      var tracked = Promise.resolve(promise).then(function (value) {
-        if (terminalSettlement && terminalSettlement.promise === tracked) {
-          terminalSettlement = null;
-        }
-        return value;
-      }, function (err) {
-        if (terminalSettlement && terminalSettlement.promise === tracked) {
-          terminalSettlement = null;
-        }
-        throw err;
+    function runTerminalSync(record, token, event, requireSnapshot) {
+      record.status = 'pending';
+      record.error = null;
+      record.meta = event.meta;
+      record.promise = syncSnapshotBundle(event.meta, requireSnapshot).then(function (bundle) {
+        if (terminalSync !== record || token !== runToken || hasNewerEvent(event.meta)) return record;
+        record.status = 'synced';
+        record.error = null;
+        record.meta = bundle.meta;
+        finalizeTerminal(bundle.meta);
+        applyBundle(bundle);
+        deliverTerminalCallback(record, event, bundle);
+        settlePendingFromTerminal(event.eventType, bundle, terminalEventError(event));
+        return record;
+      }).catch(function (err) {
+        if (terminalSync !== record || token !== runToken || hasNewerEvent(event.meta)) return record;
+        record.status = 'failed';
+        record.error = err;
+        finalizeTerminal(event.meta);
+        deliverTerminalFailureCallback(record, event);
+        settlePendingFromTerminal(event.eventType, null, err);
+        notifyError(err);
+        return record;
       });
-      terminalSettlement = {
-        jobId: jobId,
-        promise: tracked,
+      return record.promise;
+    }
+
+    function ensureTerminalSyncBeforeDelete(jobId) {
+      var record = terminalSync && terminalSync.jobId === jobId ? terminalSync : null;
+      if (!record) return Promise.resolve();
+
+      return Promise.resolve(record.promise).then(function () {
+        if (!requiresSuccessfulTerminalSync(record)) return;
+        if (record.status === 'synced') return;
+        return retryTerminalSync(record);
+      });
+    }
+
+    function retryTerminalSync(record) {
+      var retryEvent = {
+        eventType: record.eventType,
+        meta: record.meta,
+        error: null,
       };
-      return tracked;
+      return runTerminalSync(record, runToken, retryEvent, true).then(function () {
+        if (record.status !== 'synced') {
+          throw record.error || new Error('Terminal snapshot synchronization failed');
+        }
+      });
+    }
+
+    function requiresSuccessfulTerminalSync(record) {
+      return record.eventType === 'completed'
+        && (record.meta.lifecycleState === 'COMPLETED' || record.meta.lifecycleState === 'TERMINATED_BY_CONFIG');
+    }
+
+    function deliverTerminalCallback(record, event, bundle) {
+      if (record.callbackDelivered) return;
+      if (event.eventType === 'completed') {
+        if (config.onComplete && bundle.snapshot) config.onComplete(bundle.snapshot, bundle.meta);
+      } else if (event.eventType === 'cancelled') {
+        if (config.onCancelled) config.onCancelled(bundle.snapshot, bundle.meta);
+      } else if (event.eventType === 'failed') {
+        if (config.onFailure) config.onFailure(event.error || 'Solver job failed', bundle.meta, bundle.snapshot, bundle.analysis);
+      }
+      record.callbackDelivered = true;
+    }
+
+    function deliverTerminalFailureCallback(record, event) {
+      if (record.callbackDelivered || event.eventType !== 'failed') return;
+      if (config.onFailure) config.onFailure(event.error || 'Solver job failed', event.meta, null, null);
+      record.callbackDelivered = true;
+    }
+
+    function terminalEventError(event) {
+      if (event.eventType !== 'failed') return null;
+      return new Error(event.error || 'Solver job failed');
     }
 
     function isCancelablePhase() {
@@ -1769,6 +1808,8 @@ const SF = (function () {
     }
 
     function notifyError(err) {
+      if (err && lastNotifiedError === err) return;
+      lastNotifiedError = err || null;
       if (config.onError) config.onError(err && err.message ? err.message : String(err));
     }
 

@@ -66,7 +66,8 @@ test('status bars only toggle the controls on their bound header', () => {
   assertControls(headerOne, { state: 'RESUMING', solve: false, pause: false, resume: false, cancel: true, spinner: true });
 
   barOne.setLifecycleState('CANCELLING');
-  assertControls(headerOne, { state: 'CANCELLING', solve: false, pause: false, resume: false, cancel: false, spinner: true });
+  assertControls(headerOne, { state: 'CANCELLING', solve: false, pause: false, resume: false, cancel: true, spinner: true });
+  assert.equal(headerOne.sfControls.cancelBtn.disabled, false);
 
   ['COMPLETED', 'CANCELLED', 'FAILED', 'TERMINATED_BY_CONFIG'].forEach((state) => {
     barOne.setLifecycleState(state);

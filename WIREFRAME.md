@@ -51,7 +51,7 @@ sticky header, and scrollable main area.
    .sf-header-logo       .sf-header-brand                     .sf-header-actions
    44×44, white filter   .sf-header-title (18px, white)       .sf-btn--success (Solve)
                          .sf-header-subtitle (12px, mono)     .sf-btn--default (Pause, hidden)
-                                                              .sf-btn--danger  (Stop, hidden)
+                                                              .sf-btn--danger  (Stop, lifecycle visible)
                                                               .sf-btn--ghost   (Analyze, circle)
 ```
 
@@ -309,9 +309,12 @@ Shipped runtime expectations:
 - `start()` never replaces a retained job. Terminal retained jobs require
   successful `delete()` cleanup before another solve can start.
 - `delete()` waits for terminal synchronization, calls backend `deleteJob()`,
-  and clears local retained state only after backend cleanup succeeds.
-- `CANCELLING` blocks duplicate cancel commands, but a detached stream may
-  reattach listen-only so the UI can observe the terminal event.
+  and clears local retained state only after required terminal synchronization
+  and backend cleanup both succeed. `COMPLETED` and `TERMINATED_BY_CONFIG`
+  require successful terminal snapshot sync before backend deletion.
+- Stop remains visible during `CANCELLING`, but that state blocks duplicate
+  cancel commands. Activating Stop during `CANCELLING` may reattach a detached
+  stream listen-only so the UI can observe the terminal event.
 
 ---
 

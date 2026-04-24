@@ -285,6 +285,148 @@ test('solver preserves terminal retained state when backend deletion fails', asy
   await assert.rejects(solver.start({}), /Cannot start a new solve while a retained job exists/);
 });
 
+test('solver blocks completed retained cleanup when terminal sync fails', async () => {
+  const { SF } = loadSf(SOLVER_FILES);
+  let onMessage;
+  const calls = [];
+  const errors = [];
+  const completed = [];
+  let resolveFirstError;
+  const firstErrorReady = new Promise((resolve) => {
+    resolveFirstError = resolve;
+  });
+  const backend = {
+    createJob: async () => 'job-sync-fails',
+    streamJobEvents(_id, callback) {
+      onMessage = callback;
+      return function () {};
+    },
+    getSnapshot: async (id, revision) => {
+      calls.push(['getSnapshot', id, revision]);
+      throw new Error('terminal snapshot unavailable');
+    },
+    analyzeSnapshot: async (id, revision) => {
+      calls.push(['analyzeSnapshot', id, revision]);
+      return { jobId: id, snapshotRevision: revision, analysis: { constraints: [] } };
+    },
+    pauseJob: async () => {},
+    resumeJob: async () => {},
+    cancelJob: async () => {},
+    deleteJob: async (id) => {
+      calls.push(['deleteJob', id]);
+    },
+  };
+  const solver = SF.createSolver({
+    backend,
+    onComplete(snapshot, meta) {
+      completed.push([snapshot, meta]);
+    },
+    onError(message) {
+      errors.push(message);
+      if (errors.length === 1) resolveFirstError();
+    },
+  });
+
+  await solver.start({});
+  onMessage({
+    eventType: 'completed',
+    lifecycleState: 'COMPLETED',
+    snapshotRevision: 15,
+  });
+  await firstErrorReady;
+
+  assert.equal(solver.getLifecycleState(), 'COMPLETED');
+  assert.equal(solver.getJobId(), 'job-sync-fails');
+  assert.equal(solver.getSnapshotRevision(), 15);
+  assert.equal(completed.length, 0);
+  assert.deepEqual(errors, ['terminal snapshot unavailable']);
+
+  await assert.rejects(solver.delete(), /terminal snapshot unavailable/);
+
+  assert.equal(solver.getLifecycleState(), 'COMPLETED');
+  assert.equal(solver.getJobId(), 'job-sync-fails');
+  assert.equal(completed.length, 0);
+  assert.deepEqual(calls.filter((entry) => entry[0] === 'deleteJob'), []);
+  await assert.rejects(solver.start({}), /Cannot start a new solve while a retained job exists/);
+  await assert.rejects(solver.getSnapshot(), /terminal snapshot unavailable/);
+  const analysis = await solver.analyzeSnapshot();
+  assert.equal(analysis.snapshotRevision, 15);
+});
+
+test('solver retries completed terminal sync during delete and delivers completion once', async () => {
+  const { SF } = loadSf(SOLVER_FILES);
+  let onMessage;
+  const calls = [];
+  const errors = [];
+  const completed = [];
+  let resolveFirstError;
+  const firstErrorReady = new Promise((resolve) => {
+    resolveFirstError = resolve;
+  });
+  let snapshotCalls = 0;
+  const backend = {
+    createJob: async () => 'job-sync-retry',
+    streamJobEvents(_id, callback) {
+      onMessage = callback;
+      return function () {};
+    },
+    getSnapshot: async (id, revision) => {
+      snapshotCalls += 1;
+      calls.push(['getSnapshot', id, revision]);
+      if (snapshotCalls === 1) throw new Error('first terminal sync failed');
+      return {
+        id: id,
+        snapshotRevision: revision,
+        lifecycleState: 'COMPLETED',
+        solution: { id: id, revision: revision },
+      };
+    },
+    analyzeSnapshot: async () => null,
+    pauseJob: async () => {},
+    resumeJob: async () => {},
+    cancelJob: async () => {},
+    deleteJob: async (id) => {
+      calls.push(['deleteJob', id]);
+    },
+  };
+  const solver = SF.createSolver({
+    backend,
+    onComplete(snapshot, meta) {
+      completed.push([snapshot, meta]);
+    },
+    onError(message) {
+      errors.push(message);
+      if (errors.length === 1) resolveFirstError();
+    },
+  });
+
+  await solver.start({});
+  onMessage({
+    eventType: 'completed',
+    lifecycleState: 'COMPLETED',
+    snapshotRevision: 18,
+  });
+  await firstErrorReady;
+
+  assert.equal(solver.getLifecycleState(), 'COMPLETED');
+  assert.equal(solver.getJobId(), 'job-sync-retry');
+  assert.equal(completed.length, 0);
+  assert.deepEqual(errors, ['first terminal sync failed']);
+
+  await solver.delete();
+
+  assert.equal(solver.getJobId(), null);
+  assert.equal(solver.getLifecycleState(), 'IDLE');
+  assert.equal(completed.length, 1);
+  assert.equal(completed[0][0].snapshotRevision, 18);
+  assert.equal(completed[0][1].snapshotRevision, 18);
+  assert.deepEqual(calls, [
+    ['getSnapshot', 'job-sync-retry', 18],
+    ['getSnapshot', 'job-sync-retry', 18],
+    ['deleteJob', 'job-sync-retry'],
+  ]);
+});
+
 test('solver delete waits for terminal snapshot settlement before clearing pending commands', async () => {
   const { SF } = loadSf(SOLVER_FILES);
   let onMessage;
@@ -343,6 +485,8 @@ test('solver delete waits for terminal snapshot settlement before clearing pendi
   await flush();
 
   assert.equal(cancelSettled, false);
+  assert.equal(solver.getJobId(), 'job-slow-terminal');
+  assert.equal(solver.getLifecycleState(), 'CANCELLED');
   assert.deepEqual(calls, [
     ['cancelJob', 'job-slow-terminal'],
     ['getSnapshot', 'job-slow-terminal', 12],
