@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.5.2](///compare/v0.5.1...v0.5.2) (2026-04-24)
+
+
+### Bug Fixes
+
+* **header:** label cancel control as stop 792c6f6
+* **solver:** stabilize stream transport lifecycle a276b01
+
 ## [0.5.1](///compare/v0.5.0...v0.5.1) (2026-04-20)
 
 ## [0.5.0](///compare/v0.4.3...v0.5.0) (2026-04-20)
