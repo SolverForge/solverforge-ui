@@ -5,7 +5,7 @@
 const SF = (function () {
   'use strict';
 
-  const sf = { version: '0.5.1' };
+  const sf = { version: '0.5.2' };
   var uidCounter = 0;
 
   /* ── Utilities ── */
@@ -386,9 +386,9 @@ const SF = (function () {
 
       if (config.actions.onCancel) {
         var cancelBtn = sf.createButton({
-          text: 'Cancel',
+          text: 'Stop',
           variant: 'danger',
-          icon: 'fa-ban',
+          icon: 'fa-stop',
           onClick: config.actions.onCancel,
         });
         cancelBtn.style.display = 'none';
@@ -1061,7 +1061,9 @@ const SF = (function () {
         };
         es.onerror = function () {
           if (closed || !onError) return;
-          onError(new Error('Event stream failed for ' + url));
+          if (typeof EventSource !== 'undefined' && es.readyState === EventSource.CLOSED) {
+            onError(new Error('Event stream closed for ' + url));
+          }
         };
         return function close() {
           closed = true;
@@ -1232,19 +1234,21 @@ const SF = (function () {
         pendingPause = createDeferred();
         return pendingPause.promise;
       }
-      if (phase !== 'solving' || !activeJobId) return Promise.resolve();
+      var jobId = currentJobId();
+      if (phase !== 'solving' || !jobId) return Promise.resolve();
 
       pendingPause = createDeferred();
-      requestPause(runToken, activeJobId);
+      requestPause(runToken, jobId);
       return pendingPause.promise;
     };
 
     api.resume = function () {
       if (pendingResume) return pendingResume.promise;
-      if (phase !== 'paused' || !activeJobId) return Promise.resolve();
+      var jobId = currentJobId();
+      if (phase !== 'paused' || !jobId) return Promise.resolve();
 
       pendingResume = createDeferred();
-      requestResume(runToken, activeJobId);
+      requestResume(runToken, jobId);
       return pendingResume.promise;
     };
 
@@ -1255,10 +1259,11 @@ const SF = (function () {
         pendingCancel = createDeferred();
         return pendingCancel.promise;
       }
-      if (!activeJobId || !isCancelablePhase()) return Promise.resolve();
+      var jobId = currentJobId();
+      if (!jobId || !isCancelablePhase()) return Promise.resolve();
 
       pendingCancel = createDeferred();
-      requestCancel(runToken, activeJobId);
+      requestCancel(runToken, jobId);
       return pendingCancel.promise;
     };
 
@@ -1520,7 +1525,8 @@ const SF = (function () {
     }
 
     function failTransport(err) {
-      retainedJobId = activeJobId || retainedJobId;
+      var jobId = activeJobId || retainedJobId;
+      retainedJobId = jobId;
       closeCurrentStream();
       activeJobId = null;
       phase = 'idle';
@@ -1839,6 +1845,7 @@ const SF = (function () {
       || state === 'RESUMING'
       || state === 'CANCELLING';
   }
+
 })(SF);
 /* ============================================================================
    SolverForge UI — API Guide Panel
