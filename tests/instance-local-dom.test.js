@@ -40,25 +40,47 @@ test('status bars only toggle the controls on their bound header', () => {
   const headerTwo = SF.createHeader({ actions: { onSolve() {}, onPause() {}, onResume() {}, onCancel() {} } });
   const barOne = SF.createStatusBar({ header: headerOne });
   const barTwo = SF.createStatusBar({ header: headerTwo });
+  function isVisible(btn) {
+    return btn.style.display !== 'none';
+  }
+  function assertControls(header, expected) {
+    assert.equal(isVisible(header.sfControls.solveBtn), expected.solve, expected.state + ' solve visibility');
+    assert.equal(isVisible(header.sfControls.pauseBtn), expected.pause, expected.state + ' pause visibility');
+    assert.equal(header.sfControls.pauseBtn.disabled, !!expected.pauseDisabled, expected.state + ' pause disabled');
+    assert.equal(isVisible(header.sfControls.resumeBtn), expected.resume, expected.state + ' resume visibility');
+    assert.equal(isVisible(header.sfControls.cancelBtn), expected.cancel, expected.state + ' stop visibility');
+    assert.equal(header.sfControls.spinner.classList.contains('active'), expected.spinner, expected.state + ' spinner state');
+  }
 
   assert.equal(headerOne.sfControls.cancelBtn.textContent, 'Stop');
 
   barOne.setLifecycleState('SOLVING');
-  assert.equal(headerOne.sfControls.solveBtn.style.display, 'none');
-  assert.equal(headerOne.sfControls.pauseBtn.style.display, '');
-  assert.equal(headerOne.sfControls.cancelBtn.style.display, '');
-  assert.equal(headerOne.sfControls.spinner.classList.contains('active'), true);
+  assertControls(headerOne, { state: 'SOLVING', solve: false, pause: true, resume: false, cancel: true, spinner: true });
   assert.notEqual(headerTwo.sfControls.solveBtn.style.display, 'none');
   assert.equal(headerTwo.sfControls.spinner.classList.contains('active'), false);
 
+  barOne.setLifecycleState('PAUSE_REQUESTED');
+  assertControls(headerOne, { state: 'PAUSE_REQUESTED', solve: false, pause: true, pauseDisabled: true, resume: false, cancel: true, spinner: true });
+
+  barOne.setLifecycleState('RESUMING');
+  assertControls(headerOne, { state: 'RESUMING', solve: false, pause: false, resume: false, cancel: true, spinner: true });
+
+  barOne.setLifecycleState('CANCELLING');
+  assertControls(headerOne, { state: 'CANCELLING', solve: false, pause: false, resume: false, cancel: false, spinner: true });
+
+  ['COMPLETED', 'CANCELLED', 'FAILED', 'TERMINATED_BY_CONFIG'].forEach((state) => {
+    barOne.setLifecycleState(state);
+    assertControls(headerOne, { state, solve: false, pause: false, resume: false, cancel: false, spinner: false });
+  });
+
+  barOne.setLifecycleState('IDLE');
+  assertControls(headerOne, { state: 'IDLE', solve: true, pause: false, resume: false, cancel: false, spinner: false });
+
   barTwo.setLifecycleState('PAUSED');
-  assert.equal(headerTwo.sfControls.solveBtn.style.display, 'none');
-  assert.equal(headerTwo.sfControls.resumeBtn.style.display, '');
-  assert.equal(headerTwo.sfControls.cancelBtn.style.display, '');
+  assertControls(headerTwo, { state: 'PAUSED', solve: false, pause: false, resume: true, cancel: true, spinner: false });
 
   barTwo.setLifecycleState('SOLVING');
-  assert.equal(headerTwo.sfControls.solveBtn.style.display, 'none');
-  assert.equal(headerTwo.sfControls.pauseBtn.style.display, '');
+  assertControls(headerTwo, { state: 'SOLVING', solve: false, pause: true, resume: false, cancel: true, spinner: true });
 });
 
 test('tab switching stays scoped to the owning tab container', () => {

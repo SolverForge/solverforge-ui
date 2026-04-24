@@ -162,7 +162,7 @@ test('HTTP backend lets EventSource reconnect without surfacing transient errors
   });
 
   const close = backend.streamJobEvents('job-9', function () {}, function (error) {
-    errors.push(error.message);
+    errors.push(error);
   });
 
   instance.readyState = FakeEventSource.CONNECTING;
@@ -171,7 +171,11 @@ test('HTTP backend lets EventSource reconnect without surfacing transient errors
 
   instance.readyState = FakeEventSource.CLOSED;
   instance.onerror();
-  assert.deepEqual(errors, ['Event stream closed for /api/jobs/job-9/events']);
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0].message, 'Event stream closed for /api/jobs/job-9/events');
+  assert.equal(errors[0].code, 'SSE_CLOSED');
+  assert.equal(errors[0].transport, 'sse');
+  assert.equal(errors[0].url, '/api/jobs/job-9/events');
 
   close();
 });

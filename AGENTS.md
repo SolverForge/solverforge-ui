@@ -26,12 +26,17 @@ Repository guidance for coding agents and maintainers working in
 - `best_solution` must include both `solution` and `snapshotRevision`.
 - If a backend seeds startup state from a retained snapshot, it must not emit an
   identical duplicate startup `best_solution` immediately after that bootstrap.
+- `deleteJob()` is mandatory for every backend passed to `SF.createSolver()`.
+  `delete()` is terminal-only destructive backend cleanup, and local retained
+  state is cleared only after backend deletion succeeds.
 - Paused and terminal lifecycle events remain authoritative; `SF.createSolver()`
   synchronizes retained snapshot state before invoking the corresponding
   callbacks.
 - HTTP `EventSource.onerror` represents transport state. Reconnecting errors are
-  ignored; a closed stream is surfaced through `onError` and resets local
-  controls to idle while retaining the job id for snapshot and analysis calls.
+  ignored; a closed stream is surfaced through `onError` and preserves the last
+  authoritative lifecycle, retained job id, score, metadata, and snapshot
+  revision. In-flight states must remain exact: `PAUSE_REQUESTED`,
+  `RESUMING`, and `CANCELLING` must not collapse back to `SOLVING` or `IDLE`.
 
 ## Working Rules
 

@@ -303,9 +303,13 @@ Shipped runtime expectations:
 - `paused`, `completed`, `cancelled`, and `failed` remain authoritative and
   trigger retained snapshot synchronization before downstream callbacks fire.
 - HTTP `EventSource.onerror` is transport state. Reconnecting errors stay local
-  to the browser transport; a closed stream surfaces through `onError`, resets
-  local controls to idle, and retains the job id for snapshot and analysis
-  calls.
+  to the browser transport; a closed stream surfaces through `onError` and
+  preserves the last authoritative lifecycle, retained job id, score, metadata,
+  and snapshot revision.
+- `start()` never replaces a retained job. Terminal retained jobs require
+  successful `delete()` cleanup before another solve can start.
+- `delete()` calls backend `deleteJob()` and clears local retained state only
+  after backend cleanup succeeds.
 
 ---
 

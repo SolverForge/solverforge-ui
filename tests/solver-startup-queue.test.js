@@ -44,6 +44,7 @@ test('solver queues pause during startup until the job exists', async () => {
     },
     resumeJob: async () => {},
     cancelJob: async () => {},
+    deleteJob: async () => {},
   };
 
   const paused = [];
@@ -123,6 +124,7 @@ test('solver queues cancel during startup and settles on the terminal cancelled 
     cancelJob: async (id) => {
       calls.push(['cancelJob', id]);
     },
+    deleteJob: async () => {},
   };
 
   const cancellations = [];

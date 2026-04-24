@@ -120,7 +120,7 @@
         es.onerror = function () {
           if (closed || !onError) return;
           if (typeof EventSource !== 'undefined' && es.readyState === EventSource.CLOSED) {
-            onError(new Error('Event stream closed for ' + url));
+            onError(createSseClosedError(url));
           }
         };
         return function close() {
@@ -195,6 +195,14 @@
         return function close() { if (unlisten) unlisten(); };
       },
     };
+  }
+
+  function createSseClosedError(url) {
+    var err = new Error('Event stream closed for ' + url);
+    err.code = 'SSE_CLOSED';
+    err.transport = 'sse';
+    err.url = url;
+    return err;
   }
 
 })(SF);

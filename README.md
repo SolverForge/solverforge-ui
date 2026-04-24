@@ -227,7 +227,14 @@ Runtime rules:
 - `best_solution` must include `solution` and `snapshotRevision`.
 - `pause_requested` does not imply that a checkpoint is ready yet.
 - `paused`, `completed`, `cancelled`, and `failed` are authoritative lifecycle events. `SF.createSolver()` syncs the retained snapshot before firing the corresponding callbacks.
-- HTTP `EventSource.onerror` is transport state. Reconnecting errors are ignored; a closed stream is surfaced through `onError` and resets local controls to idle while retaining the job id for snapshot and analysis calls.
+- `deleteJob()` is required for every backend passed to `SF.createSolver()`. It is the only supported cleanup path for retained jobs.
+- HTTP `EventSource.onerror` is transport state, not runtime lifecycle state. Reconnecting errors are ignored. A closed stream is surfaced through `onError` as an SSE transport error while preserving the last authoritative lifecycle, retained job id, score, metadata, and snapshot revision.
+- Only runtime lifecycle events or explicit status/snapshot synchronization can move the solver lifecycle. Transport interruption does not make Delete legal and does not replace `SOLVING`, `PAUSED`, or terminal runtime states with `IDLE`.
+- `start()` never replaces a retained job. Even terminal retained jobs require a successful `delete()` before the next solve can start.
+- `delete()` is destructive backend cleanup for terminal retained jobs only. It is not a local-only reset, and a failed `deleteJob()` call preserves the retained job id and terminal lifecycle state.
+- `pause()` sends `pauseJob()` only from `SOLVING`; a pause requested while `STARTING` queues until the job id exists. `PAUSE_REQUESTED` blocks duplicate pause requests, and `RESUMING` does not allow pause.
+- `resume()` sends `resumeJob()` only from `PAUSED`.
+- User-facing Stop sends `cancelJob()` only from `SOLVING`, `PAUSE_REQUESTED`, `PAUSED`, or `RESUMING`; a cancel requested while `STARTING` queues until the job id exists. `CANCELLING` blocks duplicate cancel requests.
 - The status bar uses `currentScore` as the live score during solving.
 - Missing or malformed typed lifecycle fields are ignored; they are not silently normalized into the contract.
 
@@ -536,12 +543,13 @@ Expects standard SolverForge REST endpoints:
 - `GET /demo-data/{name}` — load demo dataset
 
 Backend contract expectations:
+- Custom backends passed to `SF.createSolver()` must implement `createJob()`, `streamJobEvents()`, `getSnapshot()`, `analyzeSnapshot()`, `pauseJob()`, `resumeJob()`, `cancelJob()`, and `deleteJob()`.
 - `createJob()` must resolve to a plain job id (string), or an object containing one of `id`, `jobId`, or `job_id`.
 - `getSnapshot()` and `analyzeSnapshot()` accept an optional `snapshotRevision`. `SF.createSolver()` uses the exact revision from paused and terminal events when it syncs the retained state.
 - `pauseJob()` requests a pause. `SF.createSolver().pause()` resolves only after the authoritative `paused` event and snapshot sync complete.
 - `resumeJob()` resolves through the runtime event stream. `SF.createSolver().resume()` settles on the authoritative `resumed` event.
-- `cancelJob()` settles through the runtime event stream. `SF.createSolver().cancel()` resolves when the terminal event has been synchronized.
-- `deleteJob()` is destructive cleanup for terminal retained jobs only.
+- `cancelJob()` is the backend operation behind user-facing Stop. It settles through the runtime event stream, and `SF.createSolver().cancel()` resolves when the terminal event has been synchronized.
+- `deleteJob()` is destructive cleanup for terminal retained jobs only. `SF.createSolver().delete()` clears local retained state only after this backend call succeeds.
 - Events passed into `streamJobEvents()` for a job should include one of the same identifiers if multiple solver runs are possible.
 - Tauri payloads are ignored only when they carry a different job id than the active run; id-less single-run updates still pass through.
 - Solver lifecycle events are canonical camelCase only: `eventType`, `jobId`, `eventSequence`, `lifecycleState`, `snapshotRevision`, `currentScore`, `bestScore`, `telemetry`, and `solution` where required.

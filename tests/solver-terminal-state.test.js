@@ -36,6 +36,7 @@ test('solver ignores stale paused snapshot work after a newer cancelled event', 
     pauseJob: async () => {},
     resumeJob: async () => {},
     cancelJob: async () => {},
+    deleteJob: async () => {},
   };
 
   const paused = [];
@@ -110,6 +111,7 @@ test('solver keeps terminal lifecycle metadata when retained snapshots are pause
     pauseJob: async () => {},
     resumeJob: async () => {},
     cancelJob: async () => {},
+    deleteJob: async () => {},
   };
 
   const cancelled = [];
@@ -149,12 +151,92 @@ test('solver keeps terminal lifecycle metadata when retained snapshots are pause
   assert.equal(analyses[0][1].terminalReason, 'cancelled');
 });
 
-test('solver delete clears the retained job after terminal completion', async () => {
+[
+  { eventType: 'completed', lifecycleState: 'COMPLETED' },
+  { eventType: 'cancelled', lifecycleState: 'CANCELLED' },
+  { eventType: 'failed', lifecycleState: 'FAILED', error: 'failed' },
+  { eventType: 'completed', lifecycleState: 'TERMINATED_BY_CONFIG' },
+].forEach((scenario) => {
+  test(`solver delete clears the retained job after terminal ${scenario.lifecycleState}`, async () => {
+    const { SF } = loadSf(SOLVER_FILES);
+    let onMessage;
+    const calls = [];
+    let createCount = 0;
+    const backend = {
+      createJob: async () => {
+        createCount += 1;
+        return 'job-delete-' + scenario.lifecycleState.toLowerCase();
+      },
+      streamJobEvents(_id, callback) {
+        onMessage = callback;
+        return function () {};
+      },
+      getSnapshot: async (id, revision) => ({
+        id: id,
+        snapshotRevision: revision,
+        lifecycleState: scenario.lifecycleState,
+        solution: { id: id, revision: revision },
+      }),
+      analyzeSnapshot: async (id, revision) => ({
+        jobId: id,
+        snapshotRevision: revision,
+        lifecycleState: scenario.lifecycleState,
+        analysis: { score: '0hard/0soft', constraints: [] },
+      }),
+      pauseJob: async () => {},
+      resumeJob: async () => {},
+      cancelJob: async () => {},
+      deleteJob: async (id) => {
+        calls.push(['deleteJob', id]);
+      },
+    };
+
+    let resolveTerminal;
+    const terminalReady = new Promise((resolve) => {
+      resolveTerminal = resolve;
+    });
+    const solver = SF.createSolver({
+      backend,
+      onComplete() {
+        resolveTerminal();
+      },
+      onCancelled() {
+        resolveTerminal();
+      },
+      onFailure() {
+        resolveTerminal();
+      },
+      onAnalysis() {},
+    });
+
+    await solver.start({});
+    onMessage({
+      eventType: scenario.eventType,
+      lifecycleState: scenario.lifecycleState,
+      snapshotRevision: 7,
+      error: scenario.error,
+    });
+    await terminalReady;
+
+    assert.equal(solver.getLifecycleState(), scenario.lifecycleState);
+    assert.notEqual(solver.getJobId(), null);
+    await assert.rejects(solver.start({}), /Cannot start a new solve while a retained job exists/);
+    assert.equal(createCount, 1);
+
+    await solver.delete();
+
+    assert.equal(solver.getJobId(), null);
+    assert.equal(solver.getLifecycleState(), 'IDLE');
+    assert.deepEqual(calls, [['deleteJob', 'job-delete-' + scenario.lifecycleState.toLowerCase()]]);
+  });
+});
+
+test('solver preserves terminal retained state when backend deletion fails', async () => {
   const { SF } = loadSf(SOLVER_FILES);
   let onMessage;
-  const calls = [];
+  const errors = [];
   const backend = {
-    createJob: async () => 'job-delete',
+    createJob: async () => 'job-delete-fails',
     streamJobEvents(_id, callback) {
       onMessage = callback;
       return function () {};
@@ -165,19 +247,14 @@ test('solver delete clears the retained job after terminal completion', async ()
       lifecycleState: 'COMPLETED',
       solution: { id: id, revision: revision },
     }),
-    analyzeSnapshot: async (id, revision) => ({
-      jobId: id,
-      snapshotRevision: revision,
-      analysis: { score: '0hard/0soft', constraints: [] },
-    }),
+    analyzeSnapshot: async () => null,
     pauseJob: async () => {},
     resumeJob: async () => {},
     cancelJob: async () => {},
-    deleteJob: async (id) => {
-      calls.push(['deleteJob', id]);
+    deleteJob: async () => {
+      throw new Error('delete failed');
     },
   };
-
   let resolveCompleted;
   const completedReady = new Promise((resolve) => {
     resolveCompleted = resolve;
@@ -187,21 +264,23 @@ test('solver delete clears the retained job after terminal completion', async ()
     onComplete() {
       resolveCompleted();
     },
-    onAnalysis() {},
+    onError(message) {
+      errors.push(message);
+    },
   });
 
   await solver.start({});
   onMessage({
     eventType: 'completed',
     lifecycleState: 'COMPLETED',
-    snapshotRevision: 7,
+    snapshotRevision: 9,
   });
   await completedReady;
 
-  assert.equal(solver.getJobId(), 'job-delete');
-  await solver.delete();
+  await assert.rejects(solver.delete(), /delete failed/);
 
-  assert.equal(solver.getJobId(), null);
-  assert.equal(solver.getLifecycleState(), 'IDLE');
-  assert.deepEqual(calls, [['deleteJob', 'job-delete']]);
+  assert.equal(solver.getJobId(), 'job-delete-fails');
+  assert.equal(solver.getLifecycleState(), 'COMPLETED');
+  assert.deepEqual(errors, ['delete failed']);
+  await assert.rejects(solver.start({}), /Cannot start a new solve while a retained job exists/);
 });

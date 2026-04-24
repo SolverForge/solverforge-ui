@@ -75,8 +75,14 @@
         pauseBtn.style.display = shouldShowPause(normalized) ? '' : 'none';
         pauseBtn.disabled = normalized === 'PAUSE_REQUESTED';
       }
-      if (resumeBtn) resumeBtn.style.display = normalized === 'PAUSED' ? '' : 'none';
-      if (cancelBtn) cancelBtn.style.display = shouldShowCancel(normalized) ? '' : 'none';
+      if (resumeBtn) {
+        resumeBtn.style.display = normalized === 'PAUSED' ? '' : 'none';
+        resumeBtn.disabled = false;
+      }
+      if (cancelBtn) {
+        cancelBtn.style.display = shouldShowCancel(normalized) ? '' : 'none';
+        cancelBtn.disabled = false;
+      }
       if (spinner) spinner.classList.toggle('active', shouldSpin(normalized));
 
       statusEl.textContent = lifecycleLabel(normalized);
@@ -172,18 +178,13 @@
   }
 
   function shouldShowSolve(state) {
-    return state === 'IDLE'
-      || state === 'COMPLETED'
-      || state === 'CANCELLED'
-      || state === 'FAILED'
-      || state === 'TERMINATED_BY_CONFIG';
+    return state === 'IDLE';
   }
 
   function shouldShowPause(state) {
     return state === 'STARTING'
       || state === 'SOLVING'
-      || state === 'PAUSE_REQUESTED'
-      || state === 'RESUMING';
+      || state === 'PAUSE_REQUESTED';
   }
 
   function shouldShowCancel(state) {
@@ -191,8 +192,7 @@
       || state === 'SOLVING'
       || state === 'PAUSE_REQUESTED'
       || state === 'PAUSED'
-      || state === 'RESUMING'
-      || state === 'CANCELLING';
+      || state === 'RESUMING';
   }
 
   function shouldSpin(state) {
