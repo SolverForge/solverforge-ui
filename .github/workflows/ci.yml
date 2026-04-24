@@ -11,6 +11,7 @@ env:
 
 jobs:
   check:
+    if: ${{ github.server_url == 'https://github.com' }}
     name: Check
     runs-on: ubuntu-latest
 
