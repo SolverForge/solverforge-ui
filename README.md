@@ -231,10 +231,10 @@ Runtime rules:
 - HTTP `EventSource.onerror` is transport state, not runtime lifecycle state. Reconnecting errors are ignored. A closed stream is surfaced through `onError` as an SSE transport error while preserving the last authoritative lifecycle, retained job id, score, metadata, and snapshot revision.
 - Only runtime lifecycle events or explicit status/snapshot synchronization can move the solver lifecycle. Transport interruption does not make Delete legal and does not replace `SOLVING`, `PAUSED`, or terminal runtime states with `IDLE`.
 - `start()` never replaces a retained job. Even terminal retained jobs require a successful `delete()` before the next solve can start.
-- `delete()` is destructive backend cleanup for terminal retained jobs only. It is not a local-only reset, and a failed `deleteJob()` call preserves the retained job id and terminal lifecycle state.
+- `delete()` is destructive backend cleanup for terminal retained jobs only. It waits for any in-flight terminal snapshot synchronization before cleanup, is not a local-only reset, and a failed `deleteJob()` call preserves the retained job id and terminal lifecycle state.
 - `pause()` sends `pauseJob()` only from `SOLVING`; a pause requested while `STARTING` queues until the job id exists. `PAUSE_REQUESTED` blocks duplicate pause requests, and `RESUMING` does not allow pause.
 - `resume()` sends `resumeJob()` only from `PAUSED`.
-- User-facing Stop sends `cancelJob()` only from `SOLVING`, `PAUSE_REQUESTED`, `PAUSED`, or `RESUMING`; a cancel requested while `STARTING` queues until the job id exists. `CANCELLING` blocks duplicate cancel requests.
+- User-facing Stop sends `cancelJob()` only from `SOLVING`, `PAUSE_REQUESTED`, `PAUSED`, or `RESUMING`; a cancel requested while `STARTING` queues until the job id exists. `CANCELLING` blocks duplicate cancel requests, but a detached stream may be reattached listen-only to observe the terminal event.
 - The status bar uses `currentScore` as the live score during solving.
 - Missing or malformed typed lifecycle fields are ignored; they are not silently normalized into the contract.
 

@@ -1192,6 +1192,7 @@ const SF = (function () {
     var pendingPause = null;
     var pendingResume = null;
     var pendingCancel = null;
+    var terminalSettlement = null;
 
     var api = {};
 
@@ -1272,6 +1273,11 @@ const SF = (function () {
         return pendingCancel.promise;
       }
       var jobId = currentJobId();
+      if (phase === 'cancelling' && jobId) {
+        pendingCancel = createDeferred();
+        if (!ensureStreamAttached(runToken, jobId, 'cancel')) return pendingCancel.promise;
+        return pendingCancel.promise;
+      }
       if (!jobId || !isCancelablePhase()) return Promise.resolve();
 
       pendingCancel = createDeferred();
@@ -1287,7 +1293,10 @@ const SF = (function () {
       }
 
       var jobId = retainedJobId;
-      return backend.deleteJob(jobId).then(function () {
+      return waitForTerminalSettlement(jobId).then(function () {
+        if (retainedJobId !== jobId) return;
+        return backend.deleteJob(jobId);
+      }).then(function () {
         if (retainedJobId !== jobId) return;
         resetAfterDelete();
       }).catch(function (err) {
@@ -1447,7 +1456,7 @@ const SF = (function () {
       if (event.eventType === 'completed') {
         phase = 'idle';
         applyEventMeta(event.meta);
-        syncSnapshotBundle(event.meta, true).then(function (bundle) {
+        trackTerminalSettlement(event.meta.jobId, syncSnapshotBundle(event.meta, true).then(function (bundle) {
           if (token !== runToken || hasNewerEvent(event.meta)) return;
           finalizeTerminal(bundle.meta);
           applyBundle(bundle);
@@ -1458,14 +1467,14 @@ const SF = (function () {
           finalizeTerminal(event.meta);
           settlePendingFromTerminal('completed', null, err);
           notifyError(err);
-        });
+        }));
         return;
       }
 
       if (event.eventType === 'cancelled') {
         phase = 'idle';
         applyEventMeta(event.meta);
-        syncSnapshotBundle(event.meta, false).then(function (bundle) {
+        trackTerminalSettlement(event.meta.jobId, syncSnapshotBundle(event.meta, false).then(function (bundle) {
           if (token !== runToken || hasNewerEvent(event.meta)) return;
           finalizeTerminal(bundle.meta);
           applyBundle(bundle);
@@ -1476,14 +1485,14 @@ const SF = (function () {
           finalizeTerminal(event.meta);
           settlePendingFromTerminal('cancelled', null, err);
           notifyError(err);
-        });
+        }));
         return;
       }
 
       if (event.eventType === 'failed') {
         phase = 'idle';
         applyEventMeta(event.meta);
-        syncSnapshotBundle(event.meta, false).then(function (bundle) {
+        trackTerminalSettlement(event.meta.jobId, syncSnapshotBundle(event.meta, false).then(function (bundle) {
           if (token !== runToken || hasNewerEvent(event.meta)) return;
           finalizeTerminal(bundle.meta);
           applyBundle(bundle);
@@ -1495,7 +1504,7 @@ const SF = (function () {
           if (config.onFailure) config.onFailure(event.error || 'Solver job failed', event.meta, null, null);
           settlePendingFromTerminal('failed', null, err);
           notifyError(err);
-        });
+        }));
       }
     }
 
@@ -1628,10 +1637,14 @@ const SF = (function () {
       pendingPause = null;
       pendingResume = null;
       pendingCancel = null;
+      terminalSettlement = null;
     }
 
     function resetAfterDelete() {
       closeCurrentStream();
+      rejectDeferred('pause', new Error('Solver job was deleted before pause settled'));
+      rejectDeferred('resume', new Error('Solver job was deleted before resume settled'));
+      rejectDeferred('cancel', new Error('Solver job was deleted before cancel settled'));
       runToken += 1;
       activeJobId = null;
       retainedJobId = null;
@@ -1641,6 +1654,7 @@ const SF = (function () {
       pendingPause = null;
       pendingResume = null;
       pendingCancel = null;
+      terminalSettlement = null;
       phase = 'idle';
       applyLifecycleState('IDLE');
       updateScore(null);
@@ -1667,6 +1681,30 @@ const SF = (function () {
     function resolveRequestedSnapshotRevision(snapshotRevision) {
       if (snapshotRevision != null && snapshotRevision !== '') return snapshotRevision;
       return lastSnapshotRevision;
+    }
+
+    function waitForTerminalSettlement(jobId) {
+      if (!terminalSettlement || terminalSettlement.jobId !== jobId) return Promise.resolve();
+      return terminalSettlement.promise;
+    }
+
+    function trackTerminalSettlement(jobId, promise) {
+      var tracked = Promise.resolve(promise).then(function (value) {
+        if (terminalSettlement && terminalSettlement.promise === tracked) {
+          terminalSettlement = null;
+        }
+        return value;
+      }, function (err) {
+        if (terminalSettlement && terminalSettlement.promise === tracked) {
+          terminalSettlement = null;
+        }
+        throw err;
+      });
+      terminalSettlement = {
+        jobId: jobId,
+        promise: tracked,
+      };
+      return tracked;
     }
 
     function isCancelablePhase() {

@@ -549,11 +549,25 @@ test('solver does not duplicate cancel after authoritative cancelling state lose
   onStreamError(new Error('closed'));
   await cancelRejected;
 
-  await solver.cancel();
+  const reattachedCancel = solver.cancel();
   await flush();
 
   assert.equal(solver.getLifecycleState(), 'CANCELLING');
+  assert.deepEqual(calls.filter((entry) => entry[0] === 'streamJobEvents'), [
+    ['streamJobEvents', 'job-cancel-loss'],
+    ['streamJobEvents', 'job-cancel-loss'],
+  ]);
   assert.deepEqual(calls.filter((entry) => entry[0] === 'cancelJob'), [['cancelJob', 'job-cancel-loss']]);
+
+  onMessage({
+    eventType: 'cancelled',
+    eventSequence: 3,
+    lifecycleState: 'CANCELLED',
+    snapshotRevision: 5,
+    terminalReason: 'cancelled',
+  });
+  await reattachedCancel;
+  assert.equal(solver.getLifecycleState(), 'CANCELLED');
 });
 
 test('solver resets lifecycle state when job creation fails', async () => {

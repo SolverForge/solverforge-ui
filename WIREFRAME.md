@@ -308,8 +308,10 @@ Shipped runtime expectations:
   and snapshot revision.
 - `start()` never replaces a retained job. Terminal retained jobs require
   successful `delete()` cleanup before another solve can start.
-- `delete()` calls backend `deleteJob()` and clears local retained state only
-  after backend cleanup succeeds.
+- `delete()` waits for terminal synchronization, calls backend `deleteJob()`,
+  and clears local retained state only after backend cleanup succeeds.
+- `CANCELLING` blocks duplicate cancel commands, but a detached stream may
+  reattach listen-only so the UI can observe the terminal event.
 
 ---
 

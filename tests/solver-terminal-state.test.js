@@ -284,3 +284,81 @@ test('solver preserves terminal retained state when backend deletion fails', asy
   assert.deepEqual(errors, ['delete failed']);
   await assert.rejects(solver.start({}), /Cannot start a new solve while a retained job exists/);
 });
+
+test('solver delete waits for terminal snapshot settlement before clearing pending commands', async () => {
+  const { SF } = loadSf(SOLVER_FILES);
+  let onMessage;
+  let resolveSnapshot;
+  let cancelSettled = false;
+  const calls = [];
+  const backend = {
+    createJob: async () => 'job-slow-terminal',
+    streamJobEvents(_id, callback) {
+      onMessage = callback;
+      return function () {
+        calls.push(['closeStream']);
+      };
+    },
+    getSnapshot: async (id, revision) => new Promise((resolve) => {
+      calls.push(['getSnapshot', id, revision]);
+      resolveSnapshot = () => resolve({
+        id: id,
+        snapshotRevision: revision,
+        lifecycleState: 'CANCELLED',
+        terminalReason: 'cancelled',
+        solution: { id: id, revision: revision },
+      });
+    }),
+    analyzeSnapshot: async () => null,
+    pauseJob: async () => {},
+    resumeJob: async () => {},
+    cancelJob: async (id) => {
+      calls.push(['cancelJob', id]);
+    },
+    deleteJob: async (id) => {
+      calls.push(['deleteJob', id]);
+    },
+  };
+  const solver = SF.createSolver({ backend });
+
+  await solver.start({});
+  const cancelPromise = solver.cancel();
+  cancelPromise.then(function () {
+    cancelSettled = true;
+  }, function () {
+    cancelSettled = true;
+  });
+  await flush();
+
+  onMessage({
+    eventType: 'cancelled',
+    lifecycleState: 'CANCELLED',
+    snapshotRevision: 12,
+    terminalReason: 'cancelled',
+  });
+  await flush();
+
+  assert.equal(solver.getLifecycleState(), 'CANCELLED');
+  const deletePromise = solver.delete();
+  await flush();
+
+  assert.equal(cancelSettled, false);
+  assert.deepEqual(calls, [
+    ['cancelJob', 'job-slow-terminal'],
+    ['getSnapshot', 'job-slow-terminal', 12],
+  ]);
+
+  resolveSnapshot();
+  await cancelPromise;
+  await deletePromise;
+
+  assert.equal(cancelSettled, true);
+  assert.equal(solver.getJobId(), null);
+  assert.equal(solver.getLifecycleState(), 'IDLE');
+  assert.deepEqual(calls, [
+    ['cancelJob', 'job-slow-terminal'],
+    ['getSnapshot', 'job-slow-terminal', 12],
+    ['closeStream'],
+    ['deleteJob', 'job-slow-terminal'],
+  ]);
+});

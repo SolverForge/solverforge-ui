@@ -28,7 +28,8 @@ Repository guidance for coding agents and maintainers working in
   identical duplicate startup `best_solution` immediately after that bootstrap.
 - `deleteJob()` is mandatory for every backend passed to `SF.createSolver()`.
   `delete()` is terminal-only destructive backend cleanup, and local retained
-  state is cleared only after backend deletion succeeds.
+  state is cleared only after terminal synchronization and backend deletion
+  both succeed.
 - Paused and terminal lifecycle events remain authoritative; `SF.createSolver()`
   synchronizes retained snapshot state before invoking the corresponding
   callbacks.
@@ -37,6 +38,8 @@ Repository guidance for coding agents and maintainers working in
   authoritative lifecycle, retained job id, score, metadata, and snapshot
   revision. In-flight states must remain exact: `PAUSE_REQUESTED`,
   `RESUMING`, and `CANCELLING` must not collapse back to `SOLVING` or `IDLE`.
+  `CANCELLING` may reattach a closed stream to listen for the terminal event,
+  but it must not send a duplicate `cancelJob()` call.
 
 ## Working Rules
 
