@@ -46,7 +46,7 @@
       maxZoom: 19,
     }).addTo(map);
 
-    var markerGroup = L.layerGroup().addTo(map);
+    var markerGroup = L.featureGroup().addTo(map);
     var routeGroup = L.layerGroup().addTo(map);
     var stopGroup = L.layerGroup().addTo(map);
 
