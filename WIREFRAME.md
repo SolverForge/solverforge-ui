@@ -77,7 +77,7 @@ sticky header, and scrollable main area.
 ```
 
 **JS:** `SF.createStatusBar({ header?, constraints[], onConstraintClick })`
-Returns: `{ el, bindHeader(header), updateScore(str), setLifecycleState(state), updateMoves(n), colorDotsFromAnalysis(arr) }`
+Returns: `{ el, bindHeader(header), updateScore(str), setLifecycleState(state), setSolving(bool), updateMoves(n), updateConstraintDots(arr), colorDotsByScore(str), colorDotsFromAnalysis(arr) }`
 
 Pass `header` or call `bindHeader(header)` when the status bar should control a
 specific header's lifecycle controls and spinner state. Without a bound header,
@@ -241,7 +241,7 @@ Shorthand: `SF.showError(title, detail)`
 
 ```
 +------------------------------------------------------------------------+
-|  SolverForge  │  Documentation  │  GitHub        v0.6.1                |
+|  SolverForge  │  Documentation  │  GitHub        v0.6.2                |
 |  ↑ links with hover emerald                      ↑ right-aligned      |
 +------------------------------------------------------------------------+
 ```
@@ -519,9 +519,14 @@ Treat them as low-level add-ons, not the canonical dense scheduling entrypoint.
 var map = SF.map.create({ container, center, zoom });
 map.addVehicleMarker({ lat, lng, color });
 map.addVisitMarker({ lat, lng, color, icon, assigned });
+map.addStopNumber({ lat, lng, number, color });
 map.drawRoute({ points, color });
 map.drawEncodedRoute({ encoded, color });
 map.highlight(vehicleColor);
+map.clearRoutes();
+map.clearStops();
+map.clearMarkers();
+map.clearAll();
 ```
 
 ---

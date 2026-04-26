@@ -128,7 +128,7 @@ Use `make lint-frontend` for ESLint on `js-src/`, `tests/`, and `scripts/`, or
 | Factory | Returns | Description |
 |---------|---------|-------------|
 | `SF.createHeader(config)` | `HTMLElement` | Sticky header with logo, title, nav tabs, and optional solve/pause/resume/cancel/analyze actions |
-| `SF.createStatusBar(config)` | `{el, bindHeader, updateScore, setSolving, updateMoves, colorDotsFromAnalysis}` | Score display + constraint dot indicators; pass `header` or call `bindHeader()` if it should toggle local solve/stop controls |
+| `SF.createStatusBar(config)` | `{el, bindHeader, updateScore, setLifecycleState, setSolving, updateMoves, updateConstraintDots, colorDotsByScore, colorDotsFromAnalysis}` | Score display + constraint dot indicators; pass `header` or call `bindHeader()` if it should toggle local solve/stop controls |
 | `SF.createButton(config)` | `HTMLButtonElement` | Button with variant/size/icon/shape modifiers |
 | `SF.createModal(config)` | `{el, body, open, close, setBody}` | Dialog with emerald gradient header, backdrop, Escape key |
 | `SF.createTable(config)` | `HTMLElement` | Data table with headers and row click |
@@ -167,7 +167,7 @@ Default content is always text-rendered. Use these fields only with trusted HTML
 
 | Factory | Returns | Description |
 |---------|---------|-------------|
-| `SF.gantt.create(config)` | `{el, mount, setTasks, refresh, changeViewMode, highlightTask, destroy}` | Split-pane Gantt with grid table + Frappe Gantt chart |
+| `SF.gantt.create(config)` | `{el, mount, setTasks, refresh, getChart, changeViewMode, highlightTask, destroy}` | Split-pane Gantt with grid table + Frappe Gantt chart |
 
 ### Solver Lifecycle
 
@@ -593,11 +593,16 @@ var map = SF.map.create({ container: 'map', center: [45.07, 7.69], zoom: 13 });
 
 map.addVehicleMarker({ lat: 45.07, lng: 7.69, color: '#10b981' });
 map.addVisitMarker({ lat: 45.08, lng: 7.70, color: '#3b82f6', icon: 'fa-utensils' });
+map.addStopNumber({ lat: 45.08, lng: 7.70, number: 1, color: '#3b82f6' });
 map.drawRoute({ points: [[45.07, 7.69], [45.08, 7.70]], color: '#10b981' });
 map.drawEncodedRoute({ encoded: 'encodedPolylineString', color: '#3b82f6' });
 map.fitBounds();
 map.highlight('#10b981');   // dim all routes except this color
 map.clearHighlight();
+map.clearRoutes();
+map.clearStops();
+map.clearMarkers();
+map.clearAll();
 
 SF.map.decodePolyline('_p~iF~ps|U...');  // Google polyline algorithm
 ```
@@ -734,7 +739,7 @@ cargo build
 
 Consumer integration stays npm-free. Maintainer release automation does not.
 
-- Current crate release: `0.6.1`.
+- Current crate release: `0.6.2`.
 - Keep `CHANGELOG.md` current as work lands.
 - Use `RELEASE.md` as the source of truth when preparing a public release.
 - Run `make pre-release` before tagging.
