@@ -19,7 +19,7 @@ PROGRESS := →
 
 # ============== Project Metadata ==============
 VERSION := $(shell grep -m1 '^version' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
-RUST_VERSION := 1.75+
+RUST_VERSION := 1.95+
 SEMVER_RE := '^[0-9]+\.[0-9]+\.[0-9]+$$'
 
 # ============== Asset Sources ==============
