@@ -50,6 +50,16 @@ def main() -> None:
         rf"- Current crate release: `{re.escape(old)}`\.",
         f"- Current crate release: `{new}`.",
     )
+    rewrite(
+        "AGENTS.md",
+        rf"- Crate version: `{re.escape(old)}`\.",
+        f"- Crate version: `{new}`.",
+    )
+    rewrite(
+        "WIREFRAME.md",
+        rf"v{re.escape(old)}",
+        f"v{new}",
+    )
     rewrite_cargo_lock(old, new)
 
 
