@@ -37,6 +37,6 @@ The automated check serves the repository locally, opens the runnable demo fixtu
 ## Coverage
 
 - `full-surface.html`: header, status bar, tabs, buttons, modal, toast, table, canonical scheduling timeline, Gantt, API guide, and footer
-- `timeline.html`: focused dense scheduling example using `SF.rail.createTimeline()` with additive overview summaries, inline expansion, overlays, and detailed lanes
-- `timeline-dense.html`: repeatable 28-day, 100-lane, 1500-item acceptance fixture for dense schedule validation
+- `timeline.html`: focused dense scheduling example using `SF.rail.createTimeline()` with additive overview summaries, inline expansion, overlays, exact detailed-lane geometry, and synchronized drag-pan
+- `timeline-dense.html`: repeatable 28-day, 100-lane, 1500-item acceptance fixture for dense schedule validation in one scrollable timeline body viewport
 - `rail.html`: advanced low-level resource header, cards, gauges, blocks, and changeovers

@@ -247,10 +247,11 @@
     var horizon = config.horizon || 1;
     var startPct = (config.start / horizon) * 100;
     var widthPct = ((config.end - config.start) / horizon) * 100;
+    var minWidthPct = config.minWidthPct == null ? 0.5 : config.minWidthPct;
 
     var block = sf.el('div', { className: 'sf-block' });
     block.style.left = startPct + '%';
-    block.style.width = Math.max(widthPct, 0.5) + '%';
+    block.style.width = Math.max(widthPct, minWidthPct) + '%';
 
     if (config.color) {
       block.style.background = config.color;

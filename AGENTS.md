@@ -43,6 +43,22 @@ Repository guidance for coding agents and maintainers working in
   stream to listen for the terminal event, but it must not send a duplicate
   `cancelJob()` call.
 
+## Rail Timeline Contract
+
+- `SF.rail.createTimeline()` is the shipped dense scheduling surface. Keep its
+  README API reference, `WIREFRAME.md`, tests, demos, and generated assets
+  synchronized whenever timeline config, geometry, scrolling, or layout behavior
+  changes.
+- `zoomPresets` defaults to `['1w', '2w', '4w', 'reset']`; `[]` intentionally
+  removes zoom controls for fixed-horizon app surfaces.
+- Detailed timeline items must preserve exact interval geometry. Adjacent
+  intervals stay visually disjoint on one track; true overlaps are packed onto
+  separate track rows.
+- Dense schedules use one scrollable body viewport with synchronized horizontal
+  header/body movement. Do not document the body scrollbar as hidden.
+- Timeline layout must resynchronize after detached `createTimeline()` or
+  `setModel()` calls once the element is mounted.
+
 ## Working Rules
 
 - Keep public API changes synchronized across code, `README.md`, runnable demos,

@@ -2313,10 +2313,11 @@ const SF = (function () {
     var horizon = config.horizon || 1;
     var startPct = (config.start / horizon) * 100;
     var widthPct = ((config.end - config.start) / horizon) * 100;
+    var minWidthPct = config.minWidthPct == null ? 0.5 : config.minWidthPct;
 
     var block = sf.el('div', { className: 'sf-block' });
     block.style.left = startPct + '%';
-    block.style.width = Math.max(widthPct, 0.5) + '%';
+    block.style.width = Math.max(widthPct, minWidthPct) + '%';
 
     if (config.color) {
       block.style.background = config.color;
@@ -2505,7 +2506,7 @@ const SF = (function () {
 
     var zoomControls = sf.el('div', { className: 'sf-rail-timeline-zoom-controls' });
     var zoomButtons = [];
-    ['1w', '2w', '4w', 'reset'].forEach(function (preset) {
+    normalizeZoomPresets(config.zoomPresets).forEach(function (preset) {
       var button = sf.el('button', {
         className: 'sf-rail-timeline-zoom-button',
         type: 'button',
@@ -2521,7 +2522,9 @@ const SF = (function () {
       zoomButtons.push(button);
       zoomControls.appendChild(button);
     });
-    toolbar.appendChild(zoomControls);
+    if (zoomButtons.length) {
+      toolbar.appendChild(zoomControls);
+    }
     root.appendChild(toolbar);
 
     var shell = sf.el('div', { className: 'sf-rail-timeline-shell' });
@@ -2652,6 +2655,7 @@ const SF = (function () {
         state.viewport = clampViewport(state.model.axis, state.viewport);
         pruneExpandedClusters(state);
         rerenderTimeline();
+        queuePostMountSync(state, syncLayoutFromViewport);
       },
       setViewport: function (nextViewport) {
         state.viewport = clampViewport(
@@ -2659,6 +2663,7 @@ const SF = (function () {
           normalizeViewportInput(nextViewport, 'rail.createTimeline().setViewport(viewport)')
         );
         syncLayoutFromViewport();
+        queuePostMountSync(state, syncLayoutFromViewport);
       },
     };
 
@@ -2671,14 +2676,18 @@ const SF = (function () {
 
   function appendLaneBlock(track, lane, blockConfig, axis, tooltip, root) {
     var tone = blockConfig.tone;
+    var relativeStart = blockConfig.startMinute - axis.startMinute;
+    var relativeEnd = blockConfig.endMinute - axis.startMinute;
+    var horizon = axis.endMinute - axis.startMinute;
     var block = sf.rail.addBlock(track, {
-      start: blockConfig.startMinute - axis.startMinute,
-      end: blockConfig.endMinute - axis.startMinute,
-      horizon: axis.endMinute - axis.startMinute,
+      start: relativeStart,
+      end: relativeEnd,
+      horizon: horizon,
       label: blockConfig.label,
       meta: blockConfig.metaLabel,
       color: tone.background,
       borderColor: tone.border,
+      minWidthPct: 0,
       onClick: blockConfig.onClick,
       onHover: function (event) {
         showTooltip(tooltip, root, blockConfig.tooltip, event);
@@ -2690,6 +2699,8 @@ const SF = (function () {
 
     block.classList.add('sf-rail-timeline-item');
     block.classList.add(blockConfig.kindClass);
+    block.style.left = positionPct(blockConfig.startMinute, axis) + '%';
+    block.style.width = spanPctExact(blockConfig.startMinute, blockConfig.endMinute, axis) + '%';
     block.style.top = blockConfig.top + 'px';
     block.style.height = blockConfig.height + 'px';
     block.style.bottom = 'auto';
@@ -2697,6 +2708,8 @@ const SF = (function () {
     block.tabIndex = 0;
     block.dataset.itemId = blockConfig.itemId;
     block.dataset.laneId = lane.id;
+    block.dataset.startMinute = String(blockConfig.startMinute);
+    block.dataset.endMinute = String(blockConfig.endMinute);
     if (blockConfig.trackIndex != null) block.dataset.trackIndex = String(blockConfig.trackIndex);
     if (blockConfig.clusterId) block.dataset.clusterId = blockConfig.clusterId;
     if (blockConfig.onClick) {
@@ -3811,6 +3824,12 @@ const SF = (function () {
     return Math.max(((endMinute - startMinute) / total) * 100, 0.25);
   }
 
+  function spanPctExact(startMinute, endMinute, axis) {
+    var total = axis.endMinute - axis.startMinute;
+    if (total <= 0) return 0;
+    return Math.max(((endMinute - startMinute) / total) * 100, 0);
+  }
+
   function formatClock(minute) {
     var normalized = minute % DAY_MINUTES;
     if (normalized < 0) normalized += DAY_MINUTES;
@@ -4085,6 +4104,18 @@ const SF = (function () {
       else if (preset === '4w') active = duration === WEEK_MINUTES * 4;
       button.classList.toggle('active', active);
     });
+  }
+
+  function normalizeZoomPresets(presets) {
+    if (presets == null) return ['1w', '2w', '4w', 'reset'];
+    sf.assert(Array.isArray(presets), 'rail.createTimeline(zoomPresets) must be an array');
+    presets.forEach(function (preset, index) {
+      sf.assert(
+        ['1w', '2w', '4w', 'reset'].indexOf(preset) >= 0,
+        'rail.createTimeline(zoomPresets[' + index + ']) must be one of 1w, 2w, 4w, reset'
+      );
+    });
+    return presets.slice();
   }
 
   function pruneExpandedClusters(state) {

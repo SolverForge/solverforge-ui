@@ -155,7 +155,7 @@ Default content is always text-rendered. Use these fields only with trusted HTML
 
 | Factory | Returns | Description |
 |---------|---------|-------------|
-| `SF.rail.createTimeline(config)` | `{el, setModel, setViewport, expandCluster, destroy}` | Canonical dense scheduling timeline with sticky time header, sticky lane labels, synchronized horizontal viewport, drag-to-pan, zoom presets, weekend shading, overlays, overview clustering, and packed detailed lanes |
+| `SF.rail.createTimeline(config)` | `{el, setModel, setViewport, expandCluster, destroy}` | Canonical dense scheduling timeline with sticky time header, sticky lane labels, synchronized horizontal viewport, drag-to-pan, configurable zoom presets, weekend shading, overlays, overview clustering, exact detailed geometry, and packed detailed lanes |
 | `SF.rail.createHeader(config)` | `HTMLElement` | Low-level day/period header primitive for furnace-style rail layouts |
 | `SF.rail.createCard(config)` | `{el, rail, addBlock, clearBlocks, setSolving, setUnassigned}` | Low-level resource lane primitive with identity, gauges, stats, and block rail |
 | `SF.rail.addBlock(rail, config)` | `HTMLElement` | Low-level positioned block (task/job) inside a primitive rail |
@@ -283,10 +283,30 @@ wrappers or outer card chrome.
 `labelWidth` is the preferred sticky-label width; supported embeds with a body
 viewport of `500px` or wider compact that label column as needed to preserve at
 least `320px` of visible schedule track.
+Detached timelines are supported: creating a timeline or calling `setModel()`
+before appending `timeline.el` queues a post-mount layout synchronization so the
+header, body, content width, and compact label width are recalculated once real
+viewport dimensions are available.
+The body viewport is the vertical scroll container for dense solved schedules;
+the sticky header keeps its native scrollbar hidden while horizontal scroll and
+drag-pan stay synchronized with the body.
 Use `mode: 'overview'` for scanable location or resource lanes, and
 `mode: 'detailed'` for precise per-person or per-assignment inspection.
 Overview blocks can carry additive summary metadata and expose the same detail
 via keyboard focus that hover reveals with a mouse.
+Detailed lanes use exact time geometry for rendered blocks. Adjacent intervals
+such as `[60, 120]` and `[120, 180]` remain visually disjoint on the same track,
+while true interval overlaps are packed onto separate track rows.
+
+Timeline config:
+
+- `title`: optional toolbar title and region label; defaults to `Scheduling timeline`
+- `subtitle`: optional toolbar subtitle
+- `label`: optional sticky axis-corner label; defaults to `Lane`
+- `labelWidth`: optional sticky lane-label width in pixels; defaults to `280`
+- `zoomPresets`: optional array containing any of `1w`, `2w`, `4w`, and `reset`;
+  defaults to all four presets, and `[]` omits the zoom controls for fixed-horizon
+  app surfaces
 
 Model shape:
 
@@ -332,8 +352,10 @@ The example below assumes small consumer-side helpers such as `buildDays()` and
 
 ```javascript
 var timeline = SF.rail.createTimeline({
+  title: 'Scheduling timeline',
   label: 'Staffing lane',
   labelWidth: 280,
+  zoomPresets: ['1w', '2w', '4w', 'reset'],
   model: {
     axis: {
       startMinute: 0,
@@ -452,6 +474,10 @@ SF.rail.addChangeover(card.rail, { start: 360, end: 400, horizon: 4800 });
 card.setUnassigned([{ id: 'late-queue', label: 'ODL-991' }]);
 card.setSolving(true);
 ```
+
+`SF.rail.addBlock()` keeps a `0.5%` minimum rendered width by default for
+primitive rail visibility. Pass `minWidthPct: 0` when a consumer needs exact
+interval geometry instead of a visibility floor.
 
 Gauge styles: `heat` (blue→amber→red), `load` (emerald→amber→red), `emerald` (solid green).
 `badges` accepts either strings or `{ label, style }` objects for extra resource metadata.
@@ -765,8 +791,8 @@ Bundling writes both stable compatibility assets (`static/sf/sf.css`,
 Runnable demo fixtures live in `demos/`.
 
 - `demos/full-surface.html` exercises the primary shipped component surface together.
-- `demos/timeline.html` is the focused dense scheduling example built with `SF.rail.createTimeline()`, including additive overview summaries and inline expand/collapse.
-- `demos/timeline-dense.html` is the repeatable 28-day, 100-lane, 1500-item dense validation fixture for hospital-like schedule acceptance.
+- `demos/timeline.html` is the focused dense scheduling example built with `SF.rail.createTimeline()`, including additive overview summaries, inline expand/collapse, exact detailed geometry, and synchronized drag-pan.
+- `demos/timeline-dense.html` is the repeatable 28-day, 100-lane, 1500-item dense validation fixture for one scrollable body viewport.
 - `demos/rail.html` focuses on the low-level rail primitives: resource cards, blocks, gauges, and changeovers.
 - `make demo-serve` serves the repository at `http://localhost:8000/demos/` for local validation.
 - `make test-browser` runs browser-level smoke tests against the shipped demo fixtures and refreshes the timeline acceptance screenshots in `screenshots/`.

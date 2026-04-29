@@ -26,6 +26,18 @@ function blockTrackMap(root, className) {
   );
 }
 
+function pct(value) {
+  return Number.parseFloat(String(value || '0').replace('%', ''));
+}
+
+function inlineBlockGeometry(root, itemId) {
+  const block = root.querySelector(`[data-item-id="${itemId}"]`);
+  assert.ok(block, `expected block ${itemId}`);
+  const left = pct(block.style.left);
+  const width = pct(block.style.width);
+  return { left, right: left + width, width };
+}
+
 function dayMinute(dayIndex, hour, minute = 0) {
   return dayIndex * 1440 + hour * 60 + minute;
 }
@@ -126,6 +138,91 @@ test('timeline detailed lanes pack overlapping items into stable track indices',
   });
   assert.deepEqual(after, before);
   assert.equal(SF.schedule, undefined);
+});
+
+test('timeline detailed geometry keeps adjacent non-overlapping tasks disjoint', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  const timeline = SF.rail.createTimeline({
+    model: {
+      axis: buildAxis(1),
+      lanes: [
+        {
+          id: 'furnace-a',
+          label: 'Furnace A',
+          mode: 'detailed',
+          items: [
+            { id: 'left', startMinute: 60, endMinute: 120, label: 'Left', tone: 'blue' },
+            { id: 'right', startMinute: 120, endMinute: 180, label: 'Right', tone: 'emerald' },
+          ],
+        },
+      ],
+    },
+  });
+
+  const left = inlineBlockGeometry(timeline.el, 'left');
+  const right = inlineBlockGeometry(timeline.el, 'right');
+
+  assert.equal(timeline.el.querySelector('[data-item-id="left"]').dataset.trackIndex, '0');
+  assert.equal(timeline.el.querySelector('[data-item-id="right"]').dataset.trackIndex, '0');
+  assert.ok(left.right <= right.left);
+});
+
+test('timeline detailed geometry renders true overlaps on different tracks', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  const timeline = SF.rail.createTimeline({
+    model: {
+      axis: buildAxis(1),
+      lanes: [
+        {
+          id: 'furnace-a',
+          label: 'Furnace A',
+          mode: 'detailed',
+          items: [
+            { id: 'alpha', startMinute: 60, endMinute: 180, label: 'Alpha', tone: 'blue' },
+            { id: 'beta', startMinute: 120, endMinute: 240, label: 'Beta', tone: 'rose' },
+          ],
+        },
+      ],
+    },
+  });
+
+  const alpha = inlineBlockGeometry(timeline.el, 'alpha');
+  const beta = inlineBlockGeometry(timeline.el, 'beta');
+
+  assert.ok(alpha.left < beta.right && beta.left < alpha.right);
+  assert.notEqual(
+    timeline.el.querySelector('[data-item-id="alpha"]').dataset.trackIndex,
+    timeline.el.querySelector('[data-item-id="beta"]').dataset.trackIndex,
+  );
+});
+
+test('timeline body keeps many solved lanes in one scrollable body viewport', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  const model = {
+    axis: buildAxis(7),
+    lanes: Array.from({ length: 60 }, (_, index) => ({
+      id: `lane-${index}`,
+      label: `Lane ${index}`,
+      mode: 'detailed',
+      items: [
+        {
+          id: `item-${index}`,
+          startMinute: index * 10,
+          endMinute: index * 10 + 60,
+          label: `Item ${index}`,
+          tone: 'slate',
+        },
+      ],
+    })),
+  };
+  const timeline = SF.rail.createTimeline({ model });
+  const bodyViewport = timeline.el.querySelector('.sf-rail-timeline-body-viewport');
+
+  assert.ok(bodyViewport);
+  assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-row').length, 60);
 });
 
 test('timeline overview lanes cluster overlaps and expand only the targeted region', () => {
@@ -476,6 +573,29 @@ test('timeline syncs header/body scroll, updates zoom presets, and drag-pans fro
   assert.equal(bodyViewport.scrollLeft, headerViewport.scrollLeft);
 });
 
+test('timeline can omit zoom controls for fixed-horizon app surfaces', () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+
+  const timeline = SF.rail.createTimeline({
+    zoomPresets: [],
+    model: {
+      axis: buildAxis(7),
+      lanes: [
+        {
+          id: 'furnace-a',
+          label: 'Furnace A',
+          mode: 'detailed',
+          items: [
+            { id: 'order-a', startMinute: 120, endMinute: 300, label: 'Order A', tone: 'blue' },
+          ],
+        },
+      ],
+    },
+  });
+
+  assert.equal(timeline.el.querySelector('.sf-rail-timeline-zoom-controls'), null);
+});
+
 test('timeline updates viewport without rebuilding rows for simple pan changes', () => {
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
 
@@ -671,6 +791,61 @@ test('timeline renders after append when ResizeObserver is unavailable', async (
 
   assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-row').length, 1);
   assert.equal(timeline.el.querySelector('.sf-rail-timeline-header-row').children.length, 2);
+  assert.equal(bodyViewport.scrollWidth > bodyViewport.clientWidth, true);
+});
+
+test('timeline resynchronizes layout after detached model updates', async () => {
+  const { SF, document } = loadSf(
+    ['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js'],
+    { ResizeObserver: undefined }
+  );
+
+  const initialModel = {
+    axis: buildAxis(28, { startMinute: 0, endMinute: 14 * 1440 }),
+    lanes: [
+      {
+        id: 'employee-detached-a',
+        label: 'Employee detached A',
+        mode: 'detailed',
+        items: [
+          { id: 'shift-a', startMinute: 60, endMinute: 240, label: 'Shift A', tone: 'blue' },
+        ],
+      },
+    ],
+  };
+  const updatedModel = {
+    axis: buildAxis(28, { startMinute: 0, endMinute: 14 * 1440 }),
+    lanes: [
+      {
+        id: 'employee-detached-b',
+        label: 'Employee detached B',
+        mode: 'detailed',
+        items: [
+          { id: 'shift-b', startMinute: 300, endMinute: 420, label: 'Shift B', tone: 'emerald' },
+        ],
+      },
+    ],
+  };
+
+  const timeline = SF.rail.createTimeline({ labelWidth: 280, model: initialModel });
+  timeline.setModel(updatedModel);
+
+  const host = document.createElement('div');
+  host.clientWidth = 1400;
+  host.offsetWidth = 1400;
+  document.body.appendChild(host);
+  host.appendChild(timeline.el);
+
+  const bodyViewport = timeline.el.querySelector('.sf-rail-timeline-body-viewport');
+  bodyViewport.clientWidth = 1364;
+  bodyViewport.offsetWidth = 1364;
+
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-row').length, 1);
+  assert.equal(timeline.el.querySelector('.sf-rail-timeline-header-row').children.length, 2);
+  assert.equal(Number.parseFloat(timeline.el.style['--sf-rail-label-width']), 280);
+  assert.equal(timeline.el.dataset.supportedViewportWidth, 'true');
   assert.equal(bodyViewport.scrollWidth > bodyViewport.clientWidth, true);
 });
 

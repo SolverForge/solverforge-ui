@@ -323,7 +323,7 @@ Shipped runtime expectations:
 ```
   .sf-rail-timeline
   ┌─────────────────────────────────────────────────────────────────────────────┐
-  │  [1W] [2W] [4W] [Reset]                         drag to pan · read only     │
+  │  [1W] [2W] [4W] [Reset]                         drag to pan · read only     │  optional zoom controls
   ├───────────────┬─────────────────────────────────────────────────────────────┤
   │ Staffing lane │  Mon 20      Tue 21      Wed 22      Thu 23      Fri 24    │  sticky top time header
   │               │  00 06 12 18 00 06 12 18 00 06 12 18 00 06 12 18 ...       │  6-hour tick marks
@@ -343,15 +343,18 @@ Shipped runtime expectations:
   └───────────────┴─────────────────────────────────────────────────────────────┘
 
   sticky left lane labels
-  hidden native scrollbar
+  hidden native header scrollbar
+  scrollable body viewport
   weekend shading behind the axis
 ```
 
 **JS:**
 ```
 var timeline = SF.rail.createTimeline({
+  title: 'Scheduling timeline',
   label: 'Staffing lane',
   labelWidth: 280,
+  zoomPresets: ['1w', '2w', '4w', 'reset'],
   model: {
     axis: {
       startMinute: 0,
@@ -423,6 +426,19 @@ Shipped dense overview rules:
 - if `summary` is omitted, the timeline computes a default aggregate summary from grouped detail items
 - expanded overview clusters keep the aggregate block visible as the collapse affordance
 - focus and hover expose the same tooltip content for overview and detailed blocks
+
+Shipped detailed/viewport rules:
+
+- `zoomPresets` defaults to `['1w', '2w', '4w', 'reset']`; pass `[]` to omit the
+  controls on fixed-horizon app surfaces
+- detailed blocks render exact interval geometry with no timeline-specific
+  minimum width inflation
+- adjacent detailed intervals remain disjoint on one track, while true overlaps
+  are packed onto separate track rows
+- the body viewport owns vertical scrolling for dense solved schedules, while
+  horizontal scroll and drag-pan remain synchronized with the sticky header
+- timelines created or updated before DOM attachment resynchronize layout after
+  mount so label compaction and content width use real viewport dimensions
 
 ---
 

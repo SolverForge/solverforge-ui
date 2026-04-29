@@ -96,12 +96,14 @@
   inline-size: 100%;
   min-inline-size: 0;
   overflow-x: auto;
-  scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
-.sf-rail-timeline-header-viewport::-webkit-scrollbar,
-.sf-rail-timeline-body-viewport::-webkit-scrollbar {
+.sf-rail-timeline-header-viewport {
+  scrollbar-width: none;
+}
+
+.sf-rail-timeline-header-viewport::-webkit-scrollbar {
   display: none;
 }
 
@@ -120,17 +122,24 @@
 .sf-rail-timeline-body-viewport {
   max-height: min(72vh, 620px);
   overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.sf-rail-timeline-body-viewport::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
 }
 
 .sf-rail-timeline-lanes {
-  inline-size: var(--sf-rail-content-width);
+  inline-size: var(--sf-rail-content-width, 100%);
 }
 
 .sf-rail-timeline-header-row,
 .sf-rail-timeline-row {
   display: grid;
-  grid-template-columns: var(--sf-rail-label-width) minmax(0, 1fr);
-  inline-size: var(--sf-rail-content-width);
+  grid-template-columns: var(--sf-rail-label-width, 280px) minmax(0, 1fr);
+  inline-size: var(--sf-rail-content-width, 100%);
 }
 
 .sf-rail-timeline-row {
@@ -351,13 +360,14 @@
 }
 
 .sf-rail-timeline .sf-block {
+  --sf-block-min-width: 0px;
   backdrop-filter: blur(10px);
+  box-sizing: border-box;
   border-left-width: 4px;
   border-radius: var(--sf-radius-base);
   box-shadow:
     0 10px 18px rgba(15, 23, 42, 0.10),
     inset 0 1px 0 rgba(255, 255, 255, 0.45);
-  min-width: 28px;
   padding: 6px 8px;
   transition:
     transform var(--sf-duration-fast) var(--sf-ease-out),

@@ -60,7 +60,7 @@
   justify-content: center;
   padding: 2px 5px;
   overflow: hidden;
-  min-width: 20px;
+  min-width: var(--sf-block-min-width, 20px);
   animation: sf-slide-in 0.35s var(--sf-ease-out) both;
 }
 
