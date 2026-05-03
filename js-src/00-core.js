@@ -5,7 +5,7 @@
 const SF = (function () {
   'use strict';
 
-  const sf = { version: '0.6.4' };
+  const sf = { version: '0.6.5' };
   var uidCounter = 0;
 
   /* ── Utilities ── */

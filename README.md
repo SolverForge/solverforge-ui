@@ -769,7 +769,7 @@ cargo build
 
 Consumer integration stays npm-free. Maintainer release automation does not.
 
-- Current crate release: `0.6.4`.
+- Current crate release: `0.6.5`.
 - Keep `CHANGELOG.md` current as work lands.
 - Use `RELEASE.md` as the source of truth when preparing a public release.
 - Run `make pre-release` before tagging.
