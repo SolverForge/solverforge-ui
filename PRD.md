@@ -1,126 +1,35 @@
-# PRD: Production-Grade Scheduling Timeline in `SF.rail.createTimeline()`
+# PRD: Shipped Scheduling Timeline Contract in `SF.rail.createTimeline()`
+
+## Status
+
+Implemented in the current `0.6.4` release line.
+
+This document is now a current-state product contract, not a future
+implementation plan. `README.md` remains the public API source of truth, and
+`WIREFRAME.md` remains the component-level visual and DOM reference.
 
 ## Summary
-`solverforge-ui` already has the correct canonical surface for read-only scheduling:
+
+`solverforge-ui` ships one canonical read-only scheduling surface:
 
 - `SF.rail.createTimeline(config)`
 
-That decision is final. This PRD is not about inventing another API. It is about turning the existing timeline into a polished, production-grade scheduling library for dense resource-lane visualization.
+The component is a generic dense scheduling timeline for SolverForge
+applications. It is intentionally numeric-axis only: consumers normalize domain
+timestamps, time zones, lane ordering, labels, badges, stats, overlays, and
+tones before passing a model to the library.
 
-The first proving consumer is `solverforge-hospital`, but this PRD is library-first. The timeline must become generically strong enough for future SolverForge quickstarts without becoming hospital-specific.
-
-The implementation agent for this work should assume:
-
-- the public entrypoint stays `SF.rail.createTimeline()`
-- `SF.rail` remains the one canonical namespace for resource-lane scheduling
-- `SF.gantt` remains separate and unchanged
-- the component stays read-only in this pass
-
-## Current Baseline
-The shipped timeline already provides:
-
-- numeric-only model input
-- sticky top time header
-- sticky left lane labels
-- synchronized header/body horizontal viewport
-- hidden native scrollbar
-- drag-to-pan
-- zoom presets
-- weekend shading
-- six-hour tick marks
-- overlays
-- `overview` and `detailed` lane modes
-- packed detailed lanes
-- cluster expansion support
-
-This is the correct foundation. The remaining problem is polish and density semantics, not surface selection.
-
-## Product Goal
-Make `SF.rail.createTimeline()` a production-grade scheduling timeline for dense resource-lane schedules.
-
-Production-grade means:
-
-1. It remains the single canonical scheduling API in the library.
-2. It is visually readable for dense schedules, not just technically correct.
-3. It has a clear ownership boundary between library responsibilities and consumer responsibilities.
-4. It has explicit behavior for overview aggregation, detailed precision, accessibility, responsiveness, and performance.
-5. It is documented and tested as a reusable library component, not a hospital one-off.
-
-## Non-Goals
-This pass does not include:
-
-- a new top-level scheduling namespace
-- direct editing, drag-rescheduling, or resizing
-- timestamp parsing inside the library
-- timezone policy inside the library
-- a stacked mobile timeline mode
-- preserving or adding app-side custom layout engines
-- another “simple timeline” surface parallel to `SF.rail.createTimeline()`
-
-## Design Principles
-
-### 1. One canonical scheduling surface
-There must be exactly one shared scheduling surface in the library:
-
-- `SF.rail.createTimeline()`
-
-Do not add:
-
-- `SF.schedule`
-- `SF.timeline`
-- `SF.scheduler`
-- or any second scheduling family
-
-Low-level rail helpers may remain, but only as primitives.
-
-### 2. The library owns scheduling semantics
-The shared component, not the app, must own:
-
-- overview clustering behavior
-- overview summary rendering
-- detailed interval packing
-- lane height computation
-- overlay rendering
-- sticky-axis behavior
-- drag-pan behavior
-- zoom behavior
-- viewport synchronization
-- density rules
-
-### 3. The consumer owns domain semantics
-The consuming app must own:
-
-- timestamp normalization into numeric minutes
-- timezone interpretation
-- lane ordering policy
-- mapping domain facts into badges, stats, overlays, tones, and labels
-
-The library stays numeric-axis only.
-
-### 4. Dense schedules must be readable at a glance
-An overview lane must not degrade into a ribbon of tiny colored labels.
-
-The component must provide a real overview representation for dense schedules:
-
-- compact aggregate blocks
-- visible count/state information
-- optional expansion to exact detail
-
-### 5. Detailed schedules must remain precise
-A detailed lane must show actual assignments with stable vertical packing.
-
-No fallback to:
-
-- one fixed strip
-- arbitrary card slots
-- hidden overlap ambiguity
+The low-level rail helpers remain shipped primitives for custom furnace-style
+resource layouts, but they are not the recommended dense scheduling integration
+path.
 
 ## Public API Contract
-The public entrypoint remains:
+
+The public entrypoint is:
 
 - `SF.rail.createTimeline(config)`
 
-Returned API remains:
+Returned API:
 
 - `el`
 - `setModel(model)`
@@ -128,327 +37,128 @@ Returned API remains:
 - `expandCluster(laneId, clusterId | null)`
 - `destroy()`
 
-The goal is to improve the behavior behind this API, not replace it.
+The component is read-only. It does not parse timestamps, own timezone policy,
+or support direct drag-rescheduling in this release line.
 
 ## Model Contract
-The library continues to accept a normalized numeric model only.
-Every time-bearing field is integer-minute only; the library does not coerce
-fractional minutes, timestamps, or numeric strings.
 
-### Axis
-`model.axis` contains:
+The model must already be normalized to integer minutes.
 
-- `startMinute`
-- `endMinute`
-- `days[]`
-- `ticks[]`
-- `initialViewport`
+Rejected inputs include:
 
-### Lanes
-`model.lanes[]` contains:
+- string timestamps
+- `Date` objects
+- numeric strings
+- fractional minutes
+- malformed tick objects
+- malformed overlay spans
 
-- `id`
-- `label`
-- optional `badges`
-- optional `stats`
-- optional `overlays`
-- `mode: 'overview' | 'detailed'`
-- `items[]`
+Required model shape:
 
-### Items
-Base item contract remains:
+- `model.axis`: `startMinute`, `endMinute`, `days[]`, `ticks[]`, `initialViewport`
+- `model.lanes[]`: `id`, `label`, optional `badges`, optional `stats`,
+  optional `overlays`, `mode`, `items[]`
+- `items[]`: `id`, `startMinute`, `endMinute`, `label`, optional `meta`,
+  optional `summary`, `tone`, optional `clusterId`, optional `detailItems[]`
 
-- `id`
-- `startMinute`
-- `endMinute`
-- `label`
-- optional `meta`
-- `tone`
-- optional `clusterId`
-- optional `detailItems[]`
+Each lane may produce at most one overview group for a given `clusterId`.
+Reusing the same `clusterId` for disjoint groups in the same lane is invalid
+because `expandCluster(laneId, clusterId)` would be ambiguous.
 
-If a consumer provides `clusterId`, each lane may resolve that value to at most
-one overview group. Reusing the same `clusterId` for disjoint groups in the
-same lane is invalid because it makes `expandCluster(laneId, clusterId)`
-ambiguous.
+## Shipped Behavior
 
-### Additive overview-summary contract
-To make overview lanes production-grade, add optional summary fields for aggregated display:
+### Overview Lanes
 
-- `summary`
-  - optional `primaryLabel`
-  - optional `secondaryLabel`
-  - optional `count`
-  - optional `openCount`
-  - optional `toneSegments[]`
+Overview mode is for scanning dense schedules.
 
-Where:
+Shipped behavior:
 
-- `toneSegments[]` is an optional additive visualization hint, not a domain type
-- each segment is:
-  - `tone`
-  - `count`
+- overlapping or tightly adjacent overview items collapse into aggregate blocks
+- aggregate blocks can show direct summary labels, count, open state, and tone
+  composition
+- omitted summary fields are derived only when backing detail is available
+- omitted `openCount` and `toneSegments` stay unknown when the supplied
+  aggregate `count` exceeds inspectable backing items
+- expanded clusters remain inline and keep the aggregate block visible as the
+  collapse affordance
+- focus and hover expose equivalent tooltip content
 
-If `summary` is absent, the library must compute a sensible default from clustered detail items.
-If a group mixes summarized and unsummarized items, the library must combine
-explicit summary fields with derived count/open/tone data from the remaining
-grouped items rather than switching to a summary-only aggregate mode.
-If an item overrides aggregate `count` beyond the concrete backing items the
-library can inspect, omitted `openCount` and omitted `toneSegments` must remain
-unknown instead of being guessed from the shell item.
+### Detailed Lanes
 
-This is additive. Do not require consumer apps to provide it up front.
+Detailed mode is for exact inspection.
 
-### Overlays
-Overlay contract remains numeric and generic:
+Shipped behavior:
 
-- span overlays via `startMinute/endMinute`
-- day overlays via `dayIndex/dayCount`
+- detailed blocks preserve exact interval geometry
+- adjacent intervals stay visually disjoint on one track
+- true overlaps are packed onto separate track rows
+- lane height follows the number of packed tracks
+- timeline-specific minimum-width inflation is not applied to detailed blocks
 
-The library must not assume hospital-specific overlay names.
+### Viewport And Layout
 
-## Functional Requirements
+Shipped behavior:
 
-### A. Overview lane behavior
-Overview mode must become a first-class dense schedule representation.
+- sticky time header
+- sticky lane labels
+- one scrollable body viewport for dense solved schedules
+- synchronized horizontal header/body movement
+- drag-to-pan from the timeline viewport
+- weekend shading and overlay bands behind schedule content
+- `zoomPresets` defaults to `['1w', '2w', '4w', 'reset']`
+- `zoomPresets: []` intentionally removes zoom controls for fixed-horizon
+  app surfaces
+- `labelWidth` defaults to `280`
+- supported embeds with a body viewport of `500px` or wider compact the label
+  column when needed to preserve at least `320px` of visible schedule track
+- timelines created or updated before DOM attachment resynchronize layout after
+  mount
 
-Requirements:
+## Validation Surface
 
-- overlapping and tightly adjacent items must collapse into aggregate blocks
-- aggregate blocks must show useful summary information directly in the block
-- aggregate blocks must visually encode:
-  - count
-  - open/unassigned state when supplied or inferable
-  - tone composition when supplied or inferable
-- aggregate blocks must expand inline into packed detailed items
-- the expanded aggregate block must remain visible and act as the in-place collapse affordance
-- only one expanded cluster per lane at a time
-- expansion must preserve row alignment and viewport continuity
+The shipped validation surface includes:
 
-Forbidden behavior:
+- Node frontend tests for numeric-only normalization, overview grouping,
+  detailed packing, cluster identity, viewport sync, zoom controls, detached
+  mount resync, and dense fixture rendering
+- browser smoke tests for `demos/full-surface.html`,
+  `demos/timeline.html`, `demos/timeline-dense.html`, and `demos/rail.html`
+- acceptance screenshots under `screenshots/`
+- README and wireframe coverage for the public contract
 
-- overview mode rendering every raw item label in dense lanes
-- overview blocks using only “first item wins” as the visual summary
-- overview blocks that are visually indistinguishable from ordinary detailed items
+Use these focused commands while working on the timeline:
 
-### B. Detailed lane behavior
-Detailed mode must remain precise.
+```bash
+make lint-frontend
+make test-frontend
+make test-browser
+```
 
-Requirements:
-
-- interval partitioning per lane
-- stable track indices
-- lane height computed from packed tracks
-- overlapping items always visually separated
-- packed items remain readable at dense but supported widths
-
-Forbidden behavior:
-
-- one global strip for all items in a lane
-- arbitrary fixed slot positions
-- item overlap ambiguity
-
-### C. Visual density contract
-The timeline must have an explicit dense-schedule visual contract.
-
-At dense staffing scale:
-
-- overview lanes are for scanability
-- detailed lanes are for precision
-- labels degrade gracefully instead of becoming confetti
-- block summaries must remain legible without expansion
-
-### D. Interaction contract
-Keep and harden:
-
-- drag-to-pan from header
-- drag-to-pan from body
-- hidden native scrollbar
-- zoom presets
-- sticky header
-- sticky labels
-- synchronized header/body viewport
-
-The interaction model must feel native and deterministic.
-
-### E. Accessibility contract
-Production-grade means accessible by contract, not as an afterthought.
-
-Requirements:
-
-- zoom controls are keyboard reachable
-- timeline rows and item blocks participate in a sane focus order
-- overview cluster blocks are focusable when expandable
-- tooltips or hover-only content have a keyboard/focus equivalent
-- visible focus treatment exists for interactive elements
-- lane labels and item text remain available to assistive technologies
-
-The timeline may remain visually rich, but it must not be mouse-only.
-
-### F. Performance contract
-This PRD must result in a timeline that stays responsive on dense schedules.
-
-Reference validation scenario:
-
-- 28-day horizon
-- 100 lanes
-- 1500 scheduled items
-- mix of overview and detailed lanes
-
-Production-grade expectations:
-
-- first mount is fast enough to feel immediate on a modern developer desktop
-- `setModel()` updates do not visibly stall the UI
-- horizontal drag-pan remains smooth
-- zoom changes do not trigger obvious reflow thrash
-
-The implementation must avoid:
-
-- repeated full-DOM rebuilds during simple viewport changes
-- duplicate layout calculations from competing measurement authorities
-- layout logic split across incompatible rendering paths
-
-Exact perf thresholds may be tuned during implementation, but the agent must add a concrete validation harness or repeatable scenario for this dataset scale.
-
-## Internal Architecture Requirements
-
-### 1. One layout path
-There must be one canonical timeline layout pipeline:
-
-1. normalize model
-2. measure viewport
-3. derive layout
-4. derive lane render data
-5. render DOM
-
-Do not preserve multiple competing layout branches.
-
-### 2. One measurement authority
-The actual body scroller remains the only width authority:
-
-- `.sf-rail-timeline-body-viewport`
-
-No parent-width heuristics.
-No guessed initial widths.
-No wrapper-width fallback branch.
-
-### 3. Separate render concerns cleanly
-Internally, the implementation should clearly separate:
-
-- model normalization
-- overview grouping/summary derivation
-- detailed packing
-- DOM rendering
-- interaction/viewport state
-
-This is not for public API reasons. It is to keep the one canonical implementation maintainable.
-
-### 4. Preserve primitive rail APIs without making them the main path
-The low-level `SF.rail` helpers may remain public, but:
-
-- they are documented as primitives
-- they are not the recommended integration path for dense scheduling
-- no new scheduling capability should be implemented only in the primitive path
-
-## Hospital Consumer Requirements
-The new implementation must directly support the hospital app as first consumer.
-
-Required successful outcomes:
-
-- `By location` is readable as an overview
-- `By employee` is readable as a detailed inspection view
-- duplicate employee names remain distinguishable through app-supplied badges/labels
-- unassigned work remains visible
-- employee overlays work for unavailable / undesired / desired spans
-- the schedule no longer looks like a band of arbitrary colored cards
-
-The library must support this without becoming hospital-schema-aware.
+Use `make test-quick` or `make test` before release work.
 
 ## Documentation Requirements
-Update the library docs so a new consumer can use the component correctly without reverse-engineering hospital.
 
-Required docs updates:
+Whenever `SF.rail.createTimeline()` behavior changes, update the same release
+surface together:
 
 - `README.md`
-  - `SF.rail.createTimeline()` is the canonical scheduling surface
-  - numeric-only contract remains explicit
-  - overview vs detailed lane guidance is explicit
-  - additive `summary` contract is documented
-  - dense schedule example is included
 - `WIREFRAME.md`
-  - reflects shipped behavior, not aspirational old behavior
-  - explains the dense schedule visual model clearly
-- demo/example material
-  - include one dense staffing/resource schedule example
-  - include one example with overview expansion and overlays
+- `demos/README.md`
+- runnable demos under `demos/`
+- focused tests under `tests/`
+- generated assets under `static/sf/`
 
-## Test Plan
+Do not document planned scheduling behavior as shipped unless it is wired into
+the generated assets and covered by README API reference text.
 
-### Unit and normalization tests
-- numeric validation remains strict
-- overview summary normalization accepts additive `summary`
-- cluster grouping behavior is deterministic
-- detailed packing yields stable track indices
-- overlay normalization remains correct
+## Non-Negotiables
 
-### DOM/render tests
-- overview blocks render count/open state when available
-- overview expansion is reversible from the same in-UI cluster block
-- overview expansion swaps only the selected local cluster into detailed items
-- detailed lanes render packed items with non-overlapping vertical positions
-- sticky header and sticky labels remain intact
-- header/body viewport sync remains correct
-- drag-pan works from header and body
-- zoom controls update viewport correctly
-
-### Accessibility tests
-- zoom controls are keyboard reachable
-- cluster blocks are focusable when expandable
-- keyboard interaction can reveal the same information as hover
-- focus styling and accessible text are present
-
-### Visual acceptance tests
-Produce and validate screenshots for:
-
-1. dense location overview
-2. expanded location cluster
-3. detailed employee lane view
-4. narrow but supported viewport
-
-These screenshots are part of acceptance, not optional nice-to-haves.
-
-### Consumer validation
-Validate against a hospital-like schedule:
-
-- 28 days
-- 100 employees
-- 1500 shifts
-
-Acceptance conditions:
-
-- overview remains scannable
-- detailed lanes remain precise
-- no lane appears as a random ribbon of blocks
-- no app-side custom layout engine is required
-
-## Acceptance Criteria
-This work is complete only when all of the following are true:
-
-1. `SF.rail.createTimeline()` is still the one canonical scheduling API.
-2. Overview lanes are genuinely useful for dense schedules.
-3. Detailed lanes remain precise and packed correctly.
-4. The library, not the app, owns scheduling layout semantics.
-5. The app only supplies numeric model data and domain mapping.
-6. Accessibility is intentionally supported.
-7. Dense hospital-like schedules are readable in both overview and detail views.
-8. Documentation matches shipped behavior.
-9. No second scheduling namespace or compatibility rendering path is introduced.
-
-## Explicit Non-Negotiables for the Implementing Agent
-
-- Do not add a new top-level scheduling namespace.
-- Do not move scheduling layout logic back into the hospital app.
+- Do not add a second scheduling namespace such as `SF.schedule`,
+  `SF.timeline`, or `SF.scheduler`.
+- Do not move shared scheduling layout semantics back into a consuming app.
 - Do not add timestamp parsing or timezone policy to the library.
-- Do not preserve a second hidden layout algorithm “for compatibility.”
-- Do not solve dense overview readability by showing every item label at once.
-- Do not call the work complete without screenshot-level visual validation.
+- Do not add compatibility-only layout branches.
+- Do not make overview readability depend on showing every raw item label at
+  once.
+- Do not call a timeline behavior shipped without tests, demos, docs, and
+  generated assets staying synchronized.

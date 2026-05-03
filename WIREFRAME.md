@@ -293,10 +293,18 @@ Shorthand: `SF.showError(title, detail)`
   Retained bootstrap rule:
   if startup state is restored from a retained snapshot, do not follow that
   bootstrap with an identical duplicate startup "best_solution".
+
+  Job id rule:
+  createJob() must resolve to a non-empty string id, a finite numeric id
+  including 0, or an object with scalar id/jobId/job_id. Invalid non-scalar
+  ids are rejected before stream attachment.
 ```
 
 Shipped runtime expectations:
 
+- `createJob()` ids are normalized once at startup, and every downstream
+  stream, snapshot, pause, resume, cancel, analysis, and delete call uses that
+  normalized string id.
 - `progress` updates score, telemetry, and status only.
 - `best_solution` updates score, telemetry, and the live solution view.
 - `best_solution` always includes `solution` plus `snapshotRevision`.

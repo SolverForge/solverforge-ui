@@ -61,10 +61,12 @@ test('modal, toast, and api guide copy controls expose aria-label attributes', (
   const modal = SF.createModal({ title: 'Example', body: 'Body' });
   const modalClose = modal.el.querySelector('.sf-modal-close');
   assert.equal(modalClose.attributes['aria-label'], 'Close modal');
+  assert.equal(modalClose.textContent, '×');
 
   SF.showToast({ message: 'Saved' });
   const toastBtn = modal.el.ownerDocument.body.querySelector('.sf-toast-close');
   assert.equal(toastBtn.attributes['aria-label'], 'Dismiss toast');
+  assert.equal(toastBtn.textContent, '×');
 
   const guide = SF.createApiGuide({
     endpoints: [{ path: '/x', curl: 'curl /x' }],

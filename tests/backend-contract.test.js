@@ -29,7 +29,7 @@ function loadSf(files, overrides = {}) {
   return { SF: context.window.SF, document };
 }
 
-test('tauri createJob normalizes object and numeric ids to strings', async () => {
+test('tauri createJob normalizes documented object and numeric ids to strings', async () => {
   const calls = [];
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js'], {
     fetch() {
@@ -37,31 +37,55 @@ test('tauri createJob normalizes object and numeric ids to strings', async () =>
     },
   });
 
-  const backendWithObject = SF.createBackend({
-    type: 'tauri',
-    invoke(command, payload) {
-      calls.push({ command, payload });
-      return Promise.resolve({ jobId: 42 });
-    },
-    listen() {
-      return Promise.resolve(function () {});
-    },
-  });
+  function createTauriBackend(result) {
+    return SF.createBackend({
+      type: 'tauri',
+      invoke(command, payload) {
+        calls.push({ command, payload });
+        return Promise.resolve(result);
+      },
+      listen() {
+        return Promise.resolve(function () {});
+      },
+    });
+  }
+
+  const backendWithObject = createTauriBackend({ jobId: 42 });
 
   assert.equal(await backendWithObject.createJob({ foo: 'bar' }), '42');
   assert.equal(calls[0].command, 'create_job');
+  assert.equal(await createTauriBackend({ id: 42 }).createJob({}), '42');
+  assert.equal(await createTauriBackend({ job_id: 42 }).createJob({}), '42');
+  assert.equal(await createTauriBackend({ data: { id: 42 } }).createJob({}), '42');
 
-  const backendWithNumber = SF.createBackend({
-    type: 'tauri',
-    invoke() {
-      return Promise.resolve(7);
-    },
-    listen() {
-      return Promise.resolve(function () {});
+  const backendWithNumber = createTauriBackend(7);
+
+  assert.equal(await backendWithNumber.createJob({}), '7');
+});
+
+test('tauri createJob rejects non-scalar job id payloads', async () => {
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js'], {
+    fetch() {
+      throw new Error('unexpected fetch');
     },
   });
 
-  assert.equal(await backendWithNumber.createJob({}), '7');
+  function createTauriBackend(result) {
+    return SF.createBackend({
+      type: 'tauri',
+      invoke() {
+        return Promise.resolve(result);
+      },
+      listen() {
+        return Promise.resolve(function () {});
+      },
+    });
+  }
+
+  assert.equal(await createTauriBackend({}).createJob({}), '');
+  assert.equal(await createTauriBackend({ jobId: {} }).createJob({}), '');
+  assert.equal(await createTauriBackend({ id: [] }).createJob({}), '');
+  assert.equal(await createTauriBackend(NaN).createJob({}), '');
 });
 
 test('tauri backend uses neutral job lifecycle command names', async () => {

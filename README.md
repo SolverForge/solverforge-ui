@@ -230,6 +230,7 @@ Runtime rules:
 - `deleteJob()` is required for every backend passed to `SF.createSolver()`. It is the only supported cleanup path for retained jobs.
 - HTTP `EventSource.onerror` is transport state, not runtime lifecycle state. Reconnecting errors are ignored. A closed stream is surfaced through `onError` as an SSE transport error while preserving the last authoritative lifecycle, retained job id, score, metadata, and snapshot revision.
 - Only runtime lifecycle events or explicit status/snapshot synchronization can move the solver lifecycle. Transport interruption does not make Delete legal and does not replace `SOLVING`, `PAUSED`, or terminal runtime states with `IDLE`.
+- `createJob()` results are normalized before stream attachment. Non-empty strings, finite numbers including `0`, and objects containing a scalar `id`, `jobId`, or `job_id` field become string job ids. Non-scalar or empty ids reject startup instead of being stringified.
 - `start()` never replaces a retained job. Even terminal retained jobs require a successful `delete()` before the next solve can start.
 - `delete()` is destructive backend cleanup for terminal retained jobs only. It waits for any in-flight terminal snapshot synchronization before cleanup, is not a local-only reset, and a failed `deleteJob()` call preserves the retained job id and terminal lifecycle state. `COMPLETED` and `TERMINATED_BY_CONFIG` jobs require successful terminal snapshot synchronization before `deleteJob()` is allowed; if the first terminal sync failed, `delete()` retries it once and rejects without backend deletion if the retry also fails.
 - `pause()` sends `pauseJob()` only from `SOLVING`; a pause requested while `STARTING` queues until the job id exists. `PAUSE_REQUESTED` blocks duplicate pause requests, and `RESUMING` does not allow pause.
@@ -251,6 +252,7 @@ Runtime rules:
 | `SF.colors.project(index)` | `{main, dark, light}` from 8-color project palette |
 | `SF.colors.reset()` | Clear the color cache |
 | `SF.escHtml(str)` | HTML-escape a string |
+| `SF.normalizeCreateJobId(raw)` | Normalize a create-job response to a string id, or `''` for invalid non-scalar ids |
 | `SF.el(tag, attrs, ...children)` | DOM element factory |
 
 ## Button Variants
@@ -570,7 +572,9 @@ Expects standard SolverForge REST endpoints:
 
 Backend contract expectations:
 - Custom backends passed to `SF.createSolver()` must implement `createJob()`, `streamJobEvents()`, `getSnapshot()`, `analyzeSnapshot()`, `pauseJob()`, `resumeJob()`, `cancelJob()`, and `deleteJob()`.
-- `createJob()` must resolve to a plain job id (string), or an object containing one of `id`, `jobId`, or `job_id`.
+- `createJob()` must resolve to a plain job id (non-empty string or finite number), or an object containing a scalar `id`, `jobId`, or `job_id`. Numeric `0` is a valid id and is normalized to `"0"`.
+- Non-scalar `createJob()` ids such as arrays, nested objects, booleans, `NaN`, infinities, and empty strings are rejected before the solver attaches streams or performs snapshot/analysis calls.
+- Built-in HTTP and Tauri adapters also accept `{ data: { id } }` response wrappers and normalize the id through the same scalar-only path.
 - `getSnapshot()` and `analyzeSnapshot()` accept an optional `snapshotRevision`. `SF.createSolver()` uses the exact revision from paused and terminal events when it syncs the retained state.
 - `pauseJob()` requests a pause. `SF.createSolver().pause()` resolves only after the authoritative `paused` event and snapshot sync complete.
 - `resumeJob()` resolves through the runtime event stream. `SF.createSolver().resume()` settles on the authoritative `resumed` event.

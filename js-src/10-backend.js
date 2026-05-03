@@ -14,18 +14,7 @@
   };
 
   function resolveJobId(raw) {
-    if (raw == null) return '';
-    if (typeof raw === 'string' || typeof raw === 'number') return String(raw).trim();
-    if (typeof raw !== 'object') return '';
-
-    if (raw.id != null) return String(raw.id).trim();
-    if (raw.jobId != null) return String(raw.jobId).trim();
-    if (raw.job_id != null) return String(raw.job_id).trim();
-
-    if (raw.data && typeof raw.data === 'object' && raw.data.id != null) {
-      return String(raw.data.id).trim();
-    }
-    return '';
+    return sf.normalizeCreateJobId(raw);
   }
 
   function resolveEventJobId(payload) {

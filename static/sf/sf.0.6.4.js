@@ -23,6 +23,21 @@ const SF = (function () {
     if (!cond) throw new Error('[SolverForge] ' + message);
   };
 
+  sf.normalizeCreateJobId = function (raw) {
+    var value = raw;
+    if (value && typeof value === 'object') {
+      if (value.id != null) value = value.id;
+      else if (value.jobId != null) value = value.jobId;
+      else if (value.job_id != null) value = value.job_id;
+      else if (value.data && typeof value.data === 'object' && value.data.id != null) value = value.data.id;
+      else return '';
+    }
+
+    if (typeof value === 'string') return value.trim();
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value).trim();
+    return '';
+  };
+
   sf.el = function (tag, attrs) {
     var children = Array.prototype.slice.call(arguments, 2);
     var el = document.createElement(tag);
@@ -675,7 +690,6 @@ const SF = (function () {
 
     var closeBtn = sf.el('button', {
       className: 'sf-modal-close',
-      html: '&times;',
       'aria-label': 'Close modal',
       onClick: function () { api.close(); },
     }, '×');
@@ -920,7 +934,6 @@ const SF = (function () {
 
     var closeBtn = sf.el('button', {
       className: 'sf-toast-close',
-      html: '&times;',
       'aria-label': 'Dismiss toast',
       onClick: function () { dismiss(); },
     }, '×');
@@ -962,18 +975,7 @@ const SF = (function () {
   };
 
   function resolveJobId(raw) {
-    if (raw == null) return '';
-    if (typeof raw === 'string' || typeof raw === 'number') return String(raw).trim();
-    if (typeof raw !== 'object') return '';
-
-    if (raw.id != null) return String(raw.id).trim();
-    if (raw.jobId != null) return String(raw.jobId).trim();
-    if (raw.job_id != null) return String(raw.job_id).trim();
-
-    if (raw.data && typeof raw.data === 'object' && raw.data.id != null) {
-      return String(raw.data.id).trim();
-    }
-    return '';
+    return sf.normalizeCreateJobId(raw);
   }
 
   function resolveEventJobId(payload) {
@@ -1218,21 +1220,21 @@ const SF = (function () {
       var token = runToken;
       return backend.createJob(data).then(function (id) {
         if (token !== runToken) return;
-        ensureJobId(id);
+        var jobId = ensureJobId(id);
 
-        activeJobId = id;
-        retainedJobId = id;
+        activeJobId = jobId;
+        retainedJobId = jobId;
         phase = 'solving';
         applyLifecycleState('SOLVING');
 
-        attachStream(token, id);
+        attachStream(token, jobId);
 
         if (queuedAction === 'pause') {
           queuedAction = null;
-          requestPause(token, id);
+          requestPause(token, jobId);
         } else if (queuedAction === 'cancel') {
           queuedAction = null;
-          requestCancel(token, id);
+          requestCancel(token, jobId);
         }
       }).catch(function (err) {
         if (token !== runToken) return;
@@ -1335,7 +1337,7 @@ const SF = (function () {
     };
 
     api.getJobId = function () {
-      return activeJobId || retainedJobId;
+      return activeJobId != null ? activeJobId : retainedJobId;
     };
 
     api.getLifecycleState = function () {
@@ -1649,7 +1651,7 @@ const SF = (function () {
     }
 
     function currentJobId() {
-      return activeJobId || retainedJobId;
+      return activeJobId != null ? activeJobId : retainedJobId;
     }
 
     function hasNewerEvent(meta) {
@@ -1825,7 +1827,8 @@ const SF = (function () {
     }
 
     function ensureJobId(id) {
-      if (typeof id === 'string' && id.trim()) return;
+      var jobId = sf.normalizeCreateJobId(id);
+      if (jobId) return jobId;
       throw new Error('Invalid solver backend createJob response');
     }
   };
@@ -1850,8 +1853,9 @@ const SF = (function () {
     var eventType = normalizeEventType(readField(payload, ['eventType', 'event_type', 'type']));
     if (!eventType) return null;
 
-    var jobId = readField(payload, ['jobId', 'job_id', 'id'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || expectedId;
-    if (!jobId) return null;
+    var jobId = readField(payload, ['jobId', 'job_id', 'id'], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]);
+    if (jobId == null || jobId === '') jobId = expectedId;
+    if (jobId == null || jobId === '') return null;
     if (String(jobId) !== String(expectedId)) return null;
 
     var solution = payload.solution || (payload.data && payload.data.solution) || null;
@@ -1880,7 +1884,8 @@ const SF = (function () {
   function normalizeSnapshot(payload, fallbackMeta) {
     if (!payload || typeof payload !== 'object') return null;
 
-    var jobId = readField(payload, ['jobId', 'job_id', 'id'], [payload, payload.data]) || (fallbackMeta && fallbackMeta.jobId) || null;
+    var jobId = readField(payload, ['jobId', 'job_id', 'id'], [payload, payload.data]);
+    if (jobId == null || jobId === '') jobId = fallbackMeta && fallbackMeta.jobId;
     var solution = payload.solution || (payload.data && payload.data.solution) || null;
     var solutionScore = readField(solution, ['score'], [solution]);
     return {
@@ -1901,9 +1906,15 @@ const SF = (function () {
 
     var analysisBody = payload.analysis || (payload.data && payload.data.analysis) || payload;
     var constraints = readAnalysisConstraints(analysisBody);
+    var jobId = readField(payload, ['jobId', 'job_id', 'id'], [payload, payload.data]);
+    if (jobId == null || jobId === '') jobId = fallbackMeta && fallbackMeta.jobId;
+    var snapshotRevision = readField(payload, ['snapshotRevision', 'snapshot_revision'], [payload, payload.data]);
+    if (snapshotRevision == null || snapshotRevision === '') {
+      snapshotRevision = fallbackMeta && fallbackMeta.snapshotRevision;
+    }
     return {
-      jobId: readField(payload, ['jobId', 'job_id', 'id'], [payload, payload.data]) || (fallbackMeta && fallbackMeta.jobId) || null,
-      snapshotRevision: readField(payload, ['snapshotRevision', 'snapshot_revision'], [payload, payload.data]) || (fallbackMeta && fallbackMeta.snapshotRevision) || null,
+      jobId: jobId != null ? String(jobId) : null,
+      snapshotRevision: snapshotRevision != null ? snapshotRevision : null,
       lifecycleState: normalizeLifecycleState(readField(payload, ['lifecycleState', 'lifecycle_state'], [payload, payload.data]), fallbackMeta && fallbackMeta.eventType),
       terminalReason: readField(payload, ['terminalReason', 'terminal_reason'], [payload, payload.data]) || (fallbackMeta && fallbackMeta.terminalReason) || null,
       analysis: analysisBody,
@@ -1929,8 +1940,8 @@ const SF = (function () {
   function mergeMeta(meta, snapshot, eventType) {
     if (!snapshot) return meta;
     return {
-      id: meta && meta.id ? meta.id : snapshot.id,
-      jobId: meta && meta.jobId ? meta.jobId : snapshot.jobId,
+      id: meta && meta.id != null ? meta.id : snapshot.id,
+      jobId: meta && meta.jobId != null ? meta.jobId : snapshot.jobId,
       eventType: meta && meta.eventType ? meta.eventType : eventType,
       eventSequence: meta ? meta.eventSequence : null,
       lifecycleState: (meta && meta.lifecycleState) || snapshot.lifecycleState || normalizeLifecycleState(null, eventType),

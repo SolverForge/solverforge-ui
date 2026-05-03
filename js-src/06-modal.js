@@ -27,7 +27,6 @@
 
     var closeBtn = sf.el('button', {
       className: 'sf-modal-close',
-      html: '&times;',
       'aria-label': 'Close modal',
       onClick: function () { api.close(); },
     }, '×');

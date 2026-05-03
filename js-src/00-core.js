@@ -23,6 +23,21 @@ const SF = (function () {
     if (!cond) throw new Error('[SolverForge] ' + message);
   };
 
+  sf.normalizeCreateJobId = function (raw) {
+    var value = raw;
+    if (value && typeof value === 'object') {
+      if (value.id != null) value = value.id;
+      else if (value.jobId != null) value = value.jobId;
+      else if (value.job_id != null) value = value.job_id;
+      else if (value.data && typeof value.data === 'object' && value.data.id != null) value = value.data.id;
+      else return '';
+    }
+
+    if (typeof value === 'string') return value.trim();
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value).trim();
+    return '';
+  };
+
   sf.el = function (tag, attrs) {
     var children = Array.prototype.slice.call(arguments, 2);
     var el = document.createElement(tag);

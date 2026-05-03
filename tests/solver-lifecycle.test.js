@@ -22,6 +22,124 @@ test('createSolver requires deleteJob for retained job cleanup', () => {
   }), /createSolver\(config\.backend\.deleteJob\) must be a function/);
 });
 
+test('solver normalizes numeric retained job id zero before lifecycle guards', async () => {
+  const { SF } = loadSf(SOLVER_FILES);
+  const calls = [];
+  const backend = {
+    createJob: async () => 0,
+    streamJobEvents(id) {
+      calls.push(['streamJobEvents', id]);
+      return () => {};
+    },
+    getSnapshot: async (id) => {
+      calls.push(['getSnapshot', id]);
+      return { jobId: id, snapshotRevision: 1, solution: {} };
+    },
+    analyzeSnapshot: async (id) => {
+      calls.push(['analyzeSnapshot', id]);
+      return { jobId: id, snapshotRevision: 1, analysis: { constraints: [] } };
+    },
+    pauseJob: async () => {},
+    resumeJob: async () => {},
+    cancelJob: async () => {},
+    deleteJob: async () => {},
+  };
+
+  const solver = SF.createSolver({ backend });
+  await solver.start({});
+
+  assert.equal(solver.getJobId(), '0');
+  await solver.analyzeSnapshot();
+  await solver.getSnapshot();
+  assert.deepEqual(calls, [
+    ['streamJobEvents', '0'],
+    ['analyzeSnapshot', '0'],
+    ['getSnapshot', '0'],
+  ]);
+});
+
+test('solver normalizes documented object createJob ids before stream attachment', async () => {
+  const cases = [
+    [{ jobId: 42 }, '42'],
+    [{ id: 42 }, '42'],
+    [{ job_id: 42 }, '42'],
+  ];
+
+  for (const [createJobResult, expectedId] of cases) {
+    const { SF } = loadSf(SOLVER_FILES);
+    const calls = [];
+    const backend = {
+      createJob: async () => createJobResult,
+      streamJobEvents(id) {
+        calls.push(['streamJobEvents', id]);
+        return () => {};
+      },
+      getSnapshot: async (id) => {
+        calls.push(['getSnapshot', id]);
+        return { jobId: id, snapshotRevision: 1, solution: {} };
+      },
+      analyzeSnapshot: async (id) => {
+        calls.push(['analyzeSnapshot', id]);
+        return { jobId: id, snapshotRevision: 1, analysis: { constraints: [] } };
+      },
+      pauseJob: async () => {},
+      resumeJob: async () => {},
+      cancelJob: async () => {},
+      deleteJob: async () => {},
+    };
+
+    const solver = SF.createSolver({ backend });
+    await solver.start({});
+
+    assert.equal(solver.getJobId(), expectedId);
+    await solver.analyzeSnapshot();
+    await solver.getSnapshot();
+    assert.deepEqual(calls, [
+      ['streamJobEvents', expectedId],
+      ['analyzeSnapshot', expectedId],
+      ['getSnapshot', expectedId],
+    ]);
+  }
+});
+
+test('solver rejects non-scalar createJob ids before stream attachment', async () => {
+  const invalidResponses = [
+    {},
+    { jobId: {} },
+    { id: [] },
+    { job_id: '' },
+    NaN,
+  ];
+
+  for (const createJobResult of invalidResponses) {
+    const { SF } = loadSf(SOLVER_FILES);
+    const calls = [];
+    const backend = {
+      createJob: async () => createJobResult,
+      streamJobEvents(id) {
+        calls.push(['streamJobEvents', id]);
+        return () => {};
+      },
+      getSnapshot: async () => null,
+      analyzeSnapshot: async () => null,
+      pauseJob: async () => {},
+      resumeJob: async () => {},
+      cancelJob: async () => {},
+      deleteJob: async () => {},
+    };
+
+    const solver = SF.createSolver({ backend });
+    await assert.rejects(
+      () => solver.start({}),
+      /Invalid solver backend createJob response/
+    );
+
+    assert.deepEqual(calls, []);
+    assert.equal(solver.getJobId(), null);
+    assert.equal(solver.getLifecycleState(), 'IDLE');
+  }
+});
+
 test('solver lifecycle handles progress, pause, resume, completion, and snapshot-bound analysis', async () => {
   const { SF } = loadSf(SOLVER_FILES);
   const calls = [];

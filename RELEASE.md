@@ -18,7 +18,9 @@ Use this checklist for every public release of `solverforge-ui`.
 - Version bumping is separate and happens through the Makefile bump targets.
 - Run `make release-tag` only after the version bump is already in place and validated.
 - If using the bump targets locally, ensure Node.js with `npx` is available.
-- Push the release commit and tag to GitHub.
+- Push the release commit and tag to every intended release remote. The hosted
+  GitHub release and crates.io publish workflows run only when the `v*` tag is
+  present on GitHub.
 
 ## After Tagging
 

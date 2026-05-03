@@ -20,6 +20,10 @@ Repository guidance for coding agents and maintainers working in
 
 ## Solver Lifecycle Contract
 
+- `createJob()` results are normalized before any stream is attached. A valid
+  result is a non-empty string id, a finite numeric id including `0`, or an
+  object with a scalar `id`, `jobId`, or `job_id` field. Non-scalar ids are
+  rejected rather than stringified.
 - Startup streams may begin with either a scored `progress` event or a scored
   `best_solution` event.
 - `progress` is metadata-only and must not carry the solution payload.

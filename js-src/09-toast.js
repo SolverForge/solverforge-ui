@@ -42,7 +42,6 @@
 
     var closeBtn = sf.el('button', {
       className: 'sf-toast-close',
-      html: '&times;',
       'aria-label': 'Dismiss toast',
       onClick: function () { dismiss(); },
     }, '×');
