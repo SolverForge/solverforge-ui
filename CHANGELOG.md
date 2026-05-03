@@ -2,12 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
-## Unreleased
+## [0.6.5](///compare/v0.6.4...v0.6.5) (2026-05-03)
 
-### Fixed
 
-* **solver:** normalize numeric and documented object-shaped `createJob()` ids before stream attachment
-* **ui:** render modal and toast close controls as accessible text glyphs
+### Bug Fixes
+
+* normalize solver create job identifiers bb457a9
 
 ## [0.6.4](///compare/v0.6.3...v0.6.4) (2026-05-02)
 
