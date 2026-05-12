@@ -140,9 +140,9 @@ const SF = (function () {
   var nextColorCount = 0;
 
   function buildPercentageColor(floor, ceil, pct) {
-    var red   = (floor & 0xFF0000) + Math.floor(pct * ((ceil & 0xFF0000) - (floor & 0xFF0000))) & 0xFF0000;
+    var red = (floor & 0xFF0000) + Math.floor(pct * ((ceil & 0xFF0000) - (floor & 0xFF0000))) & 0xFF0000;
     var green = (floor & 0x00FF00) + Math.floor(pct * ((ceil & 0x00FF00) - (floor & 0x00FF00))) & 0x00FF00;
-    var blue  = (floor & 0x0000FF) + Math.floor(pct * ((ceil & 0x0000FF) - (floor & 0x0000FF))) & 0x0000FF;
+    var blue = (floor & 0x0000FF) + Math.floor(pct * ((ceil & 0x0000FF) - (floor & 0x0000FF))) & 0x0000FF;
     return red | green | blue;
   }
 
@@ -285,7 +285,7 @@ const SF = (function () {
     };
 
     // Logo
-  if (config.logo) {
+    if (config.logo) {
       var logo = sf.el('img', {
         className: 'sf-header-logo',
         src: config.logo,
@@ -727,12 +727,12 @@ const SF = (function () {
     var api = { el: overlay, body: body };
 
     api.open = function () {
-        previousFocus = document.activeElement;
-        document.body.appendChild(overlay);
-        if (closeBtn.focus) closeBtn.focus();
-        overlay.classList.add('open');
-        document.addEventListener('keydown', onKeyDown);
-      };
+      previousFocus = document.activeElement;
+      document.body.appendChild(overlay);
+      if (closeBtn.focus) closeBtn.focus();
+      overlay.classList.add('open');
+      document.addEventListener('keydown', onKeyDown);
+    };
 
     api.close = function () {
       overlay.classList.remove('open');
@@ -1065,7 +1065,7 @@ const SF = (function () {
         var es = new EventSource(url);
         var closed = false;
         es.onmessage = function (e) {
-          try { onMessage(JSON.parse(e.data)); } catch (_) {}
+          try { onMessage(JSON.parse(e.data)); } catch (_) { }
         };
         es.onerror = function () {
           if (closed || !onError) return;

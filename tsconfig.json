@@ -1,0 +1,14 @@
+{
+	"compilerOptions": {
+		"target": "ES2021",
+		"lib": ["ES2021", "DOM"],
+		"allowJs": true,
+		"checkJs": true,
+		"noEmit": true,
+		"strict": false,
+		"noImplicitAny": false,
+		"skipLibCheck": true
+	},
+	"include": ["js-src/**/*.js", "js-src/**/*.d.ts"],
+	"exclude": ["node_modules", "static", "target", "tests", "scripts"]
+}

@@ -45,8 +45,15 @@
       return h;
     }
 
+    /**
+     *  Creates an enriched Error with HTTP request context.
+     * @param {string} method
+     * @param {string} path
+     * @param {{ status: number, statusText: string }} res
+     * @returns {HttpError}
+     */
     function createRequestError(method, path, res) {
-      var err = new Error(res.status + ' ' + res.statusText);
+      var err = /** @type {HttpError} */ (new Error(res.status + ' ' + res.statusText));
       err.status = res.status;
       err.statusText = res.statusText;
       err.method = method;
@@ -104,7 +111,7 @@
         var es = new EventSource(url);
         var closed = false;
         es.onmessage = function (e) {
-          try { onMessage(JSON.parse(e.data)); } catch (_) {}
+          try { onMessage(JSON.parse(e.data)); } catch (_) { }
         };
         es.onerror = function () {
           if (closed || !onError) return;
@@ -186,8 +193,13 @@
     };
   }
 
+  /**
+   * Creates an enriched Error for SSE stream closure events.
+   * @param {string} url
+   * @returns {SseError}
+   */
   function createSseClosedError(url) {
-    var err = new Error('Event stream closed for ' + url);
+    var err = /** @type {SseError} */ (new Error('Event stream closed for ' + url));
     err.code = 'SSE_CLOSED';
     err.transport = 'sse';
     err.url = url;

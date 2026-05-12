@@ -511,6 +511,7 @@
   function buildOverviewRender(lane, state, rerender) {
     var groups = groupOverviewItems(lane);
     var expandedClusterId = state.expandedClusters[lane.id] || null;
+    /** @type {RailOverviewGroup|null} */
     var expandedGroup = null;
     var packedExpanded = null;
     var expandedDetailsTop = 0;

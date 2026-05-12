@@ -3,11 +3,13 @@
   "private": true,
   "scripts": {
     "lint:frontend": "eslint js-src tests scripts",
+    "typecheck:frontend": "tsc --noEmit",
     "test:browser": "node tests/demo-browser-check.js"
   },
   "devDependencies": {
     "eslint": "^10.2.1",
     "globals": "^17.5.0",
-    "playwright": "^1.59.1"
+    "playwright": "^1.59.1",
+    "typescript": "^6.0.3"
   }
 }

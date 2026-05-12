@@ -139,6 +139,7 @@ test-browser:
 lint-frontend:
 	@printf "$(PROGRESS) Running frontend lint...\n"
 	@npm run lint:frontend --silent && \
+	    npm run typecheck:frontend --silent && \
 		printf "$(GREEN)$(CHECK) Frontend lint passed$(RESET)\n" || \
 		(printf "$(RED)$(CROSS) Frontend lint failed$(RESET)\n" && exit 1)
 
