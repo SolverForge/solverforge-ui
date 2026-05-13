@@ -3,10 +3,9 @@ const test = require('node:test');
 
 const { loadSf, flush } = require('./support/load-sf');
 
-const SOLVER_FILES = ['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js'];
 
 test('solver ignores stale paused snapshot work after a newer cancelled event', async () => {
-  const { SF } = loadSf(SOLVER_FILES);
+  const { SF } = loadSf();
   let onMessage;
   let resolvePausedSnapshot;
   let snapshotCallCount = 0;
@@ -14,7 +13,7 @@ test('solver ignores stale paused snapshot work after a newer cancelled event', 
     createJob: async () => 'job-race',
     streamJobEvents(_id, callback) {
       onMessage = callback;
-      return function () {};
+      return function () { };
     },
     getSnapshot: async (id, revision) => {
       snapshotCallCount += 1;
@@ -33,10 +32,10 @@ test('solver ignores stale paused snapshot work after a newer cancelled event', 
     analyzeSnapshot: async () => {
       throw new Error('analysis should not run in this test');
     },
-    pauseJob: async () => {},
-    resumeJob: async () => {},
-    cancelJob: async () => {},
-    deleteJob: async () => {},
+    pauseJob: async () => { },
+    resumeJob: async () => { },
+    cancelJob: async () => { },
+    deleteJob: async () => { },
   };
 
   const paused = [];
@@ -86,13 +85,13 @@ test('solver ignores stale paused snapshot work after a newer cancelled event', 
 });
 
 test('solver keeps terminal lifecycle metadata when retained snapshots are pause-bound', async () => {
-  const { SF } = loadSf(SOLVER_FILES);
+  const { SF } = loadSf();
   let onMessage;
   const backend = {
     createJob: async () => 'job-terminal-meta',
     streamJobEvents(_id, callback) {
       onMessage = callback;
-      return function () {};
+      return function () { };
     },
     getSnapshot: async (id, revision) => ({
       id: id,
@@ -108,10 +107,10 @@ test('solver keeps terminal lifecycle metadata when retained snapshots are pause
       terminalReason: null,
       analysis: { score: '0hard/-1soft', constraints: [] },
     }),
-    pauseJob: async () => {},
-    resumeJob: async () => {},
-    cancelJob: async () => {},
-    deleteJob: async () => {},
+    pauseJob: async () => { },
+    resumeJob: async () => { },
+    cancelJob: async () => { },
+    deleteJob: async () => { },
   };
 
   const cancelled = [];
@@ -158,7 +157,7 @@ test('solver keeps terminal lifecycle metadata when retained snapshots are pause
   { eventType: 'completed', lifecycleState: 'TERMINATED_BY_CONFIG' },
 ].forEach((scenario) => {
   test(`solver delete clears the retained job after terminal ${scenario.lifecycleState}`, async () => {
-    const { SF } = loadSf(SOLVER_FILES);
+    const { SF } = loadSf();
     let onMessage;
     const calls = [];
     let createCount = 0;
@@ -169,7 +168,7 @@ test('solver keeps terminal lifecycle metadata when retained snapshots are pause
       },
       streamJobEvents(_id, callback) {
         onMessage = callback;
-        return function () {};
+        return function () { };
       },
       getSnapshot: async (id, revision) => ({
         id: id,
@@ -183,9 +182,9 @@ test('solver keeps terminal lifecycle metadata when retained snapshots are pause
         lifecycleState: scenario.lifecycleState,
         analysis: { score: '0hard/0soft', constraints: [] },
       }),
-      pauseJob: async () => {},
-      resumeJob: async () => {},
-      cancelJob: async () => {},
+      pauseJob: async () => { },
+      resumeJob: async () => { },
+      cancelJob: async () => { },
       deleteJob: async (id) => {
         calls.push(['deleteJob', id]);
       },
@@ -206,7 +205,7 @@ test('solver keeps terminal lifecycle metadata when retained snapshots are pause
       onFailure() {
         resolveTerminal();
       },
-      onAnalysis() {},
+      onAnalysis() { },
     });
 
     await solver.start({});
@@ -232,14 +231,14 @@ test('solver keeps terminal lifecycle metadata when retained snapshots are pause
 });
 
 test('solver preserves terminal retained state when backend deletion fails', async () => {
-  const { SF } = loadSf(SOLVER_FILES);
+  const { SF } = loadSf();
   let onMessage;
   const errors = [];
   const backend = {
     createJob: async () => 'job-delete-fails',
     streamJobEvents(_id, callback) {
       onMessage = callback;
-      return function () {};
+      return function () { };
     },
     getSnapshot: async (id, revision) => ({
       id: id,
@@ -248,9 +247,9 @@ test('solver preserves terminal retained state when backend deletion fails', asy
       solution: { id: id, revision: revision },
     }),
     analyzeSnapshot: async () => null,
-    pauseJob: async () => {},
-    resumeJob: async () => {},
-    cancelJob: async () => {},
+    pauseJob: async () => { },
+    resumeJob: async () => { },
+    cancelJob: async () => { },
     deleteJob: async () => {
       throw new Error('delete failed');
     },
@@ -286,7 +285,7 @@ test('solver preserves terminal retained state when backend deletion fails', asy
 });
 
 test('solver blocks completed retained cleanup when terminal sync fails', async () => {
-  const { SF } = loadSf(SOLVER_FILES);
+  const { SF } = loadSf();
   let onMessage;
   const calls = [];
   const errors = [];
@@ -299,7 +298,7 @@ test('solver blocks completed retained cleanup when terminal sync fails', async 
     createJob: async () => 'job-sync-fails',
     streamJobEvents(_id, callback) {
       onMessage = callback;
-      return function () {};
+      return function () { };
     },
     getSnapshot: async (id, revision) => {
       calls.push(['getSnapshot', id, revision]);
@@ -309,9 +308,9 @@ test('solver blocks completed retained cleanup when terminal sync fails', async 
       calls.push(['analyzeSnapshot', id, revision]);
       return { jobId: id, snapshotRevision: revision, analysis: { constraints: [] } };
     },
-    pauseJob: async () => {},
-    resumeJob: async () => {},
-    cancelJob: async () => {},
+    pauseJob: async () => { },
+    resumeJob: async () => { },
+    cancelJob: async () => { },
     deleteJob: async (id) => {
       calls.push(['deleteJob', id]);
     },
@@ -354,7 +353,7 @@ test('solver blocks completed retained cleanup when terminal sync fails', async 
 });
 
 test('solver retries completed terminal sync during delete and delivers completion once', async () => {
-  const { SF } = loadSf(SOLVER_FILES);
+  const { SF } = loadSf();
   let onMessage;
   const calls = [];
   const errors = [];
@@ -368,7 +367,7 @@ test('solver retries completed terminal sync during delete and delivers completi
     createJob: async () => 'job-sync-retry',
     streamJobEvents(_id, callback) {
       onMessage = callback;
-      return function () {};
+      return function () { };
     },
     getSnapshot: async (id, revision) => {
       snapshotCalls += 1;
@@ -382,9 +381,9 @@ test('solver retries completed terminal sync during delete and delivers completi
       };
     },
     analyzeSnapshot: async () => null,
-    pauseJob: async () => {},
-    resumeJob: async () => {},
-    cancelJob: async () => {},
+    pauseJob: async () => { },
+    resumeJob: async () => { },
+    cancelJob: async () => { },
     deleteJob: async (id) => {
       calls.push(['deleteJob', id]);
     },
@@ -428,7 +427,7 @@ test('solver retries completed terminal sync during delete and delivers completi
 });
 
 test('solver delete waits for terminal snapshot settlement before clearing pending commands', async () => {
-  const { SF } = loadSf(SOLVER_FILES);
+  const { SF } = loadSf();
   let onMessage;
   let resolveSnapshot;
   let cancelSettled = false;
@@ -452,8 +451,8 @@ test('solver delete waits for terminal snapshot settlement before clearing pendi
       });
     }),
     analyzeSnapshot: async () => null,
-    pauseJob: async () => {},
-    resumeJob: async () => {},
+    pauseJob: async () => { },
+    resumeJob: async () => { },
     cancelJob: async (id) => {
       calls.push(['cancelJob', id]);
     },
@@ -508,14 +507,14 @@ test('solver delete waits for terminal snapshot settlement before clearing pendi
 });
 
 test('solver derives terminal status score from retained snapshot solution score', async () => {
-  const { SF } = loadSf(SOLVER_FILES);
+  const { SF } = loadSf();
   let onMessage;
   const scoreUpdates = [];
   const backend = {
     createJob: async () => 'job-snapshot-score',
     streamJobEvents(_id, callback) {
       onMessage = callback;
-      return function () {};
+      return function () { };
     },
     getSnapshot: async (id, revision) => ({
       id: id,
@@ -524,10 +523,10 @@ test('solver derives terminal status score from retained snapshot solution score
       solution: { id: id, score: '0hard/0soft' },
     }),
     analyzeSnapshot: async () => null,
-    pauseJob: async () => {},
-    resumeJob: async () => {},
-    cancelJob: async () => {},
-    deleteJob: async () => {},
+    pauseJob: async () => { },
+    resumeJob: async () => { },
+    cancelJob: async () => { },
+    deleteJob: async () => { },
   };
   let resolveCompleted;
   const completedReady = new Promise((resolve) => {
@@ -536,11 +535,11 @@ test('solver derives terminal status score from retained snapshot solution score
   const solver = SF.createSolver({
     backend,
     statusBar: {
-      setLifecycleState() {},
+      setLifecycleState() { },
       updateScore(score) {
         scoreUpdates.push(score);
       },
-      updateMoves() {},
+      updateMoves() { },
     },
     onComplete() {
       resolveCompleted();
@@ -560,14 +559,14 @@ test('solver derives terminal status score from retained snapshot solution score
 });
 
 test('solver derives terminal status score from snapshot-bound analysis score', async () => {
-  const { SF } = loadSf(SOLVER_FILES);
+  const { SF } = loadSf();
   let onMessage;
   const scoreUpdates = [];
   const backend = {
     createJob: async () => 'job-analysis-score',
     streamJobEvents(_id, callback) {
       onMessage = callback;
-      return function () {};
+      return function () { };
     },
     getSnapshot: async (id, revision) => ({
       id: id,
@@ -581,10 +580,10 @@ test('solver derives terminal status score from snapshot-bound analysis score', 
       lifecycleState: 'COMPLETED',
       analysis: { score: '0hard/0soft', constraints: [] },
     }),
-    pauseJob: async () => {},
-    resumeJob: async () => {},
-    cancelJob: async () => {},
-    deleteJob: async () => {},
+    pauseJob: async () => { },
+    resumeJob: async () => { },
+    cancelJob: async () => { },
+    deleteJob: async () => { },
   };
   let resolveCompleted;
   const completedReady = new Promise((resolve) => {
@@ -593,16 +592,16 @@ test('solver derives terminal status score from snapshot-bound analysis score', 
   const solver = SF.createSolver({
     backend,
     statusBar: {
-      setLifecycleState() {},
+      setLifecycleState() { },
       updateScore(score) {
         scoreUpdates.push(score);
       },
-      updateMoves() {},
+      updateMoves() { },
     },
     onComplete() {
       resolveCompleted();
     },
-    onAnalysis() {},
+    onAnalysis() { },
   });
 
   await solver.start({});

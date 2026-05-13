@@ -3,10 +3,9 @@ const test = require('node:test');
 
 const { loadSf, flush } = require('./support/load-sf');
 
-const SOLVER_FILES = ['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js'];
 
 test('solver queues pause during startup until the job exists', async () => {
-  const { SF } = loadSf(SOLVER_FILES);
+  const { SF } = loadSf();
   const calls = [];
   let resolveCreate;
   let onMessage;
@@ -20,7 +19,7 @@ test('solver queues pause during startup until the job exists', async () => {
     streamJobEvents(id, callback) {
       calls.push(['streamJobEvents', id]);
       onMessage = callback;
-      return function () {};
+      return function () { };
     },
     getSnapshot: async (id, revision) => {
       calls.push(['getSnapshot', id, revision]);
@@ -42,9 +41,9 @@ test('solver queues pause during startup until the job exists', async () => {
     pauseJob: async (id) => {
       calls.push(['pauseJob', id]);
     },
-    resumeJob: async () => {},
-    cancelJob: async () => {},
-    deleteJob: async () => {},
+    resumeJob: async () => { },
+    cancelJob: async () => { },
+    deleteJob: async () => { },
   };
 
   const paused = [];
@@ -53,7 +52,7 @@ test('solver queues pause during startup until the job exists', async () => {
     onPaused(snapshot) {
       paused.push(snapshot);
     },
-    onAnalysis() {},
+    onAnalysis() { },
   });
 
   solver.start({});
@@ -86,7 +85,7 @@ test('solver queues pause during startup until the job exists', async () => {
 });
 
 test('solver queues cancel during startup and settles on the terminal cancelled event', async () => {
-  const { SF } = loadSf(SOLVER_FILES);
+  const { SF } = loadSf();
   const calls = [];
   let resolveCreate;
   let onMessage;
@@ -100,7 +99,7 @@ test('solver queues cancel during startup and settles on the terminal cancelled 
     streamJobEvents(id, callback) {
       calls.push(['streamJobEvents', id]);
       onMessage = callback;
-      return function () {};
+      return function () { };
     },
     getSnapshot: async (id, revision) => {
       calls.push(['getSnapshot', id, revision]);
@@ -119,12 +118,12 @@ test('solver queues cancel during startup and settles on the terminal cancelled 
         analysis: { score: '0hard/-4soft', constraints: [] },
       };
     },
-    pauseJob: async () => {},
-    resumeJob: async () => {},
+    pauseJob: async () => { },
+    resumeJob: async () => { },
     cancelJob: async (id) => {
       calls.push(['cancelJob', id]);
     },
-    deleteJob: async () => {},
+    deleteJob: async () => { },
   };
 
   const cancellations = [];
@@ -133,7 +132,7 @@ test('solver queues cancel during startup and settles on the terminal cancelled 
     onCancelled(snapshot) {
       cancellations.push(snapshot);
     },
-    onAnalysis() {},
+    onAnalysis() { },
   });
 
   solver.start({});

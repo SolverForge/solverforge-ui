@@ -5,7 +5,7 @@ const { loadSf } = require('./support/load-sf')
 
 test('tauri createJob normalizes documented object and numeric ids to strings', async () => {
   const calls = [];
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js'], {
+  const { SF } = loadSf([], {
     fetch() {
       throw new Error('unexpected fetch');
     },
@@ -38,7 +38,7 @@ test('tauri createJob normalizes documented object and numeric ids to strings', 
 });
 
 test('tauri createJob rejects non-scalar job id payloads', async () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js'], {
+  const { SF } = loadSf([], {
     fetch() {
       throw new Error('unexpected fetch');
     },
@@ -64,7 +64,7 @@ test('tauri createJob rejects non-scalar job id payloads', async () => {
 
 test('tauri backend uses neutral job lifecycle command names', async () => {
   const calls = [];
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js']);
+  const { SF } = loadSf();
 
   const backend = SF.createBackend({
     type: 'tauri',
@@ -98,7 +98,7 @@ test('tauri backend uses neutral job lifecycle command names', async () => {
 
 test('HTTP backend uses configured job paths and snapshot revision query parameters', async () => {
   const requests = [];
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js'], {
+  const { SF } = loadSf([], {
     fetch(url, opts) {
       requests.push({ url, opts });
       return Promise.resolve({
@@ -149,7 +149,7 @@ test('HTTP backend lets EventSource reconnect without surfacing transient errors
     this.readyState = FakeEventSource.CLOSED;
   };
 
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js'], {
+  const { SF } = loadSf([], {
     EventSource: FakeEventSource,
   });
 
@@ -181,7 +181,7 @@ test('HTTP backend lets EventSource reconnect without surfacing transient errors
 test('tauri streamJobEvents keeps id-less updates and filters mismatched job ids', async () => {
   let handler = null;
   const received = [];
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js']);
+  const { SF } = loadSf();
 
   const backend = SF.createBackend({
     type: 'tauri',

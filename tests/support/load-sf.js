@@ -5,8 +5,10 @@ const vm = require('node:vm');
 const { createDom } = require('./fake-dom');
 
 const ROOT = path.resolve(__dirname, '..', '..');
+const STATIC_DIR = path.resolve(ROOT, 'static', 'sf');
+const SF_LIB = "sf.js";
 
-function loadSf(files, overrides = {}) {
+function loadSf(files = [], overrides = {}) {
   const { document, window, Node } = createDom();
   const context = vm.createContext({
     console,
@@ -19,6 +21,11 @@ function loadSf(files, overrides = {}) {
     ...overrides,
   });
 
+  // inject sf.js
+  const source = fs.readFileSync(path.join(STATIC_DIR, SF_LIB), 'utf8');
+  vm.runInContext(source, context, { filename: SF_LIB });
+
+  // additional files
   files.forEach((file) => {
     const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
     vm.runInContext(source, context, { filename: file });

@@ -8,7 +8,7 @@ const { loadSf } = require('./support/load-sf');
 const ROOT = path.resolve(__dirname, '..');
 
 test('status bar constraint dots keep stable ids for solver analysis coloring', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/01-score.js', 'js-src/05-statusbar.js']);
+  const { SF } = loadSf();
 
   const statusBar = SF.createStatusBar({
     constraints: [
@@ -23,12 +23,7 @@ test('status bar constraint dots keep stable ids for solver analysis coloring', 
 });
 
 test('modal, toast, and api guide copy controls expose aria-label attributes', () => {
-  const { SF } = loadSf([
-    'js-src/00-core.js',
-    'js-src/06-modal.js',
-    'js-src/09-toast.js',
-    'js-src/12-api-guide.js',
-  ]);
+  const { SF } = loadSf();
 
   const modal = SF.createModal({ title: 'Example', body: 'Body' });
   const modalClose = modal.el.querySelector('.sf-modal-close');

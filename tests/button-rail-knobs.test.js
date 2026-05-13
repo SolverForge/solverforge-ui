@@ -4,7 +4,7 @@ const test = require('node:test');
 const { loadSf } = require('./support/load-sf')
 
 test('iconOnly buttons keep an accessible label without rendering text content', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/03-buttons.js']);
+  const { SF } = loadSf();
 
   const button = SF.createButton({
     text: 'Settings',
@@ -17,7 +17,7 @@ test('iconOnly buttons keep an accessible label without rendering text content',
 });
 
 test('rail card badges accept a single string badge and preserve heatmap alignment', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js']);
+  const { SF } = loadSf();
 
   const card = SF.rail.createCard({
     name: 'Kiln 1',
