@@ -1,10 +1,22 @@
 // --------------------------------------------------------------------------
 // Global Window Extensions
+// SolverForge UI - TypeScript Type Definitions
+// Aligned with Rust solverforge-solver crate types
 // --------------------------------------------------------------------------
 
 declare global {
 	interface Window {
-		SF: unknown;
+		SF: SF.GlobalAPI;
+	}
+
+	namespace SF {
+		interface GlobalAPI {
+			version: string;
+			createBackend: (config: BackendConfig) => Backend;
+			createSolver: (config: SolverConfig) => SolverApi;
+			assert: (value: unknown, message: string) => void;
+			normalizeCreateJobId: (id: unknown) => string | null;
+		}
 	}
 
 	// ------------------------------------------------------------------------
@@ -33,7 +45,7 @@ declare global {
 	 * Common interface implemented by all backend adapters.
 	 */
 	interface Backend {
-		createJob(data: unknown): Promise<string>;
+		createJob(data: unknown): Promise<string | number | { id?: string | number; jobId?: string | number; job_id?: string | number }>;
 		getJob(id: string): Promise<unknown>;
 		getJobStatus(id: string): Promise<unknown>;
 		getSnapshot(
@@ -52,7 +64,7 @@ declare global {
 		listDemoData(): Promise<unknown>;
 		streamJobEvents(
 			id: string,
-			onMessage: (event: SolverEvent) => void,
+			onMessage: (payload: SolverEvent) => void,
 			onError?: (err: SseError) => void,
 		): () => void;
 	}
@@ -83,6 +95,10 @@ declare global {
 		eventName?: string;
 	}
 
+	// ------------------------------------------------------------------------
+	// Solver Event Types
+	// ------------------------------------------------------------------------
+
 	/**
 	 * Canonical SSE/IPC event payload from the solver runtime.
 	 */
@@ -95,10 +111,208 @@ declare global {
 		lifecycleState?: string;
 		currentScore?: string;
 		bestScore?: string;
-		snapshotRevision?: number;
-		telemetry?: { movesPerSecond?: number; stepCount?: number };
+		snapshotRevision?: number | string;
+		telemetry?: SolverTelemetry;
 		solution?: unknown;
 		data?: { id?: string; jobId?: string };
+	}
+
+	// ------------------------------------------------------------------------
+	// Solver Core Types
+	// ------------------------------------------------------------------------
+
+	/**
+	 * Union type for all valid solver lifecycle states.
+	 */
+	type LifecycleState =
+		| 'IDLE'
+		| 'STARTING'
+		| 'SOLVING'
+		| 'PAUSE_REQUESTED'
+		| 'PAUSED'
+		| 'RESUMING'
+		| 'CANCELLING'
+		| 'COMPLETED'
+		| 'CANCELLED'
+		| 'FAILED'
+		| 'TERMINATED_BY_CONFIG';
+
+	/**
+	 * Metadata attached to solver events.
+	 */
+	interface EventMeta {
+		id: string;
+		jobId: string;
+		eventType: string;
+		eventSequence: number | null;
+		lifecycleState: LifecycleState;
+		terminalReason: string | null;
+		telemetry: SolverTelemetry | null;
+		currentScore: string | null;
+		bestScore: string | null;
+		snapshotRevision: number | string | null;
+	}
+
+	/**
+	 * A point-in-time snapshot of solver state.
+	 */
+	interface SolverSnapshot {
+		id: string | null;
+		jobId: string | null;
+		snapshotRevision: number | string | null;
+		lifecycleState: LifecycleState | null;
+		terminalReason: string | null;
+		currentScore: string | null;
+		bestScore: string | null;
+		telemetry: SolverTelemetry | null;
+		solution: unknown | null;
+	}
+
+	/**
+	 * Analysis results for a solver snapshot.
+	 */
+	interface SolverAnalysis {
+		jobId: string | null;
+		snapshotRevision: number | string | null;
+		lifecycleState: LifecycleState | null;
+		terminalReason: string | null;
+		analysis: unknown | null;
+		score: string | number | null;
+		constraints: unknown[] | null;
+	}
+
+	// ------------------------------------------------------------------------
+	// Internal Solver Types
+	// ------------------------------------------------------------------------
+
+	/**
+	 * Internal solver phase - mirrors Rust lifecycle with client-side transitions.
+	 * Rust: SolverLifecycleState (Solving, PauseRequested, Paused, Completed, Cancelled, Failed)
+	 * JS adds: idle, starting, resuming, cancelling
+	 */
+	type SolverPhase =
+		| 'idle'
+		| 'starting'
+		| 'solving'
+		| 'pause-requested'
+		| 'paused'
+		| 'resuming'
+		| 'cancelling';
+
+	/**
+	 * Terminal reason types.
+	 */
+	type TerminalReason =
+		| 'completed'
+		| 'terminated_by_config'
+		| 'cancelled'
+		| 'failed'
+		| null;
+
+	/**
+	 * Deferred promise for async operations (pause, resume, cancel).
+	 */
+	interface Deferred<T> {
+		promise: Promise<T>;
+		resolve: (value: T) => void;
+		reject: (error: Error) => void;
+	}
+
+	/**
+	 * Terminal sync status for completed/cancelled/failed events.
+	 */
+	type TerminalSyncStatus = 'pending' | 'synced' | 'failed';
+
+	/**
+	 * Record for tracking terminal synchronization state.
+	 * Used to ensure snapshot/analysis sync completes before delete is allowed.
+	 */
+	interface TerminalSyncRecord {
+		jobId: string;
+		eventType: string;
+		meta: EventMeta;
+		status: TerminalSyncStatus;
+		promise: Promise<unknown> | null;
+		error: Error | null;
+		callbackDelivered: boolean;
+	}
+
+	/**
+	 * Normalized job event from backend payload.
+	 */
+	interface NormalizedJobEvent {
+		eventType: string;
+		meta: EventMeta;
+		solution: unknown | null;
+		error: string | null;
+	}
+
+	/**
+	 * Telemetry data structure.
+	 */
+	interface SolverTelemetry {
+		movesPerSecond?: number;
+		stepCount?: number;
+		elapsedMs?: number;
+		movesGenerated?: number;
+		movesEvaluated?: number;
+		movesAccepted?: number;
+		movesApplied?: number;
+		scoreCalculations?: number;
+	}
+
+	// ------------------------------------------------------------------------
+	// Solver Configuration & API
+	// ------------------------------------------------------------------------
+
+	/**
+	 * Queueable action types for pending operations.
+	 */
+	type QueuedAction = 'pause' | 'cancel' | null;
+
+	/**
+	 * Deferred operation names for getDeferred/setDeferred helper functions.
+	 */
+	type DeferredName = 'pause' | 'resume' | 'cancel';
+
+	interface SolverConfig {
+		backend: Backend;
+		statusBar?: {
+			setLifecycleState?: (state: LifecycleState) => void;
+			setSolving?: (solving: boolean) => void;
+			updateScore?: (score: string | number | null) => void;
+			updateMoves?: (value: number | null) => void;
+			colorDotsFromAnalysis?: (constraints: unknown[]) => void;
+		};
+		onProgress?: (meta: EventMeta) => void;
+		onSolution?: (snapshot: SolverSnapshot, meta: EventMeta) => void;
+		onPauseRequested?: (meta: EventMeta) => void;
+		onPaused?: (snapshot: SolverSnapshot, meta: EventMeta) => void;
+		onResumed?: (meta: EventMeta) => void;
+		onComplete?: (snapshot: SolverSnapshot, meta: EventMeta) => void;
+		onCancelled?: (snapshot: SolverSnapshot | null, meta: EventMeta) => void;
+		onFailure?: (
+			error: string,
+			meta: EventMeta,
+			snapshot: SolverSnapshot | null,
+			analysis: SolverAnalysis | null,
+		) => void;
+		onAnalysis?: (analysis: SolverAnalysis, meta: EventMeta) => void;
+		onError?: (message: string) => void;
+	}
+
+	interface SolverApi {
+		start(data?: unknown): Promise<void>;
+		pause(): Promise<{ snapshot: SolverSnapshot | null; meta: EventMeta; analysis: SolverAnalysis | null } | null>;
+		resume(): Promise<EventMeta | null>;
+		cancel(): Promise<{ snapshot: SolverSnapshot | null; meta: EventMeta; analysis: SolverAnalysis | null } | null>;
+		delete(): Promise<void>;
+		getSnapshot(snapshotRevision?: number | string): Promise<SolverSnapshot | null>;
+		analyzeSnapshot(snapshotRevision?: number | string): Promise<SolverAnalysis | null>;
+		isRunning(): boolean;
+		getJobId(): string | null;
+		getLifecycleState(): LifecycleState;
+		getSnapshotRevision(): number | string | null;
 	}
 
 	// ------------------------------------------------------------------------
@@ -141,4 +355,4 @@ declare global {
 	}
 }
 
-export {};
+export { };

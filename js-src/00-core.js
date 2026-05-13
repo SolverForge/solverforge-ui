@@ -80,6 +80,7 @@ const SF = (function () {
     el.addEventListener('keydown', handleActivate);
   };
 
+  // @ts-ignore - SF is extended dynamically by other modules
   if (typeof window !== 'undefined') window.SF = sf;
   return sf;
 })();
