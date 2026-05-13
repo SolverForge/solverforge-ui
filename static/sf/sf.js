@@ -140,9 +140,9 @@ const SF = (function () {
   var nextColorCount = 0;
 
   function buildPercentageColor(floor, ceil, pct) {
-    var red = (floor & 0xFF0000) + Math.floor(pct * ((ceil & 0xFF0000) - (floor & 0xFF0000))) & 0xFF0000;
+    var red   = (floor & 0xFF0000) + Math.floor(pct * ((ceil & 0xFF0000) - (floor & 0xFF0000))) & 0xFF0000;
     var green = (floor & 0x00FF00) + Math.floor(pct * ((ceil & 0x00FF00) - (floor & 0x00FF00))) & 0x00FF00;
-    var blue = (floor & 0x0000FF) + Math.floor(pct * ((ceil & 0x0000FF) - (floor & 0x0000FF))) & 0x0000FF;
+    var blue  = (floor & 0x0000FF) + Math.floor(pct * ((ceil & 0x0000FF) - (floor & 0x0000FF))) & 0x0000FF;
     return red | green | blue;
   }
 
@@ -285,7 +285,7 @@ const SF = (function () {
     };
 
     // Logo
-    if (config.logo) {
+  if (config.logo) {
       var logo = sf.el('img', {
         className: 'sf-header-logo',
         src: config.logo,
@@ -727,12 +727,12 @@ const SF = (function () {
     var api = { el: overlay, body: body };
 
     api.open = function () {
-      previousFocus = document.activeElement;
-      document.body.appendChild(overlay);
-      if (closeBtn.focus) closeBtn.focus();
-      overlay.classList.add('open');
-      document.addEventListener('keydown', onKeyDown);
-    };
+        previousFocus = document.activeElement;
+        document.body.appendChild(overlay);
+        if (closeBtn.focus) closeBtn.focus();
+        overlay.classList.add('open');
+        document.addEventListener('keydown', onKeyDown);
+      };
 
     api.close = function () {
       overlay.classList.remove('open');
@@ -1006,8 +1006,15 @@ const SF = (function () {
       return h;
     }
 
+    /**
+     *  Creates an enriched Error with HTTP request context.
+     * @param {string} method
+     * @param {string} path
+     * @param {{ status: number, statusText: string }} res
+     * @returns {HttpError}
+     */
     function createRequestError(method, path, res) {
-      var err = new Error(res.status + ' ' + res.statusText);
+      var err = /** @type {HttpError} */ (new Error(res.status + ' ' + res.statusText));
       err.status = res.status;
       err.statusText = res.statusText;
       err.method = method;
@@ -1147,8 +1154,13 @@ const SF = (function () {
     };
   }
 
+  /**
+   * Creates an enriched Error for SSE stream closure events.
+   * @param {string} url
+   * @returns {SseError}
+   */
   function createSseClosedError(url) {
-    var err = new Error('Event stream closed for ' + url);
+    var err = /** @type {SseError} */ (new Error('Event stream closed for ' + url));
     err.code = 'SSE_CLOSED';
     err.transport = 'sse';
     err.url = url;
@@ -2907,6 +2919,7 @@ const SF = (function () {
   function buildOverviewRender(lane, state, rerender) {
     var groups = groupOverviewItems(lane);
     var expandedClusterId = state.expandedClusters[lane.id] || null;
+    /** @type {RailOverviewGroup|null} */
     var expandedGroup = null;
     var packedExpanded = null;
     var expandedDetailsTop = 0;
