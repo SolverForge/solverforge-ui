@@ -30,7 +30,7 @@ VERSIONED_JS := static/sf/sf.$(VERSION).js
 
 # ============== Phony Targets ==============
 .PHONY: banner help assets build build-release test test-quick test-doc test-unit test-frontend test-browser test-one \
-        lint lint-frontend fmt fmt-check clippy ci-local pre-release version package-verify browser-setup \
+        lint lint-frontend fmt fmt-check clippy ci-local pre-release version package-verify browser-setup screenshots-update \
         bump-version bump-patch bump-minor bump-major bump-dry release-tag demo-serve \
         publish-dry publish clean watch
 
@@ -135,6 +135,12 @@ test-browser:
 	@node tests/demo-browser-check.js && \
 		printf "$(GREEN)$(CHECK) Browser smoke tests passed$(RESET)\n" || \
 		(printf "$(RED)$(CROSS) Browser smoke tests failed$(RESET)\n" && exit 1)
+
+screenshots-update:
+	@printf "$(PROGRESS) Refreshing tracked browser screenshot baselines...\n"
+	@node tests/demo-browser-check.js --update-screenshots && \
+		printf "$(GREEN)$(CHECK) Screenshot baselines refreshed$(RESET)\n" || \
+		(printf "$(RED)$(CROSS) Screenshot baseline refresh failed$(RESET)\n" && exit 1)
 
 lint-frontend:
 	@printf "$(PROGRESS) Running frontend lint...\n"
@@ -345,6 +351,7 @@ help: banner
 	@/bin/echo -e "  $(GREEN)make test-frontend$(RESET)  - Run frontend Node tests"
 	@/bin/echo -e "  $(GREEN)make test-browser$(RESET)   - Run browser demo smoke tests"
 	@/bin/echo -e "  $(GREEN)make test-one TEST=name$(RESET) - Run specific test with output"
+	@/bin/echo -e "  $(GREEN)make screenshots-update$(RESET) - Refresh tracked browser screenshot baselines"
 	@/bin/echo -e ""
 	@/bin/echo -e "$(CYAN)$(BOLD)Lint & Format:$(RESET)"
 	@/bin/echo -e "  $(GREEN)make lint$(RESET)           - Run fmt-check + clippy + frontend lint"
