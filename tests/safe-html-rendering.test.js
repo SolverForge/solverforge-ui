@@ -1,32 +1,7 @@
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
 
-const { createDom } = require('./support/fake-dom');
-
-const ROOT = path.resolve(__dirname, '..');
-
-function loadSf(files, overrides = {}) {
-  const { document, window, Node } = createDom();
-  const context = vm.createContext({
-    console,
-    document,
-    window,
-    Node,
-    setTimeout,
-    clearTimeout,
-    ...overrides,
-  });
-
-  files.forEach((file) => {
-    const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
-    vm.runInContext(source, context, { filename: file });
-  });
-
-  return { SF: context.window.SF, document };
-}
+const { loadSf } = require('./support/load-sf')
 
 test('createModal renders unsafeBody as raw HTML and preserves text mode by default', () => {
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/06-modal.js']);
@@ -49,8 +24,8 @@ test('gantt creates the chart root as a namespaced SVG element', () => {
   const { SF, document } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js'], {
     Gantt: function () {
       return {
-        change_view_mode() {},
-        refresh() {},
+        change_view_mode() { },
+        refresh() { },
       };
     },
   });

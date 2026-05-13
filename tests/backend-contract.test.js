@@ -1,33 +1,7 @@
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
 
-const { createDom } = require('./support/fake-dom');
-
-const ROOT = path.resolve(__dirname, '..');
-
-function loadSf(files, overrides = {}) {
-  const { document, window, Node } = createDom();
-  const context = vm.createContext({
-    console,
-    document,
-    window,
-    Node,
-    Promise,
-    setTimeout,
-    clearTimeout,
-    ...overrides,
-  });
-
-  files.forEach((file) => {
-    const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
-    vm.runInContext(source, context, { filename: file });
-  });
-
-  return { SF: context.window.SF, document };
-}
+const { loadSf } = require('./support/load-sf')
 
 test('tauri createJob normalizes documented object and numeric ids to strings', async () => {
   const calls = [];
@@ -45,7 +19,7 @@ test('tauri createJob normalizes documented object and numeric ids to strings', 
         return Promise.resolve(result);
       },
       listen() {
-        return Promise.resolve(function () {});
+        return Promise.resolve(function () { });
       },
     });
   }
@@ -77,7 +51,7 @@ test('tauri createJob rejects non-scalar job id payloads', async () => {
         return Promise.resolve(result);
       },
       listen() {
-        return Promise.resolve(function () {});
+        return Promise.resolve(function () { });
       },
     });
   }
@@ -99,7 +73,7 @@ test('tauri backend uses neutral job lifecycle command names', async () => {
       return Promise.resolve(null);
     },
     listen() {
-      return Promise.resolve(function () {});
+      return Promise.resolve(function () { });
     },
   });
 
@@ -185,7 +159,7 @@ test('HTTP backend lets EventSource reconnect without surfacing transient errors
     jobsPath: '/jobs',
   });
 
-  const close = backend.streamJobEvents('job-9', function () {}, function (error) {
+  const close = backend.streamJobEvents('job-9', function () { }, function (error) {
     errors.push(error);
   });
 
@@ -216,7 +190,7 @@ test('tauri streamJobEvents keeps id-less updates and filters mismatched job ids
     },
     listen(_eventName, onEvent) {
       handler = onEvent;
-      return Promise.resolve(function () {});
+      return Promise.resolve(function () { });
     },
   });
 

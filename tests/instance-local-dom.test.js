@@ -1,32 +1,7 @@
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
 
-const { createDom } = require('./support/fake-dom');
-
-const ROOT = path.resolve(__dirname, '..');
-
-function loadSf(files, overrides = {}) {
-  const { document, window, Node } = createDom();
-  const context = vm.createContext({
-    console,
-    document,
-    window,
-    Node,
-    setTimeout,
-    clearTimeout,
-    ...overrides,
-  });
-
-  files.forEach((file) => {
-    const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
-    vm.runInContext(source, context, { filename: file });
-  });
-
-  return { SF: context.window.SF, document };
-}
+const { loadSf } = require('./support/load-sf')
 
 test('status bars only toggle the controls on their bound header', () => {
   const { SF } = loadSf([
@@ -36,8 +11,8 @@ test('status bars only toggle the controls on their bound header', () => {
     'js-src/05-statusbar.js',
   ]);
 
-  const headerOne = SF.createHeader({ actions: { onSolve() {}, onPause() {}, onResume() {}, onCancel() {} } });
-  const headerTwo = SF.createHeader({ actions: { onSolve() {}, onPause() {}, onResume() {}, onCancel() {} } });
+  const headerOne = SF.createHeader({ actions: { onSolve() { }, onPause() { }, onResume() { }, onCancel() { } } });
+  const headerTwo = SF.createHeader({ actions: { onSolve() { }, onPause() { }, onResume() { }, onCancel() { } } });
   const barOne = SF.createStatusBar({ header: headerOne });
   const barTwo = SF.createStatusBar({ header: headerTwo });
   function isVisible(btn) {
@@ -246,13 +221,13 @@ test('gantt remount recreates the chart and preserves refresh behavior', () => {
     Split: function (targets, options) {
       splitCalls.push({ targets, options });
       return {
-        destroy() {},
+        destroy() { },
       };
     },
     Gantt: function () {
       ganttInstanceCount++;
       return {
-        change_view_mode() {},
+        change_view_mode() { },
         refresh(tasks) {
           refreshCalls.push(tasks);
         },
@@ -292,8 +267,8 @@ test('failed gantt remount keeps the existing mounted chart intact', () => {
     },
     Gantt: function () {
       return {
-        change_view_mode() {},
-        refresh() {},
+        change_view_mode() { },
+        refresh() { },
       };
     },
   });
@@ -326,7 +301,7 @@ test('gantt initSplit keeps accepting scalar splitMinSize values', () => {
     Split: function (targets, options) {
       splitCalls.push({ targets, options });
       return {
-        destroy() {},
+        destroy() { },
       };
     },
   });
@@ -346,8 +321,8 @@ test('gantt sortable columns render and reorder grid rows without throwing', () 
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js'], {
     Gantt: function () {
       return {
-        change_view_mode() {},
-        refresh() {},
+        change_view_mode() { },
+        refresh() { },
       };
     },
   });
@@ -379,8 +354,8 @@ test('gantt pinned tasks propagate pinned custom class to chart tasks', () => {
     Gantt: function (_selector, tasks) {
       seenTasks = tasks;
       return {
-        change_view_mode() {},
-        refresh() {},
+        change_view_mode() { },
+        refresh() { },
       };
     },
   });

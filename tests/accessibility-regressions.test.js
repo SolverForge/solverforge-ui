@@ -2,38 +2,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const vm = require('node:vm');
 
-const { createDom } = require('./support/fake-dom');
+const { loadSf } = require('./support/load-sf');
 
 const ROOT = path.resolve(__dirname, '..');
-
-function loadSf(files, overrides = {}) {
-  const { document, window, Node } = createDom();
-  const context = vm.createContext({
-    console,
-    document,
-    window,
-    Node,
-    navigator: {
-      clipboard: {
-        writeText() {
-          return Promise.resolve();
-        },
-      },
-    },
-    setTimeout,
-    clearTimeout,
-    ...overrides,
-  });
-
-  files.forEach((file) => {
-    const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
-    vm.runInContext(source, context, { filename: file });
-  });
-
-  return { SF: context.window.SF, document };
-}
 
 test('status bar constraint dots keep stable ids for solver analysis coloring', () => {
   const { SF } = loadSf(['js-src/00-core.js', 'js-src/01-score.js', 'js-src/05-statusbar.js']);
