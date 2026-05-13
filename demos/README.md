@@ -33,6 +33,13 @@ make test-browser
 ```
 
 The automated check serves the repository locally, opens the runnable demo fixtures in Chromium, fails on page or script errors, and verifies that the primary shipped UI surfaces mount successfully.
+It writes transient screenshots to `target/browser-smoke/screenshots/` by default so ordinary validation does not modify tracked baselines.
+
+Refresh the tracked timeline screenshot baselines only when accepting an intentional visual change:
+
+```bash
+make screenshots-update
+```
 
 ## Coverage
 

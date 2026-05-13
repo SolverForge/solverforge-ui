@@ -799,7 +799,8 @@ Runnable demo fixtures live in `demos/`.
 - `demos/timeline-dense.html` is the repeatable 28-day, 100-lane, 1500-item dense validation fixture for one scrollable body viewport.
 - `demos/rail.html` focuses on the low-level rail primitives: resource cards, blocks, gauges, and changeovers.
 - `make demo-serve` serves the repository at `http://localhost:8000/demos/` for local validation.
-- `make test-browser` runs browser-level smoke tests against the shipped demo fixtures and refreshes the timeline acceptance screenshots in `screenshots/`.
+- `make test-browser` runs browser-level smoke tests against the shipped demo fixtures and writes transient screenshots to `target/browser-smoke/screenshots/`.
+- `make screenshots-update` explicitly refreshes the tracked timeline acceptance screenshots in `screenshots/`.
 - Run `make browser-setup` once on a machine to install the Playwright test dependency and Chromium.
 
 ## Acknowledgments
