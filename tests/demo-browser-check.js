@@ -4,7 +4,46 @@ const http = require('node:http');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
-const SCREENSHOT_DIR = path.join(ROOT, 'screenshots');
+const SCREENSHOT_BASELINE_DIR = path.join(ROOT, 'screenshots');
+const SCREENSHOT_ARTIFACT_DIR = path.join(ROOT, 'target', 'browser-smoke', 'screenshots');
+
+function usage() {
+  return 'Usage: node tests/demo-browser-check.js [--update-screenshots]';
+}
+
+function parseRunnerConfig(args) {
+  if (args.length === 0) {
+    return {
+      screenshotDir: SCREENSHOT_ARTIFACT_DIR,
+      updateScreenshots: false,
+    };
+  }
+
+  if (args.length === 1 && args[0] === '--update-screenshots') {
+    return {
+      screenshotDir: SCREENSHOT_BASELINE_DIR,
+      updateScreenshots: true,
+    };
+  }
+
+  throw new Error('Unknown browser check option: ' + args.join(' ') + '\n' + usage());
+}
+
+function prepareScreenshotDirectory(config) {
+  if (!config.updateScreenshots) {
+    fs.rmSync(config.screenshotDir, { recursive: true, force: true });
+  }
+  fs.mkdirSync(config.screenshotDir, { recursive: true });
+}
+
+let runnerConfig;
+try {
+  runnerConfig = parseRunnerConfig(process.argv.slice(2));
+  prepareScreenshotDirectory(runnerConfig);
+} catch (error) {
+  process.stderr.write((error && error.message ? error.message : String(error)) + '\n');
+  process.exit(1);
+}
 
 function contentTypeFor(filePath) {
   switch (path.extname(filePath).toLowerCase()) {
@@ -147,8 +186,7 @@ async function runCheck(name, fn) {
 }
 
 async function captureScreenshot(target, filename) {
-  fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
-  const screenshotPath = path.join(SCREENSHOT_DIR, filename);
+  const screenshotPath = path.join(runnerConfig.screenshotDir, filename);
   await target.screenshot({ path: screenshotPath });
   assert.equal(fs.existsSync(screenshotPath), true);
   assert.equal(fs.statSync(screenshotPath).size > 0, true);
