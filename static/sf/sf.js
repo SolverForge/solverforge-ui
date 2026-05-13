@@ -967,17 +967,33 @@ const SF = (function () {
 (function (sf) {
   'use strict';
 
+  /**
+   * Creates a backend adapter for the given transport type.
+   * @param {BackendConfig} config
+   * @returns {Backend}
+   */
   sf.createBackend = function (config) {
     config = config || {};
     var type = config.type || 'axum';
-    if (type === 'tauri') return createTauriBackend(config);
-    return createHttpBackend(config);
+    if (type === 'tauri') {
+      return createTauriBackend(/** @type {TauriBackendConfig} */(config));
+    }
+    return createHttpBackend(/** @type {HttpBackendConfig} */(config));
   };
 
+  /**
+   * @param {unknown} raw
+   * @returns {string}
+   */
   function resolveJobId(raw) {
     return sf.normalizeCreateJobId(raw);
   }
 
+  /**
+   * Extracts a job id string from a solver event payload.
+   * @param {SolverEvent} payload
+   * @returns {string}
+   */
   function resolveEventJobId(payload) {
     if (!payload || typeof payload !== 'object') return '';
     if (payload.jobId != null) return String(payload.jobId).trim();
@@ -988,6 +1004,11 @@ const SF = (function () {
     return '';
   }
 
+  /**
+   * @param {string} path
+   * @param {string|number|undefined} snapshotRevision
+   * @returns {string}
+   */
   function withSnapshotRevision(path, snapshotRevision) {
     if (snapshotRevision == null || snapshotRevision === '') return path;
     return path + '?snapshot_revision=' + encodeURIComponent(String(snapshotRevision));
@@ -995,22 +1016,31 @@ const SF = (function () {
 
   /* ── HTTP backend (Axum, Rails, anything) ── */
 
+  /**
+   * Create a new HTTP backend instance.
+   * @param {HttpBackendConfig} config
+   * @returns {Backend}
+   */
   function createHttpBackend(config) {
     var baseUrl = config.baseUrl || '';
     var jobsPath = config.jobsPath || '/jobs';
     var demoDataPath = config.demoDataPath || '/demo-data';
     var extraHeaders = config.headers || {};
 
+    /**
+     * @param {Record<string, string>|undefined} [extra]
+     * @returns {Record<string, string>}
+     */
     function headers(extra) {
       var h = Object.assign({ 'Content-Type': 'application/json' }, extraHeaders, extra || {});
       return h;
     }
 
     /**
-     *  Creates an enriched Error with HTTP request context.
+     * Creates an enriched Error with HTTP request context.
      * @param {string} method
      * @param {string} path
-     * @param {{ status: number, statusText: string }} res
+     * @param {{ status: number; statusText: string }} res
      * @returns {HttpError}
      */
     function createRequestError(method, path, res) {
@@ -1023,6 +1053,12 @@ const SF = (function () {
       return err;
     }
 
+    /**
+     * @param {string} method
+     * @param {string} path
+     * @param {unknown} [body]
+     * @returns {Promise<unknown>}
+     */
     function request(method, path, body) {
       var opts = { method: method, headers: headers() };
       if (body !== undefined) opts.body = JSON.stringify(body);
@@ -1092,6 +1128,11 @@ const SF = (function () {
 
   /* ── Tauri IPC backend ── */
 
+  /**
+   * Create a new IPC backend for Tauri
+   * @param {TauriBackendConfig} config
+   * @returns {Backend}
+   */
   function createTauriBackend(config) {
     sf.assert(typeof config === 'object', 'createBackend({}) is required for Tauri adapter');
     sf.assert(typeof config.invoke === 'function', 'Tauri backend requires config.invoke');
@@ -1140,14 +1181,14 @@ const SF = (function () {
       listDemoData: function () {
         return Promise.resolve([]);
       },
-      streamJobEvents: function (id, onMessage) {
+      streamJobEvents: function (id, onMessage, onError) {
         var targetId = String(id);
         var unlisten = null;
         listen(eventName, function (event) {
-          var payload = event && event.payload ? event.payload : {};
+          var payload = (event && event.payload) || /** @type {SolverEvent} */ ({});
           var payloadId = resolveEventJobId(payload);
           if (payloadId && payloadId !== targetId) return;
-          onMessage(payload);
+          onMessage(/** @type {SolverEvent} */(payload));
         }).then(function (fn) { unlisten = fn; });
         return function close() { if (unlisten) unlisten(); };
       },
