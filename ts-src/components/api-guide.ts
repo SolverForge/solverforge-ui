@@ -2,13 +2,11 @@
    SolverForge UI — API Guide Panel
    Generates REST API documentation from endpoint definitions.
    ============================================================================ */
+import {assert} from "../core"
 
-(function (sf) {
-  'use strict';
-
-  sf.createApiGuide = function (config) {
-    sf.assert(config, 'createApiGuide(config) requires a configuration object');
-    sf.assert(Array.isArray(config.endpoints), 'createApiGuide(config.endpoints) must be an array');
+export const createApiGuide = function (config) {
+    assert(config, 'createApiGuide(config) requires a configuration object');
+    assert(Array.isArray(config.endpoints), 'createApiGuide(config.endpoints) must be an array');
 
     var guide = sf.el('div', { className: 'sf-api-guide' });
     var endpoints = config.endpoints;
@@ -42,4 +40,3 @@
 
     return guide;
   };
-})(SF);

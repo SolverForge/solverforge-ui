@@ -2,13 +2,13 @@
    SolverForge UI — Header Factory
    ============================================================================ */
 
-(function (sf) {
-  'use strict';
+import {assert, el} from "../core";
+import { createButton } from "./buttons";
 
-  sf.createHeader = function (config) {
-    sf.assert(config, 'createHeader(config) requires a configuration object');
+export const createHeader = function (config) {
+    assert(config, 'createHeader(config) requires a configuration object');
 
-    var header = sf.el('header', { className: 'sf-header' });
+    var header = el('header', { className: 'sf-header' });
     var controls = {
       actions: null,
       spinner: null,
@@ -22,7 +22,7 @@
 
     // Logo
   if (config.logo) {
-      var logo = sf.el('img', {
+      var logo = el('img', {
         className: 'sf-header-logo',
         src: config.logo,
         alt: 'Logo',
@@ -31,24 +31,24 @@
     }
 
     // Brand text
-    var brand = sf.el('div', { className: 'sf-header-brand' });
+    var brand = el('div', { className: 'sf-header-brand' });
     if (config.title) {
-      brand.appendChild(sf.el('div', { className: 'sf-header-title' }, config.title));
+      brand.appendChild(el('div', { className: 'sf-header-title' }, config.title));
     }
     if (config.subtitle) {
-      brand.appendChild(sf.el('div', { className: 'sf-header-subtitle' }, config.subtitle));
+      brand.appendChild(el('div', { className: 'sf-header-subtitle' }, config.subtitle));
     }
     header.appendChild(brand);
 
     // Nav tabs
     if (config.tabs && config.tabs.length > 0) {
-      sf.assert(Array.isArray(config.tabs), 'createHeader(config.tabs) expects an array');
-      var nav = sf.el('nav', { className: 'sf-header-nav' });
+      assert(Array.isArray(config.tabs), 'createHeader(config.tabs) expects an array');
+      var nav = el('nav', { className: 'sf-header-nav' });
       controls.nav = nav;
       config.tabs.forEach(function (tab) {
-        sf.assert(tab && tab.id, 'createHeader tab entries require an id');
-        sf.assert(typeof tab.label === 'string', 'createHeader tab entries require a label');
-        var btn = sf.el('button', {
+        assert(tab && tab.id, 'createHeader tab entries require an id');
+        assert(typeof tab.label === 'string', 'createHeader tab entries require a label');
+        var btn = el('button', {
           className: 'sf-nav-btn' + (tab.active ? ' active' : ''),
           role: 'tab',
           'aria-selected': !!tab.active,
@@ -74,7 +74,7 @@
           },
         });
         if (tab.icon) {
-          btn.appendChild(sf.el('i', { className: 'fa-solid ' + tab.icon }));
+          btn.appendChild(el('i', { className: 'fa-solid ' + tab.icon }));
         }
         btn.appendChild(document.createTextNode(tab.label));
         nav.appendChild(btn);
@@ -84,24 +84,24 @@
 
     // Action buttons
     if (config.actions) {
-      sf.assert(typeof config.actions === 'object', 'createHeader(config.actions) expects an object');
-      sf.assert(!config.actions.onSolve || typeof config.actions.onSolve === 'function', 'createHeader(config.actions.onSolve) must be a function');
-      sf.assert(!config.actions.onPause || typeof config.actions.onPause === 'function', 'createHeader(config.actions.onPause) must be a function');
-      sf.assert(!config.actions.onResume || typeof config.actions.onResume === 'function', 'createHeader(config.actions.onResume) must be a function');
-      sf.assert(!config.actions.onCancel || typeof config.actions.onCancel === 'function', 'createHeader(config.actions.onCancel) must be a function');
-      sf.assert(!config.actions.onAnalyze || typeof config.actions.onAnalyze === 'function', 'createHeader(config.actions.onAnalyze) must be a function');
-      sf.assert(!config.onTabChange || typeof config.onTabChange === 'function', 'createHeader(config.onTabChange) must be a function');
+      assert(typeof config.actions === 'object', 'createHeader(config.actions) expects an object');
+      assert(!config.actions.onSolve || typeof config.actions.onSolve === 'function', 'createHeader(config.actions.onSolve) must be a function');
+      assert(!config.actions.onPause || typeof config.actions.onPause === 'function', 'createHeader(config.actions.onPause) must be a function');
+      assert(!config.actions.onResume || typeof config.actions.onResume === 'function', 'createHeader(config.actions.onResume) must be a function');
+      assert(!config.actions.onCancel || typeof config.actions.onCancel === 'function', 'createHeader(config.actions.onCancel) must be a function');
+      assert(!config.actions.onAnalyze || typeof config.actions.onAnalyze === 'function', 'createHeader(config.actions.onAnalyze) must be a function');
+      assert(!config.onTabChange || typeof config.onTabChange === 'function', 'createHeader(config.onTabChange) must be a function');
 
-      var actions = sf.el('div', { className: 'sf-header-actions' });
+      var actions = el('div', { className: 'sf-header-actions' });
       controls.actions = actions;
 
       // Spinner
-      var spinner = sf.el('div', { className: 'sf-solving-spinner' });
+      var spinner = el('div', { className: 'sf-solving-spinner' });
       controls.spinner = spinner;
       actions.appendChild(spinner);
 
       if (config.actions.onSolve) {
-        var solveBtn = sf.createButton({
+        var solveBtn = createButton({
           text: 'Solve',
           variant: 'success',
           icon: 'fa-play',
@@ -112,7 +112,7 @@
       }
 
       if (config.actions.onPause) {
-        var pauseBtn = sf.createButton({
+        var pauseBtn = createButton({
           text: 'Pause',
           variant: 'default',
           icon: 'fa-pause',
@@ -124,7 +124,7 @@
       }
 
       if (config.actions.onResume) {
-        var resumeBtn = sf.createButton({
+        var resumeBtn = createButton({
           text: 'Resume',
           variant: 'primary',
           icon: 'fa-play',
@@ -136,7 +136,7 @@
       }
 
       if (config.actions.onCancel) {
-        var cancelBtn = sf.createButton({
+        var cancelBtn = createButton({
           text: 'Stop',
           variant: 'danger',
           icon: 'fa-stop',
@@ -148,7 +148,7 @@
       }
 
       if (config.actions.onAnalyze) {
-        var analyzeBtn = sf.createButton({
+        var analyzeBtn = createButton({
           variant: 'ghost',
           icon: 'fa-chart-bar',
           circle: true,
@@ -165,5 +165,3 @@
     header.sfControls = controls;
     return header;
   };
-
-})(SF);

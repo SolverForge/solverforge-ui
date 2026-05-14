@@ -4,9 +4,12 @@
   "scripts": {
     "lint:frontend": "eslint js-src tests scripts",
     "typecheck:frontend": "tsc --noEmit",
-    "test:browser": "node tests/demo-browser-check.js"
+    "test:browser": "node tests/demo-browser-check.js",
+    "build:esm": "esbuild ts-src/index.ts --bundle --format=esm --outfile=static/sf/sf.esm.js",
+    "build:iife": "esbuild ts-src/index.ts --bundle --format=iife --global-name=SF --outfile=static/sf/sf.js"
   },
   "devDependencies": {
+    "esbuild": "^0.28.0",
     "eslint": "^10.2.1",
     "globals": "^17.5.0",
     "playwright": "^1.59.1",
