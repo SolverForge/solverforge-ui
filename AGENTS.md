@@ -79,6 +79,12 @@ Run downstream gates when a change touches the shipped global API, backend
 contracts, solver lifecycle behavior, dense timeline behavior, generated
 bundles, or the crate package surface used by application repos.
 
+- On the `refactor/migrate-to-typescript` integration branch, frontend tests
+  intentionally run through the freshly rebuilt generated `static/sf/sf.js`
+  bundle until stable TypeScript/source imports exist. Keep this branch reliable
+  for downstream consumers, and avoid merging partial migration states directly
+  to `main`.
+
 - `solverforge-cli` is the scaffold/template gate. Its scalar and list
   templates call `SF.createBackend({ baseUrl: '' })`, pass that adapter into
   `SF.createSolver()`, mount `SF.rail.createTimeline()`, and depend on the

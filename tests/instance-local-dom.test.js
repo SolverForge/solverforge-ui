@@ -1,15 +1,10 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
-const { loadSf } = require('./support/load-sf');
-
-const HEADER_STATUS_FILES = ['js-src/00-core.js', 'js-src/03-buttons.js', 'js-src/04-header.js', 'js-src/05-statusbar.js'];
-const SCORE_STATUS_FILES = ['js-src/00-core.js', 'js-src/01-score.js', 'js-src/05-statusbar.js'];
-const TABS_FILES = ['js-src/00-core.js', 'js-src/07-tabs.js'];
-const GANTT_FILES = ['js-src/00-core.js', 'js-src/14-gantt.js'];
+const { loadSf } = require('./support/load-sf')
 
 test('status bars only toggle the controls on their bound header', () => {
-  const { SF } = loadSf(HEADER_STATUS_FILES);
+  const { SF } = loadSf();
 
   const headerOne = SF.createHeader({ actions: { onSolve() { }, onPause() { }, onResume() { }, onCancel() { } } });
   const headerTwo = SF.createHeader({ actions: { onSolve() { }, onPause() { }, onResume() { }, onCancel() { } } });
@@ -60,7 +55,7 @@ test('status bars only toggle the controls on their bound header', () => {
 });
 
 test('status bar can show the same score again after reset', () => {
-  const { SF, document } = loadSf(SCORE_STATUS_FILES);
+  const { SF, document } = loadSf();
 
   const bar = SF.createStatusBar({});
   document.body.appendChild(bar.el);
@@ -77,7 +72,7 @@ test('status bar can show the same score again after reset', () => {
 });
 
 test('tab switching stays scoped to the owning tab container', () => {
-  const { SF, document } = loadSf(TABS_FILES);
+  const { SF, document } = loadSf();
 
   const tabsOne = SF.createTabs({
     tabs: [
@@ -103,7 +98,7 @@ test('tab switching stays scoped to the owning tab container', () => {
 });
 
 test('global showTab updates every matching tab container independently', () => {
-  const { SF, document } = loadSf(TABS_FILES);
+  const { SF, document } = loadSf();
 
   const tabsOne = SF.createTabs({
     tabs: [
@@ -129,7 +124,7 @@ test('global showTab updates every matching tab container independently', () => 
 });
 
 test('root-scoped showTab only updates the targeted tab container', () => {
-  const { SF, document } = loadSf(TABS_FILES);
+  const { SF, document } = loadSf();
 
   const tabsOne = SF.createTabs({
     tabs: [
@@ -155,7 +150,7 @@ test('root-scoped showTab only updates the targeted tab container', () => {
 });
 
 test('missing tab ids only clear active state inside the targeted tab container', () => {
-  const { SF, document } = loadSf(TABS_FILES);
+  const { SF, document } = loadSf();
 
   const tabsOne = SF.createTabs({
     tabs: [
@@ -181,7 +176,7 @@ test('missing tab ids only clear active state inside the targeted tab container'
 });
 
 test('gantt instances get unique generated IDs by default', () => {
-  const { SF } = loadSf(GANTT_FILES);
+  const { SF } = loadSf();
 
   const ganttOne = SF.gantt.create({});
   const ganttTwo = SF.gantt.create({});
@@ -196,7 +191,7 @@ test('gantt instances get unique generated IDs by default', () => {
 });
 
 test('gantt.create falls back to built-in defaults when config is omitted', () => {
-  const { SF } = loadSf(GANTT_FILES);
+  const { SF } = loadSf();
 
   const gantt = SF.gantt.create();
   const panes = gantt.el.querySelectorAll('.sf-gantt-pane');
@@ -213,7 +208,7 @@ test('gantt remount recreates the chart and preserves refresh behavior', () => {
   const refreshCalls = [];
   let ganttInstanceCount = 0;
 
-  const { SF, document } = loadSf(GANTT_FILES, {
+  const { SF, document } = loadSf([], {
     Split: function (targets, options) {
       splitCalls.push({ targets, options });
       return {
@@ -253,7 +248,7 @@ test('gantt remount recreates the chart and preserves refresh behavior', () => {
 test('failed gantt remount keeps the existing mounted chart intact', () => {
   let destroyCount = 0;
 
-  const { SF, document } = loadSf(GANTT_FILES, {
+  const { SF, document } = loadSf([], {
     Split: function () {
       return {
         destroy() {
@@ -293,7 +288,7 @@ test('failed gantt remount keeps the existing mounted chart intact', () => {
 test('gantt initSplit keeps accepting scalar splitMinSize values', () => {
   const splitCalls = [];
 
-  const { SF, document } = loadSf(GANTT_FILES, {
+  const { SF, document } = loadSf([], {
     Split: function (targets, options) {
       splitCalls.push({ targets, options });
       return {
@@ -314,7 +309,7 @@ test('gantt initSplit keeps accepting scalar splitMinSize values', () => {
 });
 
 test('gantt sortable columns render and reorder grid rows without throwing', () => {
-  const { SF } = loadSf(GANTT_FILES, {
+  const { SF } = loadSf([], {
     Gantt: function () {
       return {
         change_view_mode() { },
@@ -346,7 +341,7 @@ test('gantt sortable columns render and reorder grid rows without throwing', () 
 test('gantt pinned tasks propagate pinned custom class to chart tasks', () => {
   let seenTasks = null;
 
-  const { SF } = loadSf(GANTT_FILES, {
+  const { SF } = loadSf([], {
     Gantt: function (_selector, tasks) {
       seenTasks = tasks;
       return {

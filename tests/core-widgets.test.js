@@ -4,12 +4,7 @@ const test = require('node:test');
 const { loadSf } = require('./support/load-sf');
 
 test('button, table, and tabs render and respond to basic interactions', () => {
-  const { SF, document } = loadSf([
-    'js-src/00-core.js',
-    'js-src/03-buttons.js',
-    'js-src/07-tabs.js',
-    'js-src/08-table.js',
-  ]);
+  const { SF, document } = loadSf();
 
   let clicked = 0;
   const button = SF.createButton({

@@ -61,10 +61,11 @@ component rendering. Use `make test` for the full suite, `make test-quick` for
 Rust doctests, Rust unit tests, frontend Node coverage, and browser smoke
 tests, or `make test-frontend` when you only want the JavaScript suite.
 Frontend test targets rebuild the generated `static/sf/sf.js` bundle before
-running bundle-level checks, while source-level tests still exercise the
-editable `js-src/` modules directly. Use `make lint-frontend` for ESLint on
-`js-src/`, `tests/`, and `scripts/` plus development-only TypeScript checking,
-or `make lint` to run the Rust and JavaScript lint surfaces together.
+running the Node coverage. During the TypeScript migration branch, those tests
+intentionally exercise the generated global bundle until stable source imports
+exist. Use `make lint-frontend` for ESLint on `js-src/`, `tests`, and
+`scripts/` plus development-only TypeScript checking, or `make lint` to run the
+Rust and JavaScript lint surfaces together.
 
 ## Quick Start
 

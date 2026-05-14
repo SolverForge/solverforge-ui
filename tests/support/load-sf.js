@@ -8,7 +8,7 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const STATIC_DIR = path.resolve(ROOT, 'static', 'sf');
 const SF_LIB = "sf.js";
 
-function createContext(overrides = {}) {
+function loadSf(files = [], overrides = {}) {
   const { document, window, Node } = createDom();
   const context = vm.createContext({
     console,
@@ -21,28 +21,15 @@ function createContext(overrides = {}) {
     ...overrides,
   });
 
-  return { context, document };
-}
+  // inject sf.js
+  const source = fs.readFileSync(path.join(STATIC_DIR, SF_LIB), 'utf8');
+  vm.runInContext(source, context, { filename: SF_LIB });
 
-function runFiles(context, files) {
+  // additional files
   files.forEach((file) => {
     const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
     vm.runInContext(source, context, { filename: file });
   });
-}
-
-function loadSf(files = [], overrides = {}) {
-  const { context, document } = createContext(overrides);
-  runFiles(context, files);
-
-  return { SF: context.window.SF, context, document };
-}
-
-function loadSfBundle(overrides = {}, additionalFiles = []) {
-  const { context, document } = createContext(overrides);
-  const source = fs.readFileSync(path.join(STATIC_DIR, SF_LIB), 'utf8');
-  vm.runInContext(source, context, { filename: SF_LIB });
-  runFiles(context, additionalFiles);
 
   return { SF: context.window.SF, context, document };
 }
@@ -54,6 +41,5 @@ async function flush() {
 
 module.exports = {
   loadSf,
-  loadSfBundle,
   flush,
 };

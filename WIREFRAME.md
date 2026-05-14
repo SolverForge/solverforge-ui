@@ -456,6 +456,11 @@ These gates are part of the shipped integration contract when a change touches
 the global `SF` API, generated bundle, backend adapter shapes, solver lifecycle,
 or dense timeline behavior.
 
+On the `refactor/migrate-to-typescript` branch, frontend tests intentionally
+exercise the rebuilt generated `static/sf/sf.js` bundle until stable
+TypeScript/source imports exist. This keeps downstream behavior tied to the
+artifact consumers actually load while the migration remains off `main`.
+
 | Downstream project | Contract exercised | Local gate |
 |---|---|---|
 | `solverforge-cli` | Generated scalar/list apps use `SF.createBackend({ baseUrl: '' })`, `SF.createSolver()`, and `SF.rail.createTimeline()` from the crate bundle. | From `/srv/lab/dev/solverforge/solverforge-cli`: `SF_USE_LOCAL_PATCHES=1 SF_ECOSYSTEM_ROOT=/srv/lab/dev/solverforge cargo test --test scaffold_test -- --nocapture` |
