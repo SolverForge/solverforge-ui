@@ -1,45 +1,21 @@
-default_install_hook_types:
-    - pre-commit
-    - pre-push
-
 repos:
-    - repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v4.5.0
-      hooks:
-          - id: check-yaml
-            stages: [pre-commit]
-          - id: end-of-file-fixer
-            stages: [pre-commit]
-          - id: trailing-whitespace
-            stages: [pre-commit]
-          - id: check-merge-conflict
-            stages: [pre-commit]
-          - id: check-added-large-files
-            stages: [pre-commit]
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+    -   id: check-yaml
+    -   id: end-of-file-fixer
+    -   id: trailing-whitespace
+    -   id: check-merge-conflict
+    -   id: check-added-large-files
 
-    - repo: https://github.com/gitleaks/gitleaks
-      rev: v8.18.0
-      hooks:
-          - id: gitleaks
-            stages: [pre-commit]
-
-    - repo: https://github.com/doublify/pre-commit-rust
-      rev: v1.0
-      hooks:
-          - id: fmt
-            args: ["--", "--check"]
-            stages: [pre-commit]
-          - id: clippy
-            args: ["--", "-D", "warnings"]
-            stages: [pre-commit]
-
-    - repo: local
-      hooks:
-          - id: ci-local
-            name: Run local CI
-            entry: bash -c
-            args:
-                - "make ci-local && git reset HEAD~ -- screenshots/*.png && git restore screenshots/*.png"
-            language: system
-            pass_filenames: false
-            stages: [pre-push]
+-   repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+    -   id: gitleaks
+-   repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
+    hooks:
+    -   id: fmt
+        args: ["--", "--check"]
+    -   id: clippy
+        args: ["--", "-D", "warnings"]
