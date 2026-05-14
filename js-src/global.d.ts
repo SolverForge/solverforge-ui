@@ -300,9 +300,9 @@ declare global {
 
 	interface SolverApi {
 		start(data?: unknown): Promise<void>;
-		pause(): Promise<{ snapshot: SolverSnapshot | null; meta: EventMeta; analysis: SolverAnalysis | null } | null>;
-		resume(): Promise<EventMeta | null>;
-		cancel(): Promise<{ snapshot: SolverSnapshot | null; meta: EventMeta; analysis: SolverAnalysis | null } | null>;
+		pause(): Promise<{ snapshot: SolverSnapshot | null; meta: EventMeta; analysis: SolverAnalysis | null } | void>;
+		resume(): Promise<EventMeta | void>;
+		cancel(): Promise<{ snapshot: SolverSnapshot | null; meta: EventMeta; analysis: SolverAnalysis | null } | void>;
 		delete(): Promise<void>;
 		getSnapshot(snapshotRevision?: number | string): Promise<SolverSnapshot | null>;
 		analyzeSnapshot(snapshotRevision?: number | string): Promise<SolverAnalysis | null>;

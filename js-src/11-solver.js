@@ -117,7 +117,7 @@
 
     /**
      * Request to pause the current solver job.
-     * @returns {Promise<{snapshot: SolverSnapshot|null, meta: EventMeta, analysis: SolverAnalysis|null}|null>}
+     * @returns {Promise<{snapshot: SolverSnapshot|null, meta: EventMeta, analysis: SolverAnalysis|null}|void>}
      */
     api.pause = function () {
       if (pendingPause) return pendingPause.promise;
@@ -127,7 +127,7 @@
         return pendingPause.promise;
       }
       var jobId = currentJobId();
-      if (phase !== 'solving' || !jobId) return Promise.resolve(null);
+      if (phase !== 'solving' || !jobId) return Promise.resolve();
 
       pendingPause = createDeferred();
       if (!ensureStreamAttached(runToken, jobId, 'pause')) return pendingPause.promise;
@@ -137,12 +137,12 @@
 
     /**
      * Resume a paused solver job.
-     * @returns {Promise<EventMeta|null>}
+     * @returns {Promise<EventMeta|void>}
      */
     api.resume = function () {
       if (pendingResume) return pendingResume.promise;
       var jobId = currentJobId();
-      if (phase !== 'paused' || !jobId) return Promise.resolve(null);
+      if (phase !== 'paused' || !jobId) return Promise.resolve();
 
       pendingResume = createDeferred();
       if (!ensureStreamAttached(runToken, jobId, 'resume')) return pendingResume.promise;
@@ -152,7 +152,7 @@
 
     /**
      * Request to cancel the current solver job.
-     * @returns {Promise<{snapshot: SolverSnapshot|null, meta: EventMeta, analysis: SolverAnalysis|null}|null>}
+     * @returns {Promise<{snapshot: SolverSnapshot|null, meta: EventMeta, analysis: SolverAnalysis|null}|void>}
      */
     api.cancel = function () {
       if (pendingCancel) return pendingCancel.promise;
@@ -167,7 +167,7 @@
         if (!ensureStreamAttached(runToken, jobId, 'cancel')) return pendingCancel.promise;
         return pendingCancel.promise;
       }
-      if (!jobId || !isCancelablePhase()) return Promise.resolve(null);
+      if (!jobId || !isCancelablePhase()) return Promise.resolve();
 
       pendingCancel = createDeferred();
       if (!ensureStreamAttached(runToken, jobId, 'cancel')) return pendingCancel.promise;
