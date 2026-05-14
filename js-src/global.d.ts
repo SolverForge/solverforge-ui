@@ -12,7 +12,7 @@ declare global {
 	namespace SF {
 		interface GlobalAPI {
 			version: string;
-			createBackend: (config: BackendConfig) => BackendAdapter;
+			createBackend: (config?: BackendConfig) => BackendAdapter;
 			createSolver: (config: SolverConfig) => SolverApi;
 			assert: (value: unknown, message: string) => void;
 			normalizeCreateJobId: (id: unknown) => string;
@@ -61,7 +61,7 @@ declare global {
 		streamJobEvents(
 			id: string,
 			onMessage: (payload: SolverEvent) => void,
-			onError?: (err: SseError) => void,
+			onError?: (err: Error) => void,
 		): () => void;
 	}
 
@@ -76,19 +76,17 @@ declare global {
 		listDemoData(): Promise<unknown>;
 	}
 
-	interface BackendConfig {
-		type?: string | null;
-	}
+	type BackendConfig = HttpBackendConfig | TauriBackendConfig;
 
-	interface HttpBackendConfig extends BackendConfig {
-		type?: "axum" | "fetch";
+	interface HttpBackendConfig {
+		type?: string | null;
 		baseUrl?: string;
 		jobsPath?: string;
 		demoDataPath?: string;
 		headers?: Record<string, string>;
 	}
 
-	interface TauriBackendConfig extends BackendConfig {
+	interface TauriBackendConfig {
 		type: "tauri";
 		invoke: (
 			command: string,
