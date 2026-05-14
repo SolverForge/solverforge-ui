@@ -971,7 +971,7 @@ const SF = (function () {
   /**
    * Creates a backend adapter for the given transport type.
    * @param {BackendConfig} config
-   * @returns {Backend}
+   * @returns {BackendAdapter}
    */
   sf.createBackend = function (config) {
     config = config || {};
@@ -1020,7 +1020,7 @@ const SF = (function () {
   /**
    * Create a new HTTP backend instance.
    * @param {HttpBackendConfig} config
-   * @returns {Backend}
+   * @returns {BackendAdapter}
    */
   function createHttpBackend(config) {
     var baseUrl = config.baseUrl || '';
@@ -1132,7 +1132,7 @@ const SF = (function () {
   /**
    * Create a new IPC backend for Tauri
    * @param {TauriBackendConfig} config
-   * @returns {Backend}
+   * @returns {BackendAdapter}
    */
   function createTauriBackend(config) {
     sf.assert(typeof config === 'object', 'createBackend({}) is required for Tauri adapter');
@@ -1244,7 +1244,7 @@ const SF = (function () {
     sf.assert(!config.onAnalysis || typeof config.onAnalysis === 'function', 'createSolver(config.onAnalysis) must be a function');
     sf.assert(!config.onError || typeof config.onError === 'function', 'createSolver(config.onError) must be a function');
 
-    /** @type {Backend} */
+    /** @type {SolverBackend} */
     var backend = config.backend;
     /** @type {SolverConfig['statusBar']} */
     var statusBar = config.statusBar;
@@ -1266,7 +1266,7 @@ const SF = (function () {
     var lastMeta = null;
     /** @type {Error|null} */
     var lastNotifiedError = null;
-    /** @type {QueuedAction} */
+    /** @type {string|null} */
     var queuedAction = null;
     /** @type {Deferred<{snapshot: SolverSnapshot|null, meta: EventMeta, analysis: SolverAnalysis|null}|null>|null} */
     var pendingPause = null;
@@ -1329,7 +1329,7 @@ const SF = (function () {
 
     /**
      * Request to pause the current solver job.
-     * @returns {Promise<{snapshot: SolverSnapshot|null, meta: EventMeta, analysis: SolverAnalysis|null}|null>}
+     * @returns {Promise<{snapshot: SolverSnapshot|null, meta: EventMeta, analysis: SolverAnalysis|null}|void>}
      */
     api.pause = function () {
       if (pendingPause) return pendingPause.promise;
@@ -1339,7 +1339,7 @@ const SF = (function () {
         return pendingPause.promise;
       }
       var jobId = currentJobId();
-      if (phase !== 'solving' || !jobId) return Promise.resolve(null);
+      if (phase !== 'solving' || !jobId) return Promise.resolve();
 
       pendingPause = createDeferred();
       if (!ensureStreamAttached(runToken, jobId, 'pause')) return pendingPause.promise;
@@ -1349,12 +1349,12 @@ const SF = (function () {
 
     /**
      * Resume a paused solver job.
-     * @returns {Promise<EventMeta|null>}
+     * @returns {Promise<EventMeta|void>}
      */
     api.resume = function () {
       if (pendingResume) return pendingResume.promise;
       var jobId = currentJobId();
-      if (phase !== 'paused' || !jobId) return Promise.resolve(null);
+      if (phase !== 'paused' || !jobId) return Promise.resolve();
 
       pendingResume = createDeferred();
       if (!ensureStreamAttached(runToken, jobId, 'resume')) return pendingResume.promise;
@@ -1364,7 +1364,7 @@ const SF = (function () {
 
     /**
      * Request to cancel the current solver job.
-     * @returns {Promise<{snapshot: SolverSnapshot|null, meta: EventMeta, analysis: SolverAnalysis|null}|null>}
+     * @returns {Promise<{snapshot: SolverSnapshot|null, meta: EventMeta, analysis: SolverAnalysis|null}|void>}
      */
     api.cancel = function () {
       if (pendingCancel) return pendingCancel.promise;
@@ -1379,7 +1379,7 @@ const SF = (function () {
         if (!ensureStreamAttached(runToken, jobId, 'cancel')) return pendingCancel.promise;
         return pendingCancel.promise;
       }
-      if (!jobId || !isCancelablePhase()) return Promise.resolve(null);
+      if (!jobId || !isCancelablePhase()) return Promise.resolve();
 
       pendingCancel = createDeferred();
       if (!ensureStreamAttached(runToken, jobId, 'cancel')) return pendingCancel.promise;
@@ -1506,7 +1506,7 @@ const SF = (function () {
      * Ensure the stream is attached, creating it if necessary.
      * @param {number} token
      * @param {string} id
-     * @param {DeferredName} pendingName
+     * @param {string} pendingName
      * @returns {boolean}
      */
     function ensureStreamAttached(token, id, pendingName) {
@@ -2083,7 +2083,7 @@ const SF = (function () {
 
     /**
      * Resolve a deferred promise.
-     * @param {DeferredName} name
+     * @param {string} name
      * @param {unknown} value
      */
     function resolveDeferred(name, value) {
@@ -2095,7 +2095,7 @@ const SF = (function () {
 
     /**
      * Reject a deferred promise.
-     * @param {DeferredName} name
+     * @param {string} name
      * @param {Error} err
      */
     function rejectDeferred(name, err) {
@@ -2107,7 +2107,7 @@ const SF = (function () {
 
     /**
      * Get a deferred by name.
-     * @param {DeferredName} name
+     * @param {string} name
      * @returns {Deferred<any>|null}
      */
     function getDeferred(name) {
@@ -2119,7 +2119,7 @@ const SF = (function () {
 
     /**
      * Set a deferred by name.
-     * @param {DeferredName} name
+     * @param {string} name
      * @param {Deferred<any>|null} value
      */
     function setDeferred(name, value) {

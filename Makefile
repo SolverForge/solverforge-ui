@@ -124,7 +124,7 @@ test-unit:
 		printf "$(GREEN)$(CHECK) Unit tests passed$(RESET)\n" || \
 		(printf "$(RED)$(CROSS) Unit tests failed$(RESET)\n" && exit 1)
 
-test-frontend:
+test-frontend: assets
 	@printf "$(PROGRESS) Running frontend tests...\n"
 	@node --test tests/*.test.js && \
 		printf "$(GREEN)$(CHECK) Frontend tests passed$(RESET)\n" || \
