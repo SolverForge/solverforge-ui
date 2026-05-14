@@ -86,7 +86,7 @@ test: banner
 	@printf "$(CYAN)$(BOLD)╚══════════════════════════════════════╝$(RESET)\n\n"
 	@printf "$(ARROW) $(BOLD)Running all tests...$(RESET)\n"
 	@cargo test && \
-		node --test tests/*.test.js && \
+		$(MAKE) test-frontend --no-print-directory && \
 		node tests/demo-browser-check.js && \
 		printf "\n$(GREEN)$(CHECK) All tests passed$(RESET)\n\n" || \
 		(printf "\n$(RED)$(CROSS) Tests failed$(RESET)\n\n" && exit 1)
@@ -103,10 +103,7 @@ test-quick: banner
 	@cargo test --lib --quiet && \
 		printf "$(GREEN)$(CHECK) Unit tests passed$(RESET)\n\n" || \
 		(printf "$(RED)$(CROSS) Unit tests failed$(RESET)\n\n" && exit 1)
-	@printf "$(PROGRESS) Running frontend tests...\n"
-	@node --test tests/*.test.js && \
-		printf "$(GREEN)$(CHECK) Frontend tests passed$(RESET)\n\n" || \
-		(printf "$(RED)$(CROSS) Frontend tests failed$(RESET)\n\n" && exit 1)
+	@$(MAKE) test-frontend --no-print-directory
 	@printf "$(PROGRESS) Running browser demo smoke tests...\n"
 	@node tests/demo-browser-check.js && \
 		printf "$(GREEN)$(CHECK) Browser smoke tests passed$(RESET)\n\n" || \
@@ -203,7 +200,7 @@ ci-local: banner
 	@printf "$(PROGRESS) Step 7/9: Unit tests...\n"
 	@cargo test --lib --quiet && printf "$(GREEN)$(CHECK) Unit tests passed$(RESET)\n"
 	@printf "$(PROGRESS) Step 8/9: Frontend tests...\n"
-	@node --test tests/*.test.js && printf "$(GREEN)$(CHECK) Frontend tests passed$(RESET)\n"
+	@$(MAKE) test-frontend --no-print-directory
 	@printf "$(PROGRESS) Step 9/9: Browser smoke tests...\n"
 	@node tests/demo-browser-check.js && printf "$(GREEN)$(CHECK) Browser smoke tests passed$(RESET)\n"
 	@printf "\n$(GREEN)$(BOLD)╔══════════════════════════════════════════════════════════╗$(RESET)\n"
