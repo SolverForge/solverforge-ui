@@ -3,9 +3,11 @@ const test = require('node:test');
 
 const { loadSf, flush } = require('./support/load-sf');
 
+const SOLVER_FILES = ['js-src/00-core.js', 'js-src/10-backend.js', 'js-src/11-solver.js'];
+
 
 test('solver ignores stale paused snapshot work after a newer cancelled event', async () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(SOLVER_FILES);
   let onMessage;
   let resolvePausedSnapshot;
   let snapshotCallCount = 0;
@@ -85,7 +87,7 @@ test('solver ignores stale paused snapshot work after a newer cancelled event', 
 });
 
 test('solver keeps terminal lifecycle metadata when retained snapshots are pause-bound', async () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(SOLVER_FILES);
   let onMessage;
   const backend = {
     createJob: async () => 'job-terminal-meta',
@@ -157,7 +159,7 @@ test('solver keeps terminal lifecycle metadata when retained snapshots are pause
   { eventType: 'completed', lifecycleState: 'TERMINATED_BY_CONFIG' },
 ].forEach((scenario) => {
   test(`solver delete clears the retained job after terminal ${scenario.lifecycleState}`, async () => {
-    const { SF } = loadSf();
+    const { SF } = loadSf(SOLVER_FILES);
     let onMessage;
     const calls = [];
     let createCount = 0;
@@ -231,7 +233,7 @@ test('solver keeps terminal lifecycle metadata when retained snapshots are pause
 });
 
 test('solver preserves terminal retained state when backend deletion fails', async () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(SOLVER_FILES);
   let onMessage;
   const errors = [];
   const backend = {
@@ -285,7 +287,7 @@ test('solver preserves terminal retained state when backend deletion fails', asy
 });
 
 test('solver blocks completed retained cleanup when terminal sync fails', async () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(SOLVER_FILES);
   let onMessage;
   const calls = [];
   const errors = [];
@@ -353,7 +355,7 @@ test('solver blocks completed retained cleanup when terminal sync fails', async 
 });
 
 test('solver retries completed terminal sync during delete and delivers completion once', async () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(SOLVER_FILES);
   let onMessage;
   const calls = [];
   const errors = [];
@@ -427,7 +429,7 @@ test('solver retries completed terminal sync during delete and delivers completi
 });
 
 test('solver delete waits for terminal snapshot settlement before clearing pending commands', async () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(SOLVER_FILES);
   let onMessage;
   let resolveSnapshot;
   let cancelSettled = false;
@@ -507,7 +509,7 @@ test('solver delete waits for terminal snapshot settlement before clearing pendi
 });
 
 test('solver derives terminal status score from retained snapshot solution score', async () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(SOLVER_FILES);
   let onMessage;
   const scoreUpdates = [];
   const backend = {
@@ -559,7 +561,7 @@ test('solver derives terminal status score from retained snapshot solution score
 });
 
 test('solver derives terminal status score from snapshot-bound analysis score', async () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(SOLVER_FILES);
   let onMessage;
   const scoreUpdates = [];
   const backend = {

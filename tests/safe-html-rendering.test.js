@@ -1,10 +1,10 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
-const { loadSf } = require('./support/load-sf')
+const { loadSf } = require('./support/load-sf');
 
 test('createModal renders unsafeBody as raw HTML and preserves text mode by default', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(['js-src/00-core.js', 'js-src/06-modal.js']);
 
   const safeModal = SF.createModal({ title: 'Safe', body: '<strong>safe</strong>' });
   assert.equal(safeModal.body.textContent, '<strong>safe</strong>');
@@ -21,7 +21,7 @@ test('gantt creates the chart root as a namespaced SVG element', () => {
   let seenNamespace = null;
   let seenTag = null;
 
-  const { SF, document } = loadSf([], {
+  const { SF, document } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js'], {
     Gantt: function () {
       return {
         change_view_mode() { },

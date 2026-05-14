@@ -3,6 +3,8 @@ const test = require('node:test');
 
 const { loadSf } = require('./support/load-sf');
 
+const RAIL_TIMELINE_FILES = ['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js'];
+
 function buildAxis(dayCount, initialViewport) {
   return {
     startMinute: 0,
@@ -104,7 +106,7 @@ function buildDenseHospitalLikeModel() {
 }
 
 test('timeline detailed lanes pack overlapping items into stable track indices', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const model = {
     axis: buildAxis(7),
@@ -141,7 +143,7 @@ test('timeline detailed lanes pack overlapping items into stable track indices',
 });
 
 test('timeline detailed geometry keeps adjacent non-overlapping tasks disjoint', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const timeline = SF.rail.createTimeline({
     model: {
@@ -169,7 +171,7 @@ test('timeline detailed geometry keeps adjacent non-overlapping tasks disjoint',
 });
 
 test('timeline detailed geometry renders true overlaps on different tracks', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const timeline = SF.rail.createTimeline({
     model: {
@@ -199,7 +201,7 @@ test('timeline detailed geometry renders true overlaps on different tracks', () 
 });
 
 test('timeline body keeps many solved lanes in one scrollable body viewport', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const model = {
     axis: buildAxis(7),
@@ -226,7 +228,7 @@ test('timeline body keeps many solved lanes in one scrollable body viewport', ()
 });
 
 test('timeline overview lanes cluster overlaps and expand only the targeted region', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const timeline = SF.rail.createTimeline({
     model: {
@@ -267,7 +269,7 @@ test('timeline overview lanes cluster overlaps and expand only the targeted regi
 });
 
 test('timeline overview lanes reject duplicate cluster ids across disjoint groups in one lane', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   assert.throws(() => {
     SF.rail.createTimeline({
@@ -292,7 +294,7 @@ test('timeline overview lanes reject duplicate cluster ids across disjoint group
 });
 
 test('timeline overview summaries accept additive summary metadata and render count/open/tone composition', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const timeline = SF.rail.createTimeline({
     model: {
@@ -340,7 +342,7 @@ test('timeline overview summaries accept additive summary metadata and render co
 });
 
 test('timeline overview summaries aggregate raw and summarized items in the same group', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const timeline = SF.rail.createTimeline({
     model: {
@@ -395,7 +397,7 @@ test('timeline overview summaries aggregate raw and summarized items in the same
 });
 
 test('timeline overview summaries fall back per field when summary metadata is partial', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const timeline = SF.rail.createTimeline({
     model: {
@@ -449,7 +451,7 @@ test('timeline overview summaries fall back per field when summary metadata is p
 });
 
 test('timeline does not invent open or tone aggregates when explicit summary count outruns inspectable items', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const timeline = SF.rail.createTimeline({
     model: {
@@ -497,7 +499,7 @@ test('timeline does not invent open or tone aggregates when explicit summary cou
 });
 
 test('timeline overview lanes cluster tightly adjacent items into one aggregate block', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const timeline = SF.rail.createTimeline({
     model: {
@@ -520,7 +522,7 @@ test('timeline overview lanes cluster tightly adjacent items into one aggregate 
 });
 
 test('timeline syncs header/body scroll, updates zoom presets, and drag-pans from the header', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const timeline = SF.rail.createTimeline({
     model: {
@@ -574,7 +576,7 @@ test('timeline syncs header/body scroll, updates zoom presets, and drag-pans fro
 });
 
 test('timeline can omit zoom controls for fixed-horizon app surfaces', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const timeline = SF.rail.createTimeline({
     zoomPresets: [],
@@ -597,7 +599,7 @@ test('timeline can omit zoom controls for fixed-horizon app surfaces', () => {
 });
 
 test('timeline updates viewport without rebuilding rows for simple pan changes', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const timeline = SF.rail.createTimeline({
     model: {
@@ -628,7 +630,7 @@ test('timeline updates viewport without rebuilding rows for simple pan changes',
 
 test('timeline derives content width from the measured body viewport instead of the padded host', () => {
   const observers = [];
-  const { SF, document } = loadSf([],
+  const { SF, document } = loadSf(RAIL_TIMELINE_FILES,
     {
       ResizeObserver: class ResizeObserver {
         constructor(callback) {
@@ -694,7 +696,7 @@ test('timeline derives content width from the measured body viewport instead of 
 
 test('timeline compacts the label column before collapsing the visible track', () => {
   const observers = [];
-  const { SF, document } = loadSf([],
+  const { SF, document } = loadSf(RAIL_TIMELINE_FILES,
     {
       ResizeObserver: class ResizeObserver {
         constructor(callback) {
@@ -754,7 +756,7 @@ test('timeline compacts the label column before collapsing the visible track', (
 });
 
 test('timeline renders after append when ResizeObserver is unavailable', async () => {
-  const { SF, document } = loadSf([],
+  const { SF, document } = loadSf(RAIL_TIMELINE_FILES,
     { ResizeObserver: undefined }
   );
 
@@ -792,7 +794,7 @@ test('timeline renders after append when ResizeObserver is unavailable', async (
 });
 
 test('timeline resynchronizes layout after detached model updates', async () => {
-  const { SF, document } = loadSf([],
+  const { SF, document } = loadSf(RAIL_TIMELINE_FILES,
     { ResizeObserver: undefined }
   );
 
@@ -846,7 +848,7 @@ test('timeline resynchronizes layout after detached model updates', async () => 
 });
 
 test('timeline exposes keyboard-focus tooltip parity and keyboard expansion for overview blocks', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const timeline = SF.rail.createTimeline({
     model: {
@@ -891,7 +893,7 @@ test('timeline exposes keyboard-focus tooltip parity and keyboard expansion for 
 });
 
 test('timeline assigns stable fallback labels and ordering for unlabeled items and detail items', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const timeline = SF.rail.createTimeline({
     model: {
@@ -946,7 +948,7 @@ test('timeline assigns stable fallback labels and ordering for unlabeled items a
 });
 
 test('timeline cluster blocks stay clickable so users can collapse expanded groups from the UI', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const timeline = SF.rail.createTimeline({
     model: {
@@ -982,7 +984,7 @@ test('timeline cluster blocks stay clickable so users can collapse expanded grou
 });
 
 test('timeline scopes lane heading ids so aria-labelledby stays valid across instances', () => {
-  const { SF, document } = loadSf();
+  const { SF, document } = loadSf(RAIL_TIMELINE_FILES);
 
   const first = SF.rail.createTimeline({
     model: {
@@ -1031,7 +1033,7 @@ test('timeline scopes lane heading ids so aria-labelledby stays valid across ins
 });
 
 test('timeline rejects non-numeric minute inputs instead of coercing them', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   assert.throws(() => {
     SF.rail.createTimeline({
@@ -1175,7 +1177,7 @@ test('timeline rejects non-numeric minute inputs instead of coercing them', () =
 });
 
 test('timeline rejects fractional minute inputs instead of rendering malformed clock labels', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   assert.throws(() => {
     SF.rail.createTimeline({
@@ -1253,7 +1255,7 @@ test('timeline rejects fractional minute inputs instead of rendering malformed c
 });
 
 test('timeline renders weekend shading and default 6-hour ticks without explicit tick input', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const timeline = SF.rail.createTimeline({
     model: {
@@ -1283,7 +1285,7 @@ test('timeline renders weekend shading and default 6-hour ticks without explicit
 });
 
 test('timeline renders the repeatable dense hospital-like validation scenario', () => {
-  const { SF } = loadSf();
+  const { SF } = loadSf(RAIL_TIMELINE_FILES);
 
   const denseModel = buildDenseHospitalLikeModel();
   const timeline = SF.rail.createTimeline({ model: denseModel });

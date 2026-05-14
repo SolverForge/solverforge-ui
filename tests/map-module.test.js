@@ -84,7 +84,7 @@ function createLeafletStub() {
 
 test('map fitBounds uses a Leaflet feature group with bounds support', () => {
   const { L, calls } = createLeafletStub();
-  const { SF } = loadSf(['static/sf/modules/sf-map.js'], { L });
+  const { SF } = loadSf(['js-src/00-core.js', 'static/sf/modules/sf-map.js'], { L });
 
   const map = SF.map.create({
     container: 'map',
