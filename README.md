@@ -60,8 +60,11 @@ frontend tests for backend adapters, focused solver lifecycle suites, and core
 component rendering. Use `make test` for the full suite, `make test-quick` for
 Rust doctests, Rust unit tests, frontend Node coverage, and browser smoke
 tests, or `make test-frontend` when you only want the JavaScript suite.
-Use `make lint-frontend` for ESLint on `js-src/`, `tests/`, and `scripts/`, or
-`make lint` to run the Rust and JavaScript lint surfaces together.
+Frontend test targets rebuild the generated `static/sf/sf.js` bundle before
+running bundle-level checks, while source-level tests still exercise the
+editable `js-src/` modules directly. Use `make lint-frontend` for ESLint on
+`js-src/`, `tests/`, and `scripts/` plus development-only TypeScript checking,
+or `make lint` to run the Rust and JavaScript lint surfaces together.
 
 ## Quick Start
 
@@ -173,7 +176,7 @@ Default content is always text-rendered. Use these fields only with trusted HTML
 
 | Factory | Returns | Description |
 |---------|---------|-------------|
-| `SF.createBackend(config)` | Backend adapter | HTTP or Tauri IPC transport |
+| `SF.createBackend(config)` | Backend adapter | Built-in HTTP or Tauri IPC transport, including adapter convenience methods |
 | `SF.createSolver(config)` | `{start, pause, resume, cancel, delete, getSnapshot, analyzeSnapshot, isRunning, getJobId, getLifecycleState, getSnapshotRevision}` | Shared job lifecycle orchestration around typed runtime events, exact paused snapshots, retained analysis, and terminal cleanup |
 
 Startup streams may begin with either a scored `progress` event or a scored
@@ -571,7 +574,16 @@ Expects standard SolverForge REST endpoints:
 - `GET /demo-data/{name}` — load demo dataset
 
 Backend contract expectations:
+- `SF.createBackend()` returns the fuller built-in adapter shape for HTTP and
+  Tauri transports, including convenience methods such as `getJob()`,
+  `getJobStatus()`, `getDemoData()`, and `listDemoData()`.
+- Custom backends passed directly to `SF.createSolver()` use the narrower
+  lifecycle contract below; they do not need to implement built-in adapter
+  convenience methods.
 - Custom backends passed to `SF.createSolver()` must implement `createJob()`, `streamJobEvents()`, `getSnapshot()`, `analyzeSnapshot()`, `pauseJob()`, `resumeJob()`, `cancelJob()`, and `deleteJob()`.
+- `SF.createBackend()` treats `type: 'tauri'` as the Tauri adapter and every
+  other type, including omitted type, `null`, `axum`, `fetch`, and `rails`, as
+  the HTTP adapter.
 - `createJob()` must resolve to a plain job id (non-empty string or finite number), or an object containing a scalar `id`, `jobId`, or `job_id`. Numeric `0` is a valid id and is normalized to `"0"`.
 - Non-scalar `createJob()` ids such as arrays, nested objects, booleans, `NaN`, infinities, and empty strings are rejected before the solver attaches streams or performs snapshot/analysis calls.
 - Built-in HTTP and Tauri adapters also accept `{ data: { id } }` response wrappers and normalize the id through the same scalar-only path.
