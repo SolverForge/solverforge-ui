@@ -9,7 +9,7 @@
   /**
    * Creates a backend adapter for the given transport type.
    * @param {BackendConfig} config
-   * @returns {Backend}
+   * @returns {BackendAdapter}
    */
   sf.createBackend = function (config) {
     config = config || {};
@@ -58,7 +58,7 @@
   /**
    * Create a new HTTP backend instance.
    * @param {HttpBackendConfig} config
-   * @returns {Backend}
+   * @returns {BackendAdapter}
    */
   function createHttpBackend(config) {
     var baseUrl = config.baseUrl || '';
@@ -170,7 +170,7 @@
   /**
    * Create a new IPC backend for Tauri
    * @param {TauriBackendConfig} config
-   * @returns {Backend}
+   * @returns {BackendAdapter}
    */
   function createTauriBackend(config) {
     sf.assert(typeof config === 'object', 'createBackend({}) is required for Tauri adapter');

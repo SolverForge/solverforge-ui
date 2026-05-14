@@ -12,10 +12,10 @@ declare global {
 	namespace SF {
 		interface GlobalAPI {
 			version: string;
-			createBackend: (config: BackendConfig) => Backend;
+			createBackend: (config: BackendConfig) => BackendAdapter;
 			createSolver: (config: SolverConfig) => SolverApi;
 			assert: (value: unknown, message: string) => void;
-			normalizeCreateJobId: (id: unknown) => string | null;
+			normalizeCreateJobId: (id: unknown) => string;
 		}
 	}
 
@@ -42,26 +42,22 @@ declare global {
 	// ------------------------------------------------------------------------
 
 	/**
-	 * Common interface implemented by all backend adapters.
+	 * Minimum contract required by SF.createSolver().
+	 * Custom backends only need to implement these methods.
 	 */
-	interface Backend {
-		createJob(data: unknown): Promise<string | number | { id?: string | number; jobId?: string | number; job_id?: string | number }>;
-		getJob(id: string): Promise<unknown>;
-		getJobStatus(id: string): Promise<unknown>;
-		getSnapshot(
-			id: string,
-			snapshotRevision?: string | number,
-		): Promise<unknown>;
-		analyzeSnapshot(
-			id: string,
-			snapshotRevision?: string | number,
-		): Promise<unknown>;
+	interface SolverBackend {
+		createJob(data: unknown): Promise<string | number | {
+			id?: string | number;
+			jobId?: string | number;
+			job_id?: string | number;
+			data?: { id?: string | number };
+		}>;
+		getSnapshot(id: string, snapshotRevision?: string | number): Promise<unknown>;
+		analyzeSnapshot(id: string, snapshotRevision?: string | number): Promise<unknown>;
 		pauseJob(id: string): Promise<unknown>;
 		resumeJob(id: string): Promise<unknown>;
 		cancelJob(id: string): Promise<unknown>;
 		deleteJob(id: string): Promise<unknown>;
-		getDemoData(name: string): Promise<unknown>;
-		listDemoData(): Promise<unknown>;
 		streamJobEvents(
 			id: string,
 			onMessage: (payload: SolverEvent) => void,
@@ -69,8 +65,19 @@ declare global {
 		): () => void;
 	}
 
+	/**
+	 * Full built-in adapter shape returned by SF.createBackend().
+	 * Adds convenience methods not required by createSolver().
+	 */
+	interface BackendAdapter extends SolverBackend {
+		getJob(id: string): Promise<unknown>;
+		getJobStatus(id: string): Promise<unknown>;
+		getDemoData(name: string): Promise<unknown>;
+		listDemoData(): Promise<unknown>;
+	}
+
 	interface BackendConfig {
-		type?: string;
+		type?: string | null;
 	}
 
 	interface HttpBackendConfig extends BackendConfig {
@@ -265,18 +272,8 @@ declare global {
 	// Solver Configuration & API
 	// ------------------------------------------------------------------------
 
-	/**
-	 * Queueable action types for pending operations.
-	 */
-	type QueuedAction = 'pause' | 'cancel' | null;
-
-	/**
-	 * Deferred operation names for getDeferred/setDeferred helper functions.
-	 */
-	type DeferredName = 'pause' | 'resume' | 'cancel';
-
 	interface SolverConfig {
-		backend: Backend;
+		backend: SolverBackend;
 		statusBar?: {
 			setLifecycleState?: (state: LifecycleState) => void;
 			setSolving?: (solving: boolean) => void;

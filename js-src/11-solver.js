@@ -32,7 +32,7 @@
     sf.assert(!config.onAnalysis || typeof config.onAnalysis === 'function', 'createSolver(config.onAnalysis) must be a function');
     sf.assert(!config.onError || typeof config.onError === 'function', 'createSolver(config.onError) must be a function');
 
-    /** @type {Backend} */
+    /** @type {SolverBackend} */
     var backend = config.backend;
     /** @type {SolverConfig['statusBar']} */
     var statusBar = config.statusBar;
@@ -54,7 +54,7 @@
     var lastMeta = null;
     /** @type {Error|null} */
     var lastNotifiedError = null;
-    /** @type {QueuedAction} */
+    /** @type {string|null} */
     var queuedAction = null;
     /** @type {Deferred<{snapshot: SolverSnapshot|null, meta: EventMeta, analysis: SolverAnalysis|null}|null>|null} */
     var pendingPause = null;
@@ -294,7 +294,7 @@
      * Ensure the stream is attached, creating it if necessary.
      * @param {number} token
      * @param {string} id
-     * @param {DeferredName} pendingName
+     * @param {string} pendingName
      * @returns {boolean}
      */
     function ensureStreamAttached(token, id, pendingName) {
@@ -871,7 +871,7 @@
 
     /**
      * Resolve a deferred promise.
-     * @param {DeferredName} name
+     * @param {string} name
      * @param {unknown} value
      */
     function resolveDeferred(name, value) {
@@ -883,7 +883,7 @@
 
     /**
      * Reject a deferred promise.
-     * @param {DeferredName} name
+     * @param {string} name
      * @param {Error} err
      */
     function rejectDeferred(name, err) {
@@ -895,7 +895,7 @@
 
     /**
      * Get a deferred by name.
-     * @param {DeferredName} name
+     * @param {string} name
      * @returns {Deferred<any>|null}
      */
     function getDeferred(name) {
@@ -907,7 +907,7 @@
 
     /**
      * Set a deferred by name.
-     * @param {DeferredName} name
+     * @param {string} name
      * @param {Deferred<any>|null} value
      */
     function setDeferred(name, value) {
