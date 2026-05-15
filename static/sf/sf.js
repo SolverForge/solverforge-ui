@@ -21,7 +21,7 @@ var SF = (() => {
   var index_exports = {};
   __export(index_exports, {
     assert: () => assert,
-    bindActivation: () => bindActivation2,
+    bindActivation: () => bindActivation,
     colorClass: () => colorClass,
     create: () => create,
     createApiGuide: () => createApiGuide,
@@ -102,7 +102,7 @@ var SF = (() => {
     uidCounter += 1;
     return (prefix || "sf") + "-" + uidCounter;
   };
-  var bindActivation2 = function(el2, onActivate) {
+  var bindActivation = function(el2, onActivate) {
     if (!el2 || typeof onActivate !== "function") return;
     function handleActivate(e) {
       if (!e || e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
@@ -588,7 +588,7 @@ var SF = (() => {
       });
       if (onClick) {
         dot.style.cursor = "pointer";
-        bindActivation2(dot, function() {
+        bindActivation(dot, function() {
           onClick(i);
         });
       }
@@ -669,7 +669,7 @@ var SF = (() => {
           tr2.style.cursor = "pointer";
           tr2.setAttribute("role", "button");
           tr2.tabIndex = 0;
-          bindActivation2(tr2, function() {
+          bindActivation(tr2, function() {
             config.onRowClick(rowIdx, row);
           });
         }
@@ -1348,7 +1348,7 @@ var SF = (() => {
     if (config.onClick) {
       block.setAttribute("role", "button");
       block.tabIndex = 0;
-      bindActivation2(block, function(e) {
+      bindActivation(block, function(e) {
         config.onClick(e, config);
       });
     }

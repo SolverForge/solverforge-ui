@@ -24,9 +24,9 @@ SEMVER_RE := '^[0-9]+\.[0-9]+\.[0-9]+$$'
 
 # ============== Asset Sources ==============
 CSS_SRC := $(sort $(wildcard css-src/*.css))
-JS_SRC  := $(sort $(wildcard js-src/*.js))
 VERSIONED_CSS := static/sf/sf.$(VERSION).css
 VERSIONED_JS := static/sf/sf.$(VERSION).js
+VERSIONED_MJS := static/sf/sf.$(VERSION).mjs
 
 # ============== Phony Targets ==============
 .PHONY: banner help assets build build-release test test-quick test-doc test-unit test-frontend test-browser test-one \
@@ -44,7 +44,7 @@ banner:
 
 # ============== Asset Targets ==============
 
-assets: static/sf/sf.css static/sf/sf.js $(VERSIONED_CSS) $(VERSIONED_JS)
+assets: static/sf/sf.css static/sf/sf.js static/sf/sf.mjs $(VERSIONED_CSS) $(VERSIONED_JS) $(VERSIONED_MJS)
 
 static/sf/sf.css $(VERSIONED_CSS): $(CSS_SRC)
 	@printf "$(PROGRESS) CSS  sf.css ($(words $(CSS_SRC)) files)\n"
@@ -52,12 +52,16 @@ static/sf/sf.css $(VERSIONED_CSS): $(CSS_SRC)
 	@cp static/sf/sf.css $(VERSIONED_CSS)
 	@printf "$(GREEN)$(CHECK) CSS bundled$(RESET)\n"
 
-static/sf/sf.js $(VERSIONED_JS): $(JS_SRC)
-	@printf "$(PROGRESS) JS   sf.js ($(words $(JS_SRC)) files)\n"
-	@cat $(JS_SRC) > static/sf/sf.js
+static/sf/sf.js $(VERSIONED_JS):
+	@printf "$(PROGRESS) JS   sf.js (TypeScript bundle)\n"
+	@npm run build:iife
 	@cp static/sf/sf.js $(VERSIONED_JS)
 	@printf "$(GREEN)$(CHECK) JS bundled$(RESET)\n"
-
+static/sf/sf.mjs $(VERSIONED_MJS):
+	@printf "$(PROGRESS) JS   sf.mjs (ES Module bundle)\n"
+	@npm run build:esm
+	@cp static/sf/sf.mjs $(VERSIONED_MJS)
+	@printf "$(GREEN)$(CHECK) ESM bundled$(RESET)\n"
 # ============== Build Targets ==============
 
 build: banner assets
