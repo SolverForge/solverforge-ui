@@ -31,7 +31,10 @@ function loadSf(files = [], overrides = {}) {
     vm.runInContext(source, context, { filename: file });
   });
 
-  return { SF: context.window.SF, context, document };
+  // SF is assigned as a local var in the IIFE bundle, get it from context global
+  // In the IIFE: var SF = (() => { ... })();
+  // This creates SF as a global in the VM context
+  return { SF: context.SF || context.window.SF, context, document };
 }
 
 async function flush() {

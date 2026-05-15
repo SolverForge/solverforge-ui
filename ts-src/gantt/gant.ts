@@ -3,7 +3,7 @@
    Requires: Frappe Gantt (Gantt) and Split (Split) loaded globally.
    ============================================================================ */
 
-import {assert, el, escHtml, uid} from "../core";
+import {assert, bindActivation, el, escHtml, uid} from "../core";
 
 export const create = function (config) {
   config = config || {};
