@@ -2,23 +2,22 @@
    SolverForge UI — Table Factory
    ============================================================================ */
 
-(function (sf) {
-  'use strict';
+import {assert, bindActivation, el} from "../core";
 
-  sf.createTable = function (config) {
-    sf.assert(config, 'createTable(config) requires a configuration object');
-    sf.assert(!config.columns || Array.isArray(config.columns), 'createTable(config.columns) must be an array');
-    sf.assert(!config.rows || Array.isArray(config.rows), 'createTable(config.rows) must be an array');
+export const createTable = function (config) {
+    assert(config, 'createTable(config) requires a configuration object');
+    assert(!config.columns || Array.isArray(config.columns), 'createTable(config.columns) must be an array');
+    assert(!config.rows || Array.isArray(config.rows), 'createTable(config.rows) must be an array');
 
-    var wrapper = sf.el('div', { className: 'sf-table-container' });
-    var table = sf.el('table', { className: 'sf-table' });
+    var wrapper = el('div', { className: 'sf-table-container' });
+    var table = el('table', { className: 'sf-table' });
 
     // Header
     if (config.columns) {
-      var thead = sf.el('thead');
-      var tr = sf.el('tr');
+      var thead = el('thead');
+      var tr = el('tr');
       config.columns.forEach(function (col) {
-        var th = sf.el('th', null, typeof col === 'string' ? col : col.label);
+        var th = el('th', null, typeof col === 'string' ? col : col.label);
         if (col.align) th.style.textAlign = col.align;
         if (col.width) th.style.width = col.width;
         tr.appendChild(th);
@@ -28,12 +27,12 @@
     }
 
     // Body
-    var tbody = sf.el('tbody');
+    var tbody = el('tbody');
     if (config.rows) {
       config.rows.forEach(function (row, rowIdx) {
-        var tr = sf.el('tr');
+        var tr = el('tr');
         row.forEach(function (cell, colIdx) {
-          var td = sf.el('td');
+          var td = el('td');
           if (typeof cell === 'string' || typeof cell === 'number') {
             td.textContent = cell;
           } else if (cell instanceof Node) {
@@ -50,7 +49,7 @@
           tr.style.cursor = 'pointer';
           tr.setAttribute('role', 'button');
           tr.tabIndex = 0;
-          sf.bindActivation(tr, function () { config.onRowClick(rowIdx, row); });
+          bindActivation(tr, function () { config.onRowClick(rowIdx, row); });
         }
         tbody.appendChild(tr);
       });
@@ -60,5 +59,3 @@
 
     return wrapper;
   };
-
-})(SF);

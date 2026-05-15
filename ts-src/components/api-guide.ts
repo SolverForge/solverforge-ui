@@ -2,26 +2,26 @@
    SolverForge UI — API Guide Panel
    Generates REST API documentation from endpoint definitions.
    ============================================================================ */
-import {assert} from "../core"
+import {assert, el} from "../core";
 
 export const createApiGuide = function (config) {
     assert(config, 'createApiGuide(config) requires a configuration object');
     assert(Array.isArray(config.endpoints), 'createApiGuide(config.endpoints) must be an array');
 
-    var guide = sf.el('div', { className: 'sf-api-guide' });
+    var guide = el('div', { className: 'sf-api-guide' });
     var endpoints = config.endpoints;
 
     endpoints.forEach(function (ep) {
-      var section = sf.el('div', { className: 'sf-api-section' });
-      section.appendChild(sf.el('h3', null, (ep.method || 'GET') + ' ' + ep.path));
+      var section = el('div', { className: 'sf-api-section' });
+      section.appendChild(el('h3', null, (ep.method || 'GET') + ' ' + ep.path));
       if (ep.description) {
-        section.appendChild(sf.el('p', { style: { fontSize: '13px', color: 'var(--sf-gray-600)', marginBottom: '8px' } }, ep.description));
+        section.appendChild(el('p', { style: { fontSize: '13px', color: 'var(--sf-gray-600)', marginBottom: '8px' } }, ep.description));
       }
 
       if (ep.curl) {
-        var block = sf.el('div', { className: 'sf-api-code-block' });
-        block.appendChild(sf.el('code', null, ep.curl));
-        var copyBtn = sf.el('button', {
+        var block = el('div', { className: 'sf-api-code-block' });
+        block.appendChild(el('code', null, ep.curl));
+        var copyBtn = el('button', {
           className: 'sf-copy-btn',
           'aria-label': 'Copy command',
           onClick: function () {

@@ -2,37 +2,37 @@
    SolverForge UI — Status Bar Factory
    ============================================================================ */
 
-(function (sf) {
-  'use strict';
+import {assert, bindActivation, el} from "../core";
+import {colorClass, parseHard, parseSoft} from "../utils/score";
 
-  sf.createStatusBar = function (config) {
-    var bar = sf.el('div', { className: 'sf-statusbar' });
+export const createStatusBar = function (config) {
+    var bar = el('div', { className: 'sf-statusbar' });
     var lastScore = null;
     var controls = null;
 
     // Score display
-    var scoreEl = sf.el('span', { className: 'sf-statusbar-score', id: 'sfScoreDisplay', 'aria-live': 'polite' }, '\u2014');
+    var scoreEl = el('span', { className: 'sf-statusbar-score', id: 'sfScoreDisplay', 'aria-live': 'polite' }, '\u2014');
     bar.appendChild(scoreEl);
 
     // Separator
-    bar.appendChild(sf.el('span', { className: 'sf-statusbar-sep' }, '|'));
+    bar.appendChild(el('span', { className: 'sf-statusbar-sep' }, '|'));
 
     // Constraint dots container
-    var dotsContainer = sf.el('div', { className: 'sf-statusbar-constraints' });
+    var dotsContainer = el('div', { className: 'sf-statusbar-constraints' });
     bar.appendChild(dotsContainer);
 
     // Separator + moves display
-    var movesSep = sf.el('span', { className: 'sf-statusbar-sep' }, '|');
+    var movesSep = el('span', { className: 'sf-statusbar-sep' }, '|');
     movesSep.style.display = 'none';
     bar.appendChild(movesSep);
 
-    var movesEl = sf.el('span');
+    var movesEl = el('span');
     movesEl.style.display = 'none';
     bar.appendChild(movesEl);
 
     // Separator + status text
-    bar.appendChild(sf.el('span', { className: 'sf-statusbar-sep' }, '|'));
-    var statusEl = sf.el('span', { id: 'sfStatusText', role: 'status', 'aria-live': 'polite' });
+    bar.appendChild(el('span', { className: 'sf-statusbar-sep' }, '|'));
+    var statusEl = el('span', { id: 'sfStatusText', role: 'status', 'aria-live': 'polite' });
     bar.appendChild(statusEl);
 
     // Build initial constraint dots
@@ -50,9 +50,9 @@
     api.updateScore = function (scoreStr) {
       if (scoreStr && scoreStr !== lastScore) {
         scoreEl.textContent = scoreStr;
-        var colorClass = sf.score.colorClass(scoreStr);
+        var colorClassName = colorClass(scoreStr);
         scoreEl.classList.remove('improved', 'score-green', 'score-red', 'score-yellow');
-        scoreEl.classList.add(colorClass);
+        scoreEl.classList.add(colorClassName);
         void scoreEl.offsetWidth;
         scoreEl.classList.add('improved');
         lastScore = scoreStr;
@@ -116,8 +116,8 @@
     };
 
     api.colorDotsByScore = function (scoreStr) {
-      var hard = sf.score.parseHard(scoreStr);
-      var soft = sf.score.parseSoft(scoreStr);
+      var hard = parseHard(scoreStr);
+      var soft = parseSoft(scoreStr);
       dotsContainer.querySelectorAll('.sf-constraint-dot').forEach(function (dot) {
         var isHard = dot.dataset.type === 'hard';
         dot.classList.toggle('violated', isHard && hard < 0);
@@ -131,11 +131,11 @@
       dotsContainer.querySelectorAll('.sf-constraint-dot').forEach(function (dot, i) {
         var c = constraints[i];
         if (!dot) return;
-        var isHard = c.type === 'hard';
-        var scoreVal = isHard ? sf.score.parseHard(c.score) : sf.score.parseSoft(c.score);
+        var isHardConstraint = c.type === 'hard';
+        var scoreVal = isHardConstraint ? parseHard(c.score) : parseSoft(c.score);
         var violated = scoreVal < 0;
-        dot.classList.toggle('violated', isHard && violated);
-        dot.classList.toggle('violated-soft', !isHard && violated);
+        dot.classList.toggle('violated', isHardConstraint && violated);
+        dot.classList.toggle('violated-soft', !isHardConstraint && violated);
       });
     };
 
@@ -152,7 +152,7 @@
     container.innerHTML = '';
     if (!constraints) return;
     constraints.forEach(function (c, i) {
-      var dot = sf.el('div', {
+      var dot = el('div', {
         className: 'sf-constraint-dot',
         id: 'sf-cdot-' + i,
         title: c.name || ('Constraint ' + i),
@@ -163,7 +163,7 @@
       });
       if (onClick) {
         dot.style.cursor = 'pointer';
-        sf.bindActivation(dot, function () { onClick(i); });
+        bindActivation(dot, function () { onClick(i); });
       }
       container.appendChild(dot);
     });
@@ -226,5 +226,3 @@
     if (state === 'TERMINATED_BY_CONFIG') return 'Completed';
     return 'Ready';
   }
-
-})(SF);

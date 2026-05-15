@@ -2,7 +2,7 @@
    SolverForge UI — Button Factory
    ============================================================================ */
 
-import {assert, el} from "../core"
+import {assert, el} from "../core";
 
 export const createButton = function (config) {
     assert(config, 'createButton(config) requires a configuration object');
@@ -61,5 +61,3 @@ export const createButton = function (config) {
 
     return btn;
   };
-
-})(SF);

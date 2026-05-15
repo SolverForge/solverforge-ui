@@ -2,10 +2,9 @@
    SolverForge UI — Tab Switching
    ============================================================================ */
 
-(function (sf) {
-  'use strict';
+import {assert, el, uid} from "../core";
 
-  sf.showTab = function (tabId, root) {
+export const showTab = function (tabId, root) {
     if (root) {
       activateTabInScope(root, tabId);
       return;
@@ -16,15 +15,15 @@
     });
   };
 
-  sf.createTabs = function (config) {
-    sf.assert(config, 'createTabs(config) requires a configuration object');
-    sf.assert(Array.isArray(config.tabs), 'createTabs(config.tabs) must be an array');
+export const createTabs = function (config) {
+    assert(config, 'createTabs(config) requires a configuration object');
+    assert(Array.isArray(config.tabs), 'createTabs(config.tabs) must be an array');
 
-    var container = sf.el('div', { className: 'sf-tabs-container' });
-    var tabsId = sf.uid('sf-tabs');
+    var container = el('div', { className: 'sf-tabs-container' });
+    var tabsId = uid('sf-tabs');
 
     config.tabs.forEach(function (tab) {
-      var panel = sf.el('div', {
+      var panel = el('div', {
         className: 'sf-tab-panel' + (tab.active ? ' active' : ''),
         id: tabsId + '-' + tab.id,
         dataset: { tabId: tab.id },
@@ -40,7 +39,7 @@
     return {
       el: container,
       show: function (tabId) {
-        sf.showTab(tabId, container);
+        showTab(tabId, container);
       },
     };
   };
@@ -53,5 +52,3 @@
     var panel = scope.querySelector('[data-tab-id="' + tabId + '"]');
     if (panel) panel.classList.add('active');
   }
-
-})(SF);

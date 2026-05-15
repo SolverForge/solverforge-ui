@@ -2,30 +2,29 @@
    SolverForge UI — Modal Factory
    ============================================================================ */
 
-(function (sf) {
-  'use strict';
+import {assert, el, uid} from "../core";
 
-  sf.createModal = function (config) {
-    sf.assert(config, 'createModal(config) requires a configuration object');
-    sf.assert(!config.footer || Array.isArray(config.footer), 'createModal(config.footer) must be an array');
+export const createModal = function (config) {
+    assert(config, 'createModal(config) requires a configuration object');
+    assert(!config.footer || Array.isArray(config.footer), 'createModal(config.footer) must be an array');
 
-    var overlay = sf.el('div', { className: 'sf-modal-overlay' });
-    var dialogId = sf.uid('sf-modal');
-    var dialog = sf.el('div', {
+    var overlay = el('div', { className: 'sf-modal-overlay' });
+    var dialogId = uid('sf-modal');
+    var dialog = el('div', {
       className: 'sf-modal',
       id: dialogId,
       role: 'dialog',
       'aria-modal': 'true',
       'aria-labelledby': dialogId + '-title',
     });
-    var body = sf.el('div', { className: 'sf-modal-body' });
+    var body = el('div', { className: 'sf-modal-body' });
 
     // Header
-    var header = sf.el('div', { className: 'sf-modal-header' });
-    var titleEl = sf.el('div', { className: 'sf-modal-title', id: dialogId + '-title' }, config.title || '');
+    var header = el('div', { className: 'sf-modal-header' });
+    var titleEl = el('div', { className: 'sf-modal-title', id: dialogId + '-title' }, config.title || '');
     header.appendChild(titleEl);
 
-    var closeBtn = sf.el('button', {
+    var closeBtn = el('button', {
       className: 'sf-modal-close',
       'aria-label': 'Close modal',
       onClick: function () { api.close(); },
@@ -40,7 +39,7 @@
 
     // Footer
     if (config.footer) {
-      var footer = sf.el('div', { className: 'sf-modal-footer' });
+      var footer = el('div', { className: 'sf-modal-footer' });
       config.footer.forEach(function (child) {
         footer.appendChild(child);
       });
@@ -104,5 +103,3 @@
       target.appendChild(content);
     }
   }
-
-})(SF);
