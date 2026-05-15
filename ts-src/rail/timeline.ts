@@ -3,7 +3,7 @@
    Canonical dense scheduling surface for resource-lane timelines.
    ============================================================================ */
 
-import {assert, bindActivation, el, escHtml, uid} from "../core";
+import {assert, el, uid} from "../core";
 import {addBlock} from "./card";
 
 var DAY_MINUTES = 24 * 60;

@@ -5,7 +5,7 @@ DOM structure, CSS classes, and how the JS factory wires them together.
 
 Sections in this document follow a simple staging rule:
 
-- Shipped: backed by the current JavaScript API in `js-src/` and safe to document as supported behavior.
+- Shipped: backed by the current JavaScript API in `ts-src/` and safe to document as supported behavior.
 - Planned: useful design or styling direction, but not part of the supported public API yet.
 
 ---

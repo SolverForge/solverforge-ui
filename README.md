@@ -28,7 +28,7 @@ That's it. Every asset is compiled into the binary via `include_dir!`.
 
 This repository keeps both shipped UI code and design exploration in the same tree.
 
-- Shipped features are the ones implemented in `js-src/`, or exposed as documented optional modules under `static/sf/modules/`, and described in the API reference below.
+- Shipped features are the ones implemented in `ts-src/`, or exposed as documented optional modules under `static/sf/modules/`, and described in the API reference below.
 - Planned or exploratory ideas may appear in CSS or wireframes before the public API is finished. Those should not be treated as supported integration surface until they are wired into a shipped asset and described in the README API reference.
 - When adding new surface area, update the JavaScript API, README, and runnable examples in the same change so the public contract stays explicit.
 
@@ -63,7 +63,7 @@ tests, or `make test-frontend` when you only want the JavaScript suite.
 Frontend test targets rebuild the generated `static/sf/sf.js` bundle before
 running the Node coverage. During the TypeScript migration branch, those tests
 intentionally exercise the generated global bundle until stable source imports
-exist. Use `make lint-frontend` for ESLint on `js-src/`, `tests`, and
+exist. Use `make lint-frontend` for ESLint on `ts-src/`, `tests`, and
 `scripts/` plus development-only TypeScript checking, or `make lint` to run the
 Rust and JavaScript lint surfaces together.
 
@@ -690,7 +690,7 @@ SF.map.decodePolyline('_p~iF~ps|U...');  // Google polyline algorithm
 solverforge-ui/
 ├── Cargo.toml              # 2 deps: axum + include_dir
 ├── src/lib.rs              # routes() + asset serving
-├── Makefile                # bundles css-src/ + js-src/ into sf.css + sf.js
+├── Makefile                # bundles css-src/ + ts-src/ into sf.css + sf.js + sf.mjs
 ├── .github/workflows/      # CI, release, and publish automation
 ├── css-src/                # 20 CSS source files (numbered for concat order)
 │   ├── 00-tokens.css       #   design system variables
@@ -713,27 +713,37 @@ solverforge-ui/
 │   ├── 17-gantt-layout.css #   split layout, grid table, view controls
 │   ├── 18-gantt-bars.css   #   Frappe bar overrides, pinned/highlighted bars
 │   └── 19-rail-timeline.css #  canonical scheduling timeline
-├── js-src/                 # 17 JS source files
-│   ├── 00-core.js          #   SF namespace, escHtml, el()
-│   ├── 01-score.js         #   score parsing
-│   ├── 02-colors.js        #   Tango palette + project colors
-│   ├── 03-buttons.js       #   createButton()
-│   ├── 04-header.js        #   createHeader()
-│   ├── 05-statusbar.js     #   createStatusBar()
-│   ├── 06-modal.js         #   createModal()
-│   ├── 07-tabs.js          #   createTabs(), showTab()
-│   ├── 08-table.js         #   createTable()
-│   ├── 09-toast.js         #   showToast(), showError()
-│   ├── 10-backend.js       #   createBackend() — axum/tauri/fetch
-│   ├── 11-solver.js        #   createSolver() — SSE state machine
-│   ├── 12-api-guide.js     #   createApiGuide()
-│   ├── 13-rail.js          #   low-level rail header, cards, blocks, changeovers
-│   ├── 13a-rail-timeline.js #  canonical scheduling timeline
-│   ├── 14-gantt.js         #   Frappe Gantt wrapper (split pane, grid, chart)
-│   └── 15-footer.js        #   createFooter()
+├── ts-src/                 # TypeScript source files
+│   ├── index.ts            #   Entry point, SF namespace exports
+│   ├── global.d.ts         #   TypeScript type declarations
+│   ├── core/
+│   │   └── index.ts        #   SF namespace, version, escHtml, el(), assert...
+│   ├── utils/
+│   │   ├── score.ts        #   score parsing
+│   │   └── colors.ts        #   Tango palette + project colors
+│   ├── components/
+│   │   ├── buttons.ts      #   createButton()
+│   │   ├── header.ts       #   createHeader()
+│   │   ├── statusbar.ts    #   createStatusBar()
+│   │   ├── modal.ts        #   createModal()
+│   │   ├── tabs.ts         #   createTabs(), showTab()
+│   │   ├── table.ts        #   createTable()
+│   │   ├── toast.ts        #   showToast(), showError()
+│   │   ├── api-guide.ts    #   createApiGuide()
+│   │   └── footer.ts       #   createFooter()
+│   ├── rail/
+│   │   ├── index.ts        #   low-level rail header, cards, blocks, changeovers
+│   │   ├── card.ts         #   rail card factory
+│   │   └── timeline.ts     #   canonical scheduling timeline
+│   ├── gantt/
+│   │   └── gant.ts         #   Frappe Gantt wrapper (split pane, grid, chart)
+│   └── solver/
+│       ├── backend.ts      #   createBackend() — axum/tauri/fetch
+│       └── solver.ts       #   createSolver() — SSE state machine
 └── static/sf/              # Embedded assets (include_dir!)
     ├── sf.css              # concatenated from css-src/
-    ├── sf.js               # concatenated from js-src/
+    ├── sf.js               # bundled from ts-src/
+    ├── sf.mjs              # bundled from ts-src/
     ├── img/                # SVG logo asset (ouroboros)
     ├── fonts/              # Space Grotesk + JetBrains Mono WOFF2
     ├── modules/            # optional: sf-map.js/css
@@ -766,7 +776,7 @@ ln -s vendor/solverforge-ui/static/sf public/sf
 ```bash
 # Edit source files
 vim css-src/06-buttons.css
-vim js-src/03-buttons.js
+vim ts-src/components/buttons.ts
 
 # Rebuild concatenated files
 make assets

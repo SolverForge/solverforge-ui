@@ -9,7 +9,7 @@ Repository guidance for coding agents and maintainers working in
   contracts.
 - `WIREFRAME.md` can include shipped and planned UI, but every section must
   clearly distinguish which is which.
-- `js-src/` and `css-src/` are the editable sources. `static/sf/` contains the
+- `ts-src/` and `css-src/` are the editable sources. `static/sf/` contains the
   generated bundled assets served to consumers.
 
 ## Current Release

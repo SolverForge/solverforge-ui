@@ -2,7 +2,7 @@
    SolverForge UI — Status Bar Factory
    ============================================================================ */
 
-import {assert, bindActivation, el} from "../core";
+import {bindActivation, el} from "../core";
 import {colorClass, parseHard, parseSoft} from "../utils/score";
 
 export const createStatusBar = function (config) {

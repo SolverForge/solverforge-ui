@@ -2,13 +2,15 @@
   "name": "solverforge-ui",
   "private": true,
   "scripts": {
-    "lint:frontend": "eslint js-src tests scripts",
+    "lint:frontend": "eslint ts-src tests scripts",
     "typecheck:frontend": "tsc --noEmit",
     "test:browser": "node tests/demo-browser-check.js",
     "build:esm": "esbuild ts-src/index.ts --bundle --format=esm --outfile=static/sf/sf.mjs",
     "build:iife": "esbuild ts-src/index.ts --bundle --format=iife --global-name=SF --outfile=static/sf/sf.js"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.59.3",
+    "@typescript-eslint/parser": "^8.59.3",
     "esbuild": "^0.28.0",
     "eslint": "^10.2.1",
     "globals": "^17.5.0",

@@ -12,7 +12,7 @@ categories = ["web-programming", "gui"]
 exclude = [
   "screenshots/",
   "css-src/",
-  "js-src/",
+  "ts-src/",
   "WIREFRAME.md",
   "scripts/",
   ".versionrc.json",

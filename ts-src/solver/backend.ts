@@ -146,7 +146,7 @@ function createHttpBackend(config) {
       var es = new EventSource(url);
       var closed = false;
       es.onmessage = function (e) {
-        try { onMessage(JSON.parse(e.data)); } catch (_) { }
+        try { onMessage(JSON.parse(e.data)); } catch { }
       };
       es.onerror = function () {
         if (closed || !onError) return;
@@ -219,7 +219,7 @@ function createTauriBackend(config) {
     listDemoData: function () {
       return Promise.resolve([]);
     },
-    streamJobEvents: function (id, onMessage, onError) {
+    streamJobEvents: function (id, onMessage, _onError) { // eslint-disable-line @typescript-eslint/no-unused-vars
       var targetId = String(id);
       var unlisten = null;
       listen(eventName, function (event) {

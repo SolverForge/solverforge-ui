@@ -357,7 +357,7 @@ help: banner
 	@/bin/echo -e ""
 	@/bin/echo -e "$(CYAN)$(BOLD)Lint & Format:$(RESET)"
 	@/bin/echo -e "  $(GREEN)make lint$(RESET)           - Run fmt-check + clippy + frontend lint"
-	@/bin/echo -e "  $(GREEN)make lint-frontend$(RESET)  - Run ESLint on js-src/, tests/, and scripts/"
+	@/bin/echo -e "  $(GREEN)make lint-frontend$(RESET)  - Run ESLint on ts-src/, tests/, and scripts/"
 	@/bin/echo -e "  $(GREEN)make fmt$(RESET)            - Format code"
 	@/bin/echo -e "  $(GREEN)make fmt-check$(RESET)      - Check formatting"
 	@/bin/echo -e "  $(GREEN)make clippy$(RESET)         - Run clippy lints"

@@ -9,6 +9,6 @@
 		"noImplicitAny": false,
 		"skipLibCheck": true
 	},
-	"include": ["js-src/**/*.js", "js-src/**/*.d.ts", "tests/types/**/*.ts"],
+	"include": ["ts-src/**/*.ts", "ts-src/**/*.d.ts", "tests/types/**/*.ts"],
 	"exclude": ["node_modules", "static", "target", "scripts"]
 }

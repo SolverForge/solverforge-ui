@@ -1,6 +1,8 @@
 const globals = require('globals');
+const ts = require('@typescript-eslint/eslint-plugin');
+const tsParser = require('@typescript-eslint/parser');
 
-const correctnessRules = {
+const baseRules = {
   'no-dupe-keys': 'error',
   'no-redeclare': 'error',
   'no-unreachable': 'error',
@@ -9,19 +11,29 @@ const correctnessRules = {
   'valid-typeof': 'error',
 };
 
+const correctnessRules = {
+  ...baseRules,
+  ...ts.configs.recommended.rules,
+};
+
 module.exports = [
   {
     ignores: [
       'node_modules/**',
       'static/**',
-      'target/**',
+      'target/**'
     ],
   },
   {
-    files: ['js-src/**/*.js'],
+    files: ['ts-src/**/*.ts'],
     languageOptions: {
       ecmaVersion: 2021,
-      sourceType: 'script',
+      sourceType: 'module',
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2021,
+        sourceType: 'module',
+      },
       globals: {
         SF: 'readonly',
         Split: 'readonly',
@@ -29,14 +41,10 @@ module.exports = [
         ...globals.browser,
       },
     },
-    rules: correctnessRules,
-  },
-  {
-    files: ['js-src/00-core.js'],
-    rules: {
-      'no-redeclare': 'off',
-      'no-unused-vars': ['error', { args: 'none', caughtErrors: 'none', varsIgnorePattern: '^SF$' }],
+    plugins: {
+      '@typescript-eslint': ts,
     },
+    rules: correctnessRules,
   },
   {
     files: ['tests/**/*.js', 'scripts/**/*.js'],
@@ -48,6 +56,6 @@ module.exports = [
         ...globals.node,
       },
     },
-    rules: correctnessRules,
+    rules: baseRules,
   },
 ];

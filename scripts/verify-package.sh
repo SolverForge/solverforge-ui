@@ -63,7 +63,7 @@ require "static/sf/fonts/jetbrains-mono.woff2"
 require "static/sf/img/ouroboros.svg"
 
 reject_prefix "css-src/"
-reject_prefix "js-src/"
+reject_prefix "ts-src/"
 reject_prefix "screenshots/"
 reject_prefix "scripts/"
 reject_exact "WIREFRAME.md"
