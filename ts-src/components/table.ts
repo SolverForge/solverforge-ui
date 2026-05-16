@@ -34,7 +34,7 @@ export const createTable = function (config) {
         row.forEach(function (cell, colIdx) {
           var td = el('td');
           if (typeof cell === 'string' || typeof cell === 'number') {
-            td.textContent = cell;
+            td.textContent = String(cell);
           } else if (cell instanceof Node) {
             td.appendChild(cell);
           } else if (cell && cell.unsafeHtml) {

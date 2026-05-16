@@ -5,6 +5,11 @@
 
 import {assert, el, uid} from "../core";
 import {addBlock} from "./card";
+import type {
+  TimelineConfig,
+  TimelineLane,
+  TimelineApi,
+} from './timeline.types';
 
 var DAY_MINUTES = 24 * 60;
 var SIX_HOUR_MINUTES = 6 * 60;
@@ -79,7 +84,7 @@ var TONE_MAP = {
   },
 };
 
-export const createTimeline = function (config) {
+export const createTimeline = function (config: TimelineConfig): TimelineApi {
   assert(config && config.model, 'rail.createTimeline(config.model) requires a normalized model');
 
   var labelWidth = config.labelWidth == null
@@ -190,8 +195,8 @@ export const createTimeline = function (config) {
   function renderLanes() {
     lanes.innerHTML = '';
 
-    state.model.lanes.forEach(function (lane, laneIndex) {
-      var laneRender = lane.mode === 'overview'
+    state.model.lanes.forEach(function (lane: TimelineLane, laneIndex) {
+      var laneRender: any = lane.mode === 'overview'
         ? buildOverviewRender(lane, state, function () {
           rerenderTimeline();
         })
@@ -445,8 +450,7 @@ function measurePackedHeight(packed) {
     : OVERVIEW_HEIGHT;
 }
 
-function buildDetailBlockConfig(item, lane, trackIndex, top, options) {
-  var config = options || {};
+function buildDetailBlockConfig(item, lane, trackIndex, top, config: any={}) {
   return {
     clusterId: config.clusterId || null,
     detailHint: config.detailHint || '',
@@ -805,7 +809,7 @@ function normalizeAxis(axis) {
     'createTimeline(model.axis.endMinute)'
   );
 
-  var normalized = {
+  var normalized: any = {
     endMinute: axisRange.endMinute,
     startMinute: axisRange.startMinute,
   };

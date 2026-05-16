@@ -3,8 +3,8 @@
    Central export point for all rail-related functionality.
    ============================================================================ */
 
-import { createHeader, createCard, createHeatmap, createUnassignedRail, addBlock, addChangeover } from "./card.ts";
-import { createTimeline } from "./timeline.ts";
+import { createHeader, createCard, createHeatmap, createUnassignedRail, addBlock, addChangeover } from "./card";
+import { createTimeline } from "./timeline";
 
 // Rail namespace object for backwards compatibility with SF.rail.*
 // This provides SF.rail.createHeader, SF.rail.createTimeline, etc.

@@ -2,13 +2,58 @@
    SolverForge UI — Status Bar Factory
    ============================================================================ */
 
-import {bindActivation, el} from "../core";
-import {colorClass, parseHard, parseSoft} from "../utils/score";
+import { bindActivation, el } from "../core";
+import { colorClass, parseHard, parseSoft } from "../utils/score";
+import { HeaderControls } from "./header";
 
-export const createStatusBar = function (config) {
-    var bar = el('div', { className: 'sf-statusbar' });
-    var lastScore = null;
-    var controls = null;
+export interface StatusBarConstraint {
+  name?: string;
+  type?: 'hard' | 'soft';
+  score?: string;
+}
+
+export interface StatusBarConfig {
+  constraints?: StatusBarConstraint[];
+
+  onConstraintClick?: (index: number) => void;
+
+  header?: {
+    sfControls?: HeaderControls;
+  };
+}
+
+export interface StatusBarApi {
+  el: HTMLDivElement;
+
+  bindHeader(header: {
+    sfControls?: HeaderControls;
+  } | null): StatusBarApi;
+
+  updateScore(scoreStr: string | null): void;
+
+  setLifecycleState(state: string): void;
+
+  setSolving(solving: boolean): void;
+
+  updateMoves(mps: number | null): void;
+
+  updateConstraintDots(
+    constraints: StatusBarConstraint[]
+  ): void;
+
+  colorDotsByScore(scoreStr: string): void;
+
+  colorDotsFromAnalysis(
+    constraints: StatusBarConstraint[]
+  ): void;
+}
+
+export const createStatusBar = function (
+  config: StatusBarConfig = {}
+): StatusBarApi {
+    var bar = el('div', { className: 'sf-statusbar' }) as HTMLDivElement;
+    var lastScore: string | null = null;
+    var controls: HeaderControls | null = null;
 
     // Score display
     var scoreEl = el('span', { className: 'sf-statusbar-score', id: 'sfScoreDisplay', 'aria-live': 'polite' }, '\u2014');
@@ -18,7 +63,7 @@ export const createStatusBar = function (config) {
     bar.appendChild(el('span', { className: 'sf-statusbar-sep' }, '|'));
 
     // Constraint dots container
-    var dotsContainer = el('div', { className: 'sf-statusbar-constraints' });
+    var dotsContainer = el('div', { className: 'sf-statusbar-constraints' }) as HTMLDivElement;
     bar.appendChild(dotsContainer);
 
     // Separator + moves display
@@ -40,104 +85,105 @@ export const createStatusBar = function (config) {
       buildDots(dotsContainer, config.constraints, config.onConstraintClick);
     }
 
-    var api = { el: bar };
+    var api: StatusBarApi = {
+      el: bar,
+      bindHeader: function (header) {
+        controls = header && header.sfControls ? header.sfControls : null;
+        return api;
+      },
 
-    api.bindHeader = function (header) {
-      controls = header && header.sfControls ? header.sfControls : null;
-      return api;
-    };
+      updateScore: function (scoreStr) {
+        if (scoreStr && scoreStr !== lastScore) {
+          scoreEl.textContent = scoreStr;
+          var colorClassName = colorClass(scoreStr);
+          scoreEl.classList.remove('improved', 'score-green', 'score-red', 'score-yellow');
+          scoreEl.classList.add(colorClassName);
+          void scoreEl.offsetWidth;
+          scoreEl.classList.add('improved');
+          lastScore = scoreStr;
+        } else if (!scoreStr) {
+          scoreEl.textContent = '\u2014';
+          scoreEl.classList.remove('score-green', 'score-red', 'score-yellow', 'improved');
+          lastScore = null;
+        }
+      },
 
-    api.updateScore = function (scoreStr) {
-      if (scoreStr && scoreStr !== lastScore) {
-        scoreEl.textContent = scoreStr;
-        var colorClassName = colorClass(scoreStr);
-        scoreEl.classList.remove('improved', 'score-green', 'score-red', 'score-yellow');
-        scoreEl.classList.add(colorClassName);
-        void scoreEl.offsetWidth;
-        scoreEl.classList.add('improved');
-        lastScore = scoreStr;
-      } else if (!scoreStr) {
-        scoreEl.textContent = '\u2014';
-        scoreEl.classList.remove('score-green', 'score-red', 'score-yellow', 'improved');
-        lastScore = null;
-      }
-    };
+      setLifecycleState: function (state) {
+        var normalized = normalizeLifecycleState(state);
+        var solveBtn = controls && controls.solveBtn;
+        var pauseBtn = controls && controls.pauseBtn;
+        var resumeBtn = controls && controls.resumeBtn;
+        var cancelBtn = controls && controls.cancelBtn;
+        var spinner = controls && controls.spinner;
 
-    api.setLifecycleState = function (state) {
-      var normalized = normalizeLifecycleState(state);
-      var solveBtn = controls && controls.solveBtn;
-      var pauseBtn = controls && controls.pauseBtn;
-      var resumeBtn = controls && controls.resumeBtn;
-      var cancelBtn = controls && controls.cancelBtn;
-      var spinner = controls && controls.spinner;
+        if (solveBtn) solveBtn.style.display = shouldShowSolve(normalized) ? '' : 'none';
+        if (pauseBtn) {
+          pauseBtn.style.display = shouldShowPause(normalized) ? '' : 'none';
+          pauseBtn.disabled = normalized === 'PAUSE_REQUESTED';
+        }
+        if (resumeBtn) {
+          resumeBtn.style.display = normalized === 'PAUSED' ? '' : 'none';
+          resumeBtn.disabled = false;
+        }
+        if (cancelBtn) {
+          cancelBtn.style.display = shouldShowCancel(normalized) ? '' : 'none';
+          cancelBtn.disabled = false;
+        }
+        if (spinner) spinner.classList.toggle('active', shouldSpin(normalized));
 
-      if (solveBtn) solveBtn.style.display = shouldShowSolve(normalized) ? '' : 'none';
-      if (pauseBtn) {
-        pauseBtn.style.display = shouldShowPause(normalized) ? '' : 'none';
-        pauseBtn.disabled = normalized === 'PAUSE_REQUESTED';
-      }
-      if (resumeBtn) {
-        resumeBtn.style.display = normalized === 'PAUSED' ? '' : 'none';
-        resumeBtn.disabled = false;
-      }
-      if (cancelBtn) {
-        cancelBtn.style.display = shouldShowCancel(normalized) ? '' : 'none';
-        cancelBtn.disabled = false;
-      }
-      if (spinner) spinner.classList.toggle('active', shouldSpin(normalized));
+        statusEl.textContent = lifecycleLabel(normalized);
+        statusEl.style.color = isActiveLifecycle(normalized)
+          ? 'var(--sf-emerald-600)'
+          : normalized === 'FAILED'
+            ? 'var(--sf-red-600)'
+            : normalized === 'CANCELLED'
+              ? 'var(--sf-amber-700)'
+              : 'var(--sf-gray-500)';
+      },
 
-      statusEl.textContent = lifecycleLabel(normalized);
-      statusEl.style.color = isActiveLifecycle(normalized)
-        ? 'var(--sf-emerald-600)'
-        : normalized === 'FAILED'
-          ? 'var(--sf-red-600)'
-          : normalized === 'CANCELLED'
-            ? 'var(--sf-amber-700)'
-            : 'var(--sf-gray-500)';
-    };
+      setSolving: function (solving) {
+        api.setLifecycleState(solving ? 'SOLVING' : 'IDLE');
+      },
 
-    api.setSolving = function (solving) {
-      api.setLifecycleState(solving ? 'SOLVING' : 'IDLE');
-    };
+      updateMoves: function (mps) {
+        if (mps != null && mps > 0) {
+          movesEl.textContent = mps.toLocaleString() + ' moves/s';
+          movesEl.style.display = '';
+          movesSep.style.display = '';
+        } else {
+          movesEl.style.display = 'none';
+          movesSep.style.display = 'none';
+        }
+      },
 
-    api.updateMoves = function (mps) {
-      if (mps != null && mps > 0) {
-        movesEl.textContent = mps.toLocaleString() + ' moves/s';
-        movesEl.style.display = '';
-        movesSep.style.display = '';
-      } else {
-        movesEl.style.display = 'none';
-        movesSep.style.display = 'none';
-      }
-    };
+      updateConstraintDots: function (constraints) {
+        buildDots(dotsContainer, constraints, config && config.onConstraintClick);
+      },
 
-    api.updateConstraintDots = function (constraints) {
-      buildDots(dotsContainer, constraints, config && config.onConstraintClick);
-    };
+      colorDotsByScore: function (scoreStr) {
+        var hard = parseHard(scoreStr);
+        var soft = parseSoft(scoreStr);
+        dotsContainer.querySelectorAll('.sf-constraint-dot').forEach(function (dot: HTMLDivElement) {
+          var isHard = dot.dataset.type === 'hard';
+          dot.classList.toggle('violated', isHard && hard < 0);
+          dot.classList.toggle('violated-soft', !isHard && soft < 0);
+        });
+      },
 
-    api.colorDotsByScore = function (scoreStr) {
-      var hard = parseHard(scoreStr);
-      var soft = parseSoft(scoreStr);
-      dotsContainer.querySelectorAll('.sf-constraint-dot').forEach(function (dot) {
-        var isHard = dot.dataset.type === 'hard';
-        dot.classList.toggle('violated', isHard && hard < 0);
-        dot.classList.toggle('violated-soft', !isHard && soft < 0);
-      });
-    };
-
-    api.colorDotsFromAnalysis = function (constraints) {
-      if (!constraints || constraints.length === 0) return;
-      buildDots(dotsContainer, constraints, config && config.onConstraintClick);
-      dotsContainer.querySelectorAll('.sf-constraint-dot').forEach(function (dot, i) {
-        var c = constraints[i];
-        if (!dot) return;
-        var isHardConstraint = c.type === 'hard';
-        var scoreVal = isHardConstraint ? parseHard(c.score) : parseSoft(c.score);
-        var violated = scoreVal < 0;
-        dot.classList.toggle('violated', isHardConstraint && violated);
-        dot.classList.toggle('violated-soft', !isHardConstraint && violated);
-      });
-    };
+      colorDotsFromAnalysis: function (constraints) {
+        if (!constraints || constraints.length === 0) return;
+        buildDots(dotsContainer, constraints, config && config.onConstraintClick);
+        dotsContainer.querySelectorAll('.sf-constraint-dot').forEach(function (dot, i) {
+          var c = constraints[i];
+          if (!dot) return;
+          var isHardConstraint = c.type === 'hard';
+          var scoreVal = isHardConstraint ? parseHard(c.score) : parseSoft(c.score);
+          var violated = scoreVal < 0;
+          dot.classList.toggle('violated', isHardConstraint && violated);
+          dot.classList.toggle('violated-soft', !isHardConstraint && violated);
+        });
+      },
+    }
 
     if (config && config.header) {
       api.bindHeader(config.header);

@@ -3,7 +3,121 @@
    Resource-lane timeline: header + cards with positioned blocks.
    ============================================================================ */
 
-import {assert, bindActivation, el} from "../core";
+import { assert, bindActivation, el } from "../core";
+
+export interface TimelineCardApi {
+  el: HTMLElement;
+  rail: HTMLElement;
+
+  addBlock(blockConfig: TimelineBlockConfig): HTMLElement;
+
+  setUnassigned(items: UnassignedItem[]): void;
+
+  clearBlocks(): void;
+
+  setSolving(solving: boolean): void;
+}
+
+export interface HeatmapConfig {
+  horizon?: number;
+  label?: string;
+  segments: HeatmapSegment[];
+  labelWidth?: number;
+  railConfig?: TimelineCardConfig;
+}
+
+export interface TimelineBlockConfig {
+  horizon: number;
+  start: number;
+  end: number;
+
+  minWidthPct?: number;
+
+  color?: string;
+  borderColor?: string;
+  className?: string;
+
+  late?: boolean;
+
+  id?: string;
+  delay?: string;
+
+  label?: string;
+  meta?: string;
+
+  onHover?: (e: MouseEvent, config: TimelineBlockConfig) => void;
+  onLeave?: () => void;
+  onClick?: (e: Event, config: TimelineBlockConfig) => void;
+}
+
+export type UnassignedItem =
+  | string
+  | {
+      id?: string;
+      label?: string;
+    };
+
+export interface HeatmapSegment {
+  start: number;
+  end: number;
+
+  color?: string;
+  opacity?: number;
+  tooltip?: string;
+}
+
+export interface TimelineCardConfig {
+  id?: string;
+
+  labelWidth?: number;
+
+  columns?: number;
+
+  name?: string;
+
+  type?: string;
+
+  typeStyle?: {
+    bg?: string;
+    color?: string;
+    border?: string;
+  };
+
+  badges?: Array<
+    | string
+    | {
+        label?: string;
+        style?: {
+          bg?: string;
+          color?: string;
+          border?: string;
+        };
+      }
+  >;
+
+  gauges?: Array<{
+    label: string;
+    pct?: number;
+    text?: string;
+    style?: string;
+  }>;
+
+  stats?: Array<{
+    label: string;
+    value: unknown;
+  }>;
+
+  heatmap?: {
+    horizon?: number;
+    label?: string;
+    segments: HeatmapSegment[];
+  };
+
+  unassigned?: UnassignedItem[];
+
+  onUnassignedClick?: (item: UnassignedItem) => void;
+}
+
 
 export const createHeader = function (config) {
   assert(config, 'createHeader(config) requires a configuration object');
@@ -144,7 +258,7 @@ export const createCard = function (config) {
 
   // Optional heatmap strip
   if (config.heatmap) {
-    var heatmapCfg = {
+    var heatmapCfg: HeatmapConfig = {
       horizon: config.heatmap.horizon || 1,
       label: config.heatmap.label,
       segments: config.heatmap.segments,
@@ -164,37 +278,40 @@ export const createCard = function (config) {
   if (unassignedRail.children.length > 0) card.appendChild(unassignedRail);
 
   // API
-  var cardApi = { el: card, rail: rail };
+  var cardApi: TimelineCardApi = {
+    el: card,
+    rail: rail,
 
-  cardApi.addBlock = function (blockConfig) {
-    return addBlock(rail, blockConfig);
-  };
+    addBlock: function (blockConfig) {
+      return addBlock(rail, blockConfig);
+    },
 
-  cardApi.setUnassigned = function (items) {
-    state.unassigned = Array.isArray(items) ? items : [];
-    if (state.unassigned.length === 0 && unassignedRail.parentNode) {
-      unassignedRail.innerHTML = '';
-      unassignedRail.parentNode && unassignedRail.parentNode.removeChild(unassignedRail);
-      return;
+    setUnassigned: function (items) {
+      state.unassigned = Array.isArray(items) ? items : [];
+      if (state.unassigned.length === 0 && unassignedRail.parentNode) {
+        unassignedRail.innerHTML = '';
+        unassignedRail.parentNode && unassignedRail.parentNode.removeChild(unassignedRail);
+        return;
+      }
+      if (state.unassigned.length > 0) {
+        renderUnassigned(unassignedRail, state.unassigned, config.onUnassignedClick);
+      } else {
+        unassignedRail.innerHTML = '';
+      }
+      if (state.unassigned.length > 0 && !unassignedRail.parentNode) {
+        card.appendChild(unassignedRail);
+      }
+    },
+
+    clearBlocks: function () {
+      rail.querySelectorAll('.sf-block, .sf-changeover').forEach(function (el) {
+        el.remove();
+      });
+    },
+
+    setSolving: function (solving) {
+      card.classList.toggle('solving', solving);
     }
-    if (state.unassigned.length > 0) {
-      renderUnassigned(unassignedRail, state.unassigned, config.onUnassignedClick);
-    } else {
-      unassignedRail.innerHTML = '';
-    }
-    if (state.unassigned.length > 0 && !unassignedRail.parentNode) {
-      card.appendChild(unassignedRail);
-    }
-  };
-
-  cardApi.clearBlocks = function () {
-    rail.querySelectorAll('.sf-block, .sf-changeover').forEach(function (el) {
-      el.remove();
-    });
-  };
-
-  cardApi.setSolving = function (solving) {
-    card.classList.toggle('solving', solving);
   };
 
   return cardApi;

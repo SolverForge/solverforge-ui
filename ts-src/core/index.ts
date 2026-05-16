@@ -2,7 +2,7 @@
    SolverForge UI — Core
    ============================================================================ */
 
-export const version =  '0.6.5';
+export const version = '0.6.5';
 
 let uidCounter = 0;
 
@@ -36,9 +36,12 @@ export const normalizeCreateJobId = function (raw) {
   return '';
 };
 
-export const el = function (tag, attrs) {
-  var children = Array.prototype.slice.call(arguments, 2);
-  var el = document.createElement(tag);
+export const el = function (
+  tag: string,
+  attrs: Record<string, any> | null = {},
+  ...children: (string | Node | null | undefined)[]
+): HTMLElement {
+  var el: HTMLElement = document.createElement(tag);
   if (attrs) {
     Object.keys(attrs).forEach(function (key) {
       if (key === 'className') el.className = attrs[key];

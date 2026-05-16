@@ -17,7 +17,7 @@ export const createButton = function (config) {
     if (config.outline) classes.push('sf-btn--outline');
     if (config.iconOnly) classes.push('sf-btn--icon');
 
-    var btn = el('button', {
+    var btn = <HTMLButtonElement>el('button', {
       className: classes.join(' '),
       type: 'button',
     });

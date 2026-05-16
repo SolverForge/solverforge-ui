@@ -279,21 +279,21 @@ declare global {
 			updateMoves?: (value: number | null) => void;
 			colorDotsFromAnalysis?: (constraints: unknown[]) => void;
 		};
-		onProgress?: (meta: EventMeta) => void;
-		onSolution?: (snapshot: SolverSnapshot, meta: EventMeta) => void;
-		onPauseRequested?: (meta: EventMeta) => void;
-		onPaused?: (snapshot: SolverSnapshot, meta: EventMeta) => void;
-		onResumed?: (meta: EventMeta) => void;
-		onComplete?: (snapshot: SolverSnapshot, meta: EventMeta) => void;
-		onCancelled?: (snapshot: SolverSnapshot | null, meta: EventMeta) => void;
+		onProgress?: (meta?: EventMeta) => void;
+		onSolution?: (snapshot?: SolverSnapshot, meta?: EventMeta) => void;
+		onPauseRequested?: (meta?: EventMeta) => void;
+		onPaused?: (snapshot?: SolverSnapshot, meta?: EventMeta) => void;
+		onResumed?: (meta?: EventMeta) => void;
+		onComplete?: (snapshot?: SolverSnapshot, meta?: EventMeta) => void;
+		onCancelled?: (snapshot?: SolverSnapshot | null, meta?: EventMeta) => void;
 		onFailure?: (
-			error: string,
-			meta: EventMeta,
-			snapshot: SolverSnapshot | null,
-			analysis: SolverAnalysis | null,
+			error?: string,
+			meta?: EventMeta,
+			snapshot?: SolverSnapshot | null,
+			analysis?: SolverAnalysis | null,
 		) => void;
-		onAnalysis?: (analysis: SolverAnalysis, meta: EventMeta) => void;
-		onError?: (message: string) => void;
+		onAnalysis?: (analysis?: SolverAnalysis, meta?: EventMeta) => void;
+		onError?: (message?: string) => void;
 	}
 
 	interface SolverApi {
@@ -350,4 +350,4 @@ declare global {
 	}
 }
 
-export { };
+export { SF };

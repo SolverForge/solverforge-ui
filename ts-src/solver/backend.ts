@@ -66,12 +66,23 @@ function createHttpBackend(config) {
   var extraHeaders = config.headers || {};
 
   /**
-   * @param {Record<string, string>|undefined} [extra]
+   * Builds the HTTP headers object used for API requests.
+   *
+   * Default JSON headers are merged with configured global headers
+   * and optional request-specific headers.
+   *
+   * @param {Record<string, string>} [extra]
+   * Additional headers to merge into the request.
+   *
    * @returns {Record<string, string>}
+   * The final merged headers object.
    */
-  function headers(extra) {
-    var h = Object.assign({ 'Content-Type': 'application/json' }, extraHeaders, extra || {});
-    return h;
+  function headers(extra = {}) {
+    return {
+      'Content-Type': 'application/json',
+      ...extraHeaders,
+      ...extra,
+    };
   }
 
   /**
@@ -97,7 +108,7 @@ function createHttpBackend(config) {
    * @param {unknown} [body]
    * @returns {Promise<unknown>}
    */
-  function request(method, path, body) {
+  function request(method, path, body?: unknown) {
     var opts = { method: method, headers: headers() };
     if (body !== undefined) opts.body = JSON.stringify(body);
     return fetch(baseUrl + path, opts).then(function (res) {
@@ -219,7 +230,7 @@ function createTauriBackend(config) {
     listDemoData: function () {
       return Promise.resolve([]);
     },
-    streamJobEvents: function (id, onMessage, _onError) { // eslint-disable-line @typescript-eslint/no-unused-vars
+    streamJobEvents: function (id, onMessage, _onError) {
       var targetId = String(id);
       var unlisten = null;
       listen(eventName, function (event) {

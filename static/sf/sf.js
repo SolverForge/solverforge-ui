@@ -76,8 +76,7 @@ var SF = (() => {
     if (typeof value === "number" && Number.isFinite(value)) return String(value).trim();
     return "";
   };
-  var el = function(tag, attrs) {
-    var children = Array.prototype.slice.call(arguments, 2);
+  var el = function(tag, attrs = {}, ...children) {
     var el2 = document.createElement(tag);
     if (attrs) {
       Object.keys(attrs).forEach(function(key) {
@@ -464,7 +463,7 @@ var SF = (() => {
   };
 
   // ts-src/components/statusbar.ts
-  var createStatusBar = function(config) {
+  var createStatusBar = function(config = {}) {
     var bar = el("div", { className: "sf-statusbar" });
     var lastScore = null;
     var controls = null;
@@ -485,87 +484,89 @@ var SF = (() => {
     if (config && config.constraints) {
       buildDots(dotsContainer, config.constraints, config.onConstraintClick);
     }
-    var api = { el: bar };
-    api.bindHeader = function(header) {
-      controls = header && header.sfControls ? header.sfControls : null;
-      return api;
-    };
-    api.updateScore = function(scoreStr) {
-      if (scoreStr && scoreStr !== lastScore) {
-        scoreEl.textContent = scoreStr;
-        var colorClassName = colorClass(scoreStr);
-        scoreEl.classList.remove("improved", "score-green", "score-red", "score-yellow");
-        scoreEl.classList.add(colorClassName);
-        void scoreEl.offsetWidth;
-        scoreEl.classList.add("improved");
-        lastScore = scoreStr;
-      } else if (!scoreStr) {
-        scoreEl.textContent = "\u2014";
-        scoreEl.classList.remove("score-green", "score-red", "score-yellow", "improved");
-        lastScore = null;
+    var api = {
+      el: bar,
+      bindHeader: function(header) {
+        controls = header && header.sfControls ? header.sfControls : null;
+        return api;
+      },
+      updateScore: function(scoreStr) {
+        if (scoreStr && scoreStr !== lastScore) {
+          scoreEl.textContent = scoreStr;
+          var colorClassName = colorClass(scoreStr);
+          scoreEl.classList.remove("improved", "score-green", "score-red", "score-yellow");
+          scoreEl.classList.add(colorClassName);
+          void scoreEl.offsetWidth;
+          scoreEl.classList.add("improved");
+          lastScore = scoreStr;
+        } else if (!scoreStr) {
+          scoreEl.textContent = "\u2014";
+          scoreEl.classList.remove("score-green", "score-red", "score-yellow", "improved");
+          lastScore = null;
+        }
+      },
+      setLifecycleState: function(state) {
+        var normalized = normalizeLifecycleState(state);
+        var solveBtn = controls && controls.solveBtn;
+        var pauseBtn = controls && controls.pauseBtn;
+        var resumeBtn = controls && controls.resumeBtn;
+        var cancelBtn = controls && controls.cancelBtn;
+        var spinner = controls && controls.spinner;
+        if (solveBtn) solveBtn.style.display = shouldShowSolve(normalized) ? "" : "none";
+        if (pauseBtn) {
+          pauseBtn.style.display = shouldShowPause(normalized) ? "" : "none";
+          pauseBtn.disabled = normalized === "PAUSE_REQUESTED";
+        }
+        if (resumeBtn) {
+          resumeBtn.style.display = normalized === "PAUSED" ? "" : "none";
+          resumeBtn.disabled = false;
+        }
+        if (cancelBtn) {
+          cancelBtn.style.display = shouldShowCancel(normalized) ? "" : "none";
+          cancelBtn.disabled = false;
+        }
+        if (spinner) spinner.classList.toggle("active", shouldSpin(normalized));
+        statusEl.textContent = lifecycleLabel(normalized);
+        statusEl.style.color = isActiveLifecycle(normalized) ? "var(--sf-emerald-600)" : normalized === "FAILED" ? "var(--sf-red-600)" : normalized === "CANCELLED" ? "var(--sf-amber-700)" : "var(--sf-gray-500)";
+      },
+      setSolving: function(solving) {
+        api.setLifecycleState(solving ? "SOLVING" : "IDLE");
+      },
+      updateMoves: function(mps) {
+        if (mps != null && mps > 0) {
+          movesEl.textContent = mps.toLocaleString() + " moves/s";
+          movesEl.style.display = "";
+          movesSep.style.display = "";
+        } else {
+          movesEl.style.display = "none";
+          movesSep.style.display = "none";
+        }
+      },
+      updateConstraintDots: function(constraints) {
+        buildDots(dotsContainer, constraints, config && config.onConstraintClick);
+      },
+      colorDotsByScore: function(scoreStr) {
+        var hard = parseHard(scoreStr);
+        var soft = parseSoft(scoreStr);
+        dotsContainer.querySelectorAll(".sf-constraint-dot").forEach(function(dot) {
+          var isHard = dot.dataset.type === "hard";
+          dot.classList.toggle("violated", isHard && hard < 0);
+          dot.classList.toggle("violated-soft", !isHard && soft < 0);
+        });
+      },
+      colorDotsFromAnalysis: function(constraints) {
+        if (!constraints || constraints.length === 0) return;
+        buildDots(dotsContainer, constraints, config && config.onConstraintClick);
+        dotsContainer.querySelectorAll(".sf-constraint-dot").forEach(function(dot, i) {
+          var c = constraints[i];
+          if (!dot) return;
+          var isHardConstraint = c.type === "hard";
+          var scoreVal = isHardConstraint ? parseHard(c.score) : parseSoft(c.score);
+          var violated = scoreVal < 0;
+          dot.classList.toggle("violated", isHardConstraint && violated);
+          dot.classList.toggle("violated-soft", !isHardConstraint && violated);
+        });
       }
-    };
-    api.setLifecycleState = function(state) {
-      var normalized = normalizeLifecycleState(state);
-      var solveBtn = controls && controls.solveBtn;
-      var pauseBtn = controls && controls.pauseBtn;
-      var resumeBtn = controls && controls.resumeBtn;
-      var cancelBtn = controls && controls.cancelBtn;
-      var spinner = controls && controls.spinner;
-      if (solveBtn) solveBtn.style.display = shouldShowSolve(normalized) ? "" : "none";
-      if (pauseBtn) {
-        pauseBtn.style.display = shouldShowPause(normalized) ? "" : "none";
-        pauseBtn.disabled = normalized === "PAUSE_REQUESTED";
-      }
-      if (resumeBtn) {
-        resumeBtn.style.display = normalized === "PAUSED" ? "" : "none";
-        resumeBtn.disabled = false;
-      }
-      if (cancelBtn) {
-        cancelBtn.style.display = shouldShowCancel(normalized) ? "" : "none";
-        cancelBtn.disabled = false;
-      }
-      if (spinner) spinner.classList.toggle("active", shouldSpin(normalized));
-      statusEl.textContent = lifecycleLabel(normalized);
-      statusEl.style.color = isActiveLifecycle(normalized) ? "var(--sf-emerald-600)" : normalized === "FAILED" ? "var(--sf-red-600)" : normalized === "CANCELLED" ? "var(--sf-amber-700)" : "var(--sf-gray-500)";
-    };
-    api.setSolving = function(solving) {
-      api.setLifecycleState(solving ? "SOLVING" : "IDLE");
-    };
-    api.updateMoves = function(mps) {
-      if (mps != null && mps > 0) {
-        movesEl.textContent = mps.toLocaleString() + " moves/s";
-        movesEl.style.display = "";
-        movesSep.style.display = "";
-      } else {
-        movesEl.style.display = "none";
-        movesSep.style.display = "none";
-      }
-    };
-    api.updateConstraintDots = function(constraints) {
-      buildDots(dotsContainer, constraints, config && config.onConstraintClick);
-    };
-    api.colorDotsByScore = function(scoreStr) {
-      var hard = parseHard(scoreStr);
-      var soft = parseSoft(scoreStr);
-      dotsContainer.querySelectorAll(".sf-constraint-dot").forEach(function(dot) {
-        var isHard = dot.dataset.type === "hard";
-        dot.classList.toggle("violated", isHard && hard < 0);
-        dot.classList.toggle("violated-soft", !isHard && soft < 0);
-      });
-    };
-    api.colorDotsFromAnalysis = function(constraints) {
-      if (!constraints || constraints.length === 0) return;
-      buildDots(dotsContainer, constraints, config && config.onConstraintClick);
-      dotsContainer.querySelectorAll(".sf-constraint-dot").forEach(function(dot, i) {
-        var c = constraints[i];
-        if (!dot) return;
-        var isHardConstraint = c.type === "hard";
-        var scoreVal = isHardConstraint ? parseHard(c.score) : parseSoft(c.score);
-        var violated = scoreVal < 0;
-        dot.classList.toggle("violated", isHardConstraint && violated);
-        dot.classList.toggle("violated-soft", !isHardConstraint && violated);
-      });
     };
     if (config && config.header) {
       api.bindHeader(config.header);
@@ -654,7 +655,7 @@ var SF = (() => {
         row.forEach(function(cell, colIdx) {
           var td = el("td");
           if (typeof cell === "string" || typeof cell === "number") {
-            td.textContent = cell;
+            td.textContent = String(cell);
           } else if (cell instanceof Node) {
             td.appendChild(cell);
           } else if (cell && cell.unsafeHtml) {
@@ -1250,33 +1251,36 @@ var SF = (() => {
       renderUnassigned(unassignedRail, config.unassigned, config.onUnassignedClick);
     }
     if (unassignedRail.children.length > 0) card.appendChild(unassignedRail);
-    var cardApi = { el: card, rail: rail2 };
-    cardApi.addBlock = function(blockConfig) {
-      return addBlock(rail2, blockConfig);
-    };
-    cardApi.setUnassigned = function(items) {
-      state.unassigned = Array.isArray(items) ? items : [];
-      if (state.unassigned.length === 0 && unassignedRail.parentNode) {
-        unassignedRail.innerHTML = "";
-        unassignedRail.parentNode && unassignedRail.parentNode.removeChild(unassignedRail);
-        return;
+    var cardApi = {
+      el: card,
+      rail: rail2,
+      addBlock: function(blockConfig) {
+        return addBlock(rail2, blockConfig);
+      },
+      setUnassigned: function(items) {
+        state.unassigned = Array.isArray(items) ? items : [];
+        if (state.unassigned.length === 0 && unassignedRail.parentNode) {
+          unassignedRail.innerHTML = "";
+          unassignedRail.parentNode && unassignedRail.parentNode.removeChild(unassignedRail);
+          return;
+        }
+        if (state.unassigned.length > 0) {
+          renderUnassigned(unassignedRail, state.unassigned, config.onUnassignedClick);
+        } else {
+          unassignedRail.innerHTML = "";
+        }
+        if (state.unassigned.length > 0 && !unassignedRail.parentNode) {
+          card.appendChild(unassignedRail);
+        }
+      },
+      clearBlocks: function() {
+        rail2.querySelectorAll(".sf-block, .sf-changeover").forEach(function(el2) {
+          el2.remove();
+        });
+      },
+      setSolving: function(solving) {
+        card.classList.toggle("solving", solving);
       }
-      if (state.unassigned.length > 0) {
-        renderUnassigned(unassignedRail, state.unassigned, config.onUnassignedClick);
-      } else {
-        unassignedRail.innerHTML = "";
-      }
-      if (state.unassigned.length > 0 && !unassignedRail.parentNode) {
-        card.appendChild(unassignedRail);
-      }
-    };
-    cardApi.clearBlocks = function() {
-      rail2.querySelectorAll(".sf-block, .sf-changeover").forEach(function(el2) {
-        el2.remove();
-      });
-    };
-    cardApi.setSolving = function(solving) {
-      card.classList.toggle("solving", solving);
     };
     return cardApi;
   };
@@ -1778,8 +1782,7 @@ var SF = (() => {
   function measurePackedHeight(packed) {
     return packed.trackCount > 0 ? TRACK_PADDING * 2 + packed.trackCount * TRACK_HEIGHT + Math.max(0, packed.trackCount - 1) * TRACK_GAP : OVERVIEW_HEIGHT;
   }
-  function buildDetailBlockConfig(item, lane, trackIndex, top, options) {
-    var config = options || {};
+  function buildDetailBlockConfig(item, lane, trackIndex, top, config = {}) {
     return {
       clusterId: config.clusterId || null,
       detailHint: config.detailHint || "",
@@ -2938,9 +2941,12 @@ var SF = (() => {
     var jobsPath = config.jobsPath || "/jobs";
     var demoDataPath = config.demoDataPath || "/demo-data";
     var extraHeaders = config.headers || {};
-    function headers(extra) {
-      var h = Object.assign({ "Content-Type": "application/json" }, extraHeaders, extra || {});
-      return h;
+    function headers(extra = {}) {
+      return {
+        "Content-Type": "application/json",
+        ...extraHeaders,
+        ...extra
+      };
     }
     function createRequestError(method, path, res) {
       var err = (
@@ -3004,7 +3010,7 @@ var SF = (() => {
         es.onmessage = function(e) {
           try {
             onMessage(JSON.parse(e.data));
-          } catch (_) {
+          } catch {
           }
         };
         es.onerror = function() {
@@ -3068,7 +3074,7 @@ var SF = (() => {
       listDemoData: function() {
         return Promise.resolve([]);
       },
-      streamJobEvents: function(id, onMessage, onError) {
+      streamJobEvents: function(id, onMessage, _onError) {
         var targetId = String(id);
         var unlisten = null;
         listen(eventName, function(event) {

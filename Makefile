@@ -24,6 +24,7 @@ SEMVER_RE := '^[0-9]+\.[0-9]+\.[0-9]+$$'
 
 # ============== Asset Sources ==============
 CSS_SRC := $(sort $(wildcard css-src/*.css))
+TS_SRC := $(wildcard ts-src/**/*.ts)
 VERSIONED_CSS := static/sf/sf.$(VERSION).css
 VERSIONED_JS := static/sf/sf.$(VERSION).js
 VERSIONED_MJS := static/sf/sf.$(VERSION).mjs
@@ -52,12 +53,13 @@ static/sf/sf.css $(VERSIONED_CSS): $(CSS_SRC)
 	@cp static/sf/sf.css $(VERSIONED_CSS)
 	@printf "$(GREEN)$(CHECK) CSS bundled$(RESET)\n"
 
-static/sf/sf.js $(VERSIONED_JS):
+static/sf/sf.js $(VERSIONED_JS): $(TS_SRC)
 	@printf "$(PROGRESS) JS   sf.js (TypeScript bundle)\n"
 	@npm run build:iife
 	@cp static/sf/sf.js $(VERSIONED_JS)
 	@printf "$(GREEN)$(CHECK) JS bundled$(RESET)\n"
-static/sf/sf.mjs $(VERSIONED_MJS):
+
+static/sf/sf.mjs $(VERSIONED_MJS): $(TS_SRC)
 	@printf "$(PROGRESS) JS   sf.mjs (ES Module bundle)\n"
 	@npm run build:esm
 	@cp static/sf/sf.mjs $(VERSIONED_MJS)

@@ -65,8 +65,7 @@ export const createSolver = function (config) {
   /** @type {TerminalSyncRecord|null} */
   var terminalSync = null;
 
-  /** @type {SolverApi} */
-  var api = {};
+  var api: SolverApi = {};
 
   /**
    * Start a new solver job.
@@ -1100,13 +1099,12 @@ function mergeMeta(meta, snapshot, eventType) {
 
 /**
  * Read a field from a payload, trying multiple possible names and sources.
- * @param {Object} payload
- * @param {string|string[]} names
- * @param {Object[]} [sources]
- * @returns {unknown}
  */
-function readField(payload, names, sources) {
-  var fields = Array.isArray(names) ? names : [names];
+function readField(
+  payload: Record<string, unknown>,
+  names: string | string[],
+  sources?: Record<string, unknown>[]
+): unknown {  var fields = Array.isArray(names) ? names : [names];
   var roots = sources || [payload];
   for (var i = 0; i < roots.length; i++) {
     var source = roots[i];
