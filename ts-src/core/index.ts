@@ -38,21 +38,24 @@ export const normalizeCreateJobId = function (raw) {
 
 export const el = function (
   tag: string,
-  attrs: Record<string, any> | null = {},
+  attrs: Record<string, unknown> | null = {},
   ...children: (string | Node | null | undefined)[]
 ): HTMLElement {
   var el: HTMLElement = document.createElement(tag);
   if (attrs) {
     Object.keys(attrs).forEach(function (key) {
-      if (key === 'className') el.className = attrs[key];
-      else if (key === 'style' && typeof attrs[key] === 'object') {
-        Object.assign(el.style, attrs[key]);
+      var value = attrs[key];
+      if (key === 'className') el.className = value as string;
+      else if (key === 'style' && typeof value === 'object') {
+        Object.assign(el.style, value as Partial<CSSStyleDeclaration>);
       }
-      else if (key.indexOf('on') === 0) el.addEventListener(key.slice(2).toLowerCase(), attrs[key]);
-      else if (key === 'dataset') Object.assign(el.dataset, attrs[key]);
-      else if (key === 'html') el.textContent = attrs[key];
-      else if (key === 'unsafeHtml') el.innerHTML = attrs[key];
-      else el.setAttribute(key, attrs[key]);
+      else if (key.indexOf('on') === 0) {
+        el.addEventListener(key.slice(2).toLowerCase(), value as EventListener);
+      }
+      else if (key === 'dataset') Object.assign(el.dataset, value as Record<string, string>);
+      else if (key === 'html') el.textContent = value as string;
+      else if (key === 'unsafeHtml') el.innerHTML = value as string;
+      else el.setAttribute(key, value as string);
     });
   }
   children.forEach(function (child) {

@@ -891,24 +891,35 @@ export const createSolver = function (
    */
   function settlePendingFromTerminal(eventType: string, bundle: { meta: SF.EventMeta, snapshot: SF.SolverSnapshot | null, analysis: SF.SolverAnalysis | null } | null, err: Error | null): void {
     if (eventType === 'cancelled') {
-      resolveDeferred('cancel', bundle as any);
+      if (pendingCancel) {
+        if (bundle) pendingCancel.resolve(bundle);
+        else pendingCancel.reject(err || new Error('Cancel did not settle before the job terminated'));
+        pendingCancel = null;
+      }
     } else if (pendingCancel) {
-      if (bundle) pendingCancel.resolve(bundle as any);
+      if (bundle) pendingCancel.resolve(bundle);
       else pendingCancel.reject(err || new Error('Cancel did not settle before the job terminated'));
       pendingCancel = null;
     }
 
-    rejectDeferred('pause', err || new Error('Job terminated before pause settled'));
-    rejectDeferred('resume', err || new Error('Job terminated before resume settled'));
+    if (pendingPause) {
+      pendingPause.reject(err || new Error('Job terminated before pause settled'));
+      pendingPause = null;
+    }
+    if (pendingResume) {
+      pendingResume.reject(err || new Error('Job terminated before resume settled'));
+      pendingResume = null;
+    }
   }
 
   /**
    * Resolve a deferred promise.
    */
-  function resolveDeferred(name: string, value: any): void {
+  function resolveDeferred(name: string, value: unknown): void {
     var deferred = getDeferred(name);
     if (!deferred) return;
-    deferred.resolve(value);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (deferred as any).resolve(value);
     setDeferred(name, null);
   }
 
@@ -935,10 +946,10 @@ export const createSolver = function (
   /**
    * Set a deferred by name.
    */
-  function setDeferred(name: string, value: any): void {
-    if (name === 'pause') pendingPause = value;
-    if (name === 'resume') pendingResume = value;
-    if (name === 'cancel') pendingCancel = value;
+  function setDeferred(name: string, value: unknown): void {
+    if (name === 'pause') pendingPause = value as SF.Deferred<{ snapshot: SF.SolverSnapshot | null; meta: SF.EventMeta; analysis: SF.SolverAnalysis | null } | null>;
+    if (name === 'resume') pendingResume = value as SF.Deferred<SF.EventMeta | null>;
+    if (name === 'cancel') pendingCancel = value as SF.Deferred<{ snapshot: SF.SolverSnapshot | null; meta: SF.EventMeta; analysis: SF.SolverAnalysis | null } | null>;
   }
 
   /**

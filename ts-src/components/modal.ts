@@ -120,16 +120,16 @@ export const createModal = function (
   return api;
 };
 
-function setBodyContent(target: HTMLElement, content: any, explicitUnsafeHtml?: string) {
+function setBodyContent(target: HTMLElement, content: unknown, explicitUnsafeHtml?: string) {
   target.textContent = '';
   if (explicitUnsafeHtml != null) {
     target.innerHTML = explicitUnsafeHtml;
   } else if (typeof content === 'string') {
     target.textContent = content;
-  } else if (content && content.unsafeBody) {
-    target.innerHTML = content.unsafeBody;
-  } else if (content && content.unsafeHtml) {
-    target.innerHTML = content.unsafeHtml;
+  } else if (content && typeof content === 'object' && 'unsafeBody' in content) {
+    target.innerHTML = (content as { unsafeBody: string }).unsafeBody;
+  } else if (content && typeof content === 'object' && 'unsafeHtml' in content) {
+    target.innerHTML = (content as { unsafeHtml: string }).unsafeHtml;
   } else if (content instanceof Node) {
     target.appendChild(content);
   }

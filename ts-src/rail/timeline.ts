@@ -196,7 +196,7 @@ export const createTimeline = function (config: TimelineConfig): TimelineApi {
     lanes.innerHTML = '';
 
     state.model.lanes.forEach(function (lane: TimelineLane, laneIndex) {
-      var laneRender: any = lane.mode === 'overview'
+      var laneRender: { blocks: unknown[]; height: number; trackCount: number; expandedClusterId?: string | null } = lane.mode === 'overview'
         ? buildOverviewRender(lane, state, function () {
           rerenderTimeline();
         })
@@ -450,21 +450,23 @@ function measurePackedHeight(packed) {
     : OVERVIEW_HEIGHT;
 }
 
-function buildDetailBlockConfig(item, lane, trackIndex, top, config: any={}) {
+function buildDetailBlockConfig(item: unknown, lane: unknown, trackIndex: number, top: number, config: { clusterId?: string | null; detailHint?: string } = {}) {
+  const i = item as { endMinute: number; id: string; label: string; meta: unknown; startMinute: number; tone: string };
+  const l = lane as { id: string };
   return {
     clusterId: config.clusterId || null,
     detailHint: config.detailHint || '',
-    endMinute: item.endMinute,
+    endMinute: i.endMinute,
     height: TRACK_HEIGHT,
-    itemId: item.id,
+    itemId: i.id,
     kindClass: 'sf-rail-timeline-item--detail',
-    label: item.label,
-    metaLabel: describeMeta(item.meta),
-    startMinute: item.startMinute,
+    label: i.label,
+    metaLabel: describeMeta(i.meta),
+    startMinute: i.startMinute,
     top: top,
-    ariaLabel: buildItemAriaLabel(item, lane),
-    tooltip: buildItemTooltip(item, lane),
-    tone: item.tone,
+    ariaLabel: buildItemAriaLabel(i, l),
+    tooltip: buildItemTooltip(i, l),
+    tone: i.tone,
     trackIndex: trackIndex,
   };
 }
@@ -808,7 +810,7 @@ function normalizeAxis(axis) {
     'createTimeline(model.axis.endMinute)'
   );
 
-  var normalized: any = {
+  var normalized: Record<string, unknown> = {
     endMinute: axisRange.endMinute,
     startMinute: axisRange.startMinute,
   };
