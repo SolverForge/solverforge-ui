@@ -123,6 +123,32 @@ declare global {
 		}
 
 		// ------------------------------------------------------------------------
+		// Backend Payload Types
+		// ------------------------------------------------------------------------
+
+		/**
+		 * Recursive type for backend payloads that can have nested data/metadata.
+		 * Used for normalizeJobEvent, normalizeSnapshot, normalizeAnalysis.
+		 */
+		interface BackendPayload extends Record<string, unknown> {
+			[key: string]: unknown | BackendPayload;
+			data?: BackendPayload;
+			metadata?: BackendPayload;
+			solution?: unknown;
+			error?: string;
+			eventType?: string;
+			jobId?: string;
+			id?: string;
+			eventSequence?: number;
+			lifecycleState?: string;
+			currentScore?: string | number;
+			bestScore?: string | number;
+			snapshotRevision?: number | string;
+			terminalReason?: string;
+			telemetry?: SolverTelemetry | BackendPayload;
+		}
+
+		// ------------------------------------------------------------------------
 		// Solver Core Types
 		// ------------------------------------------------------------------------
 
@@ -252,20 +278,6 @@ declare global {
 			error: string | null;
 		}
 
-		/**
-		 * Telemetry data structure.
-		 */
-		interface SolverTelemetry {
-			movesPerSecond?: number;
-			stepCount?: number;
-			elapsedMs?: number;
-			movesGenerated?: number;
-			movesEvaluated?: number;
-			movesAccepted?: number;
-			movesApplied?: number;
-			scoreCalculations?: number;
-		}
-
 		// ------------------------------------------------------------------------
 		// Solver Configuration & API
 		// ------------------------------------------------------------------------
@@ -351,4 +363,4 @@ declare global {
 	}
 }
 
-export { SF };
+export { SF, BackendPayload };
