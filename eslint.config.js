@@ -6,14 +6,26 @@ const baseRules = {
   'no-dupe-keys': 'error',
   'no-redeclare': 'error',
   'no-unreachable': 'error',
-  'no-undef': 'error',
-  'no-unused-vars': ['error', { args: 'none', caughtErrors: 'none' }],
   'valid-typeof': 'error',
 };
 
-const correctnessRules = {
+const tsRules = {
   ...baseRules,
   ...ts.configs.recommended.rules,
+
+  // Disable JS version (important)
+  'no-unused-vars': 'off',
+
+  // Use TS-aware version
+  '@typescript-eslint/no-unused-vars': [
+    'error',
+    {
+      args: 'all',
+      argsIgnorePattern: '^_',
+      varsIgnorePattern: '^_',
+      caughtErrors: 'none',
+    },
+  ],
 };
 
 module.exports = [
@@ -21,9 +33,13 @@ module.exports = [
     ignores: [
       'node_modules/**',
       'static/**',
-      'target/**'
+      'target/**',
     ],
   },
+
+  // =========================
+  // TypeScript files
+  // =========================
   {
     files: ['ts-src/**/*.ts'],
     languageOptions: {
@@ -44,18 +60,28 @@ module.exports = [
     plugins: {
       '@typescript-eslint': ts,
     },
-    rules: correctnessRules,
+    rules: tsRules,
   },
+
+  // =========================
+  // JS tests & scripts (Node)
+  // =========================
   {
     files: ['tests/**/*.js', 'scripts/**/*.js'],
     languageOptions: {
       ecmaVersion: 2021,
       sourceType: 'commonjs',
       globals: {
-        ...globals.browser,
         ...globals.node,
+        ...globals.browser,
       },
     },
-    rules: baseRules,
+    rules: {
+      ...baseRules,
+
+      // Re-enable JS-native checks in Node files
+      'no-undef': 'error',
+      'no-unused-vars': ['error', { args: 'none', caughtErrors: 'none' }],
+    },
   },
 ];

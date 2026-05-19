@@ -3,36 +3,37 @@
    Pluggable transport: Axum, Tauri IPC, generic fetch.
    ============================================================================ */
 
-import {assert, normalizeCreateJobId} from "../core";
+import { assert, normalizeCreateJobId } from "../core";
 
 /**
  * Creates a backend adapter for the given transport type.
- * @param {BackendConfig} config
- * @returns {BackendAdapter}
  */
-export const createBackend = function (config) {
-  config = config || {};
-  var type = config.type || 'axum';
+export function createBackend(
+  config: SF.BackendConfig = {}
+): SF.BackendAdapter {
+  const type = config.type ?? 'axum';
+
   if (type === 'tauri') {
-    return createTauriBackend(/** @type {TauriBackendConfig} */(config));
+    return createTauriBackend(config as SF.TauriBackendConfig);
   }
-  return createHttpBackend(/** @type {HttpBackendConfig} */(config));
-};
+
+  return createHttpBackend(config);
+}
 
 /**
- * @param {unknown} raw
- * @returns {string}
+ * @param raw
+ * @returns
  */
-function resolveJobId(raw) {
+function resolveJobId(raw: unknown): string {
   return normalizeCreateJobId(raw);
 }
 
 /**
  * Extracts a job id string from a solver event payload.
- * @param {SolverEvent} payload
- * @returns {string}
+ * @param payload
+ * @returns
  */
-function resolveEventJobId(payload) {
+function resolveEventJobId(payload: SF.SolverEvent): string {
   if (!payload || typeof payload !== 'object') return '';
   if (payload.jobId != null) return String(payload.jobId).trim();
   if (payload.job_id != null) return String(payload.job_id).trim();
@@ -43,11 +44,11 @@ function resolveEventJobId(payload) {
 }
 
 /**
- * @param {string} path
- * @param {string|number|undefined} snapshotRevision
- * @returns {string}
+ * @param path
+ * @param snapshotRevision
+ * @returns
  */
-function withSnapshotRevision(path, snapshotRevision) {
+function withSnapshotRevision(path: string, snapshotRevision?: string | number): string {
   if (snapshotRevision == null || snapshotRevision === '') return path;
   return path + '?snapshot_revision=' + encodeURIComponent(String(snapshotRevision));
 }
@@ -56,10 +57,10 @@ function withSnapshotRevision(path, snapshotRevision) {
 
 /**
  * Create a new HTTP backend instance.
- * @param {HttpBackendConfig} config
- * @returns {BackendAdapter}
+ * @param config
+ * @returns
  */
-function createHttpBackend(config) {
+function createHttpBackend(config: SF.HttpBackendConfig): SF.BackendAdapter {
   var baseUrl = config.baseUrl || '';
   var jobsPath = config.jobsPath || '/jobs';
   var demoDataPath = config.demoDataPath || '/demo-data';
@@ -71,13 +72,13 @@ function createHttpBackend(config) {
    * Default JSON headers are merged with configured global headers
    * and optional request-specific headers.
    *
-   * @param {Record<string, string>} [extra]
+   * @param extra
    * Additional headers to merge into the request.
    *
-   * @returns {Record<string, string>}
+   * @returns
    * The final merged headers object.
    */
-  function headers(extra = {}) {
+  function headers(extra: Record<string, string> = {}): Record<string, string> {
     return {
       'Content-Type': 'application/json',
       ...extraHeaders,
@@ -87,13 +88,13 @@ function createHttpBackend(config) {
 
   /**
    * Creates an enriched Error with HTTP request context.
-   * @param {string} method
-   * @param {string} path
-   * @param {{ status: number; statusText: string }} res
-   * @returns {HttpError}
+   * @param method
+   * @param path
+   * @param res
+   * @returns
    */
-  function createRequestError(method, path, res) {
-    var err = /** @type {HttpError} */ (new Error(res.status + ' ' + res.statusText));
+  function createRequestError(method: string, path: string, res: { status: number; statusText: string }): SF.HttpError {
+    var err = new Error(res.status + ' ' + res.statusText) as SF.HttpError;
     err.status = res.status;
     err.statusText = res.statusText;
     err.method = method;
@@ -103,18 +104,41 @@ function createHttpBackend(config) {
   }
 
   /**
-   * @param {string} method
-   * @param {string} path
-   * @param {unknown} [body]
-   * @returns {Promise<unknown>}
+   * Performs an HTTP request to the API.
+   *
+   * @template TResponse Expected response type.
+   * @template TBody Request body type.
+   *
+   * @param method HTTP method (`GET`, `POST`, `PUT`, etc.).
+   * @param path Relative endpoint path.
+   * @param body Data sent in the request body.
+   *
+   * @returns
+   *
+   * @throws {Error} Throws an error when the HTTP response is not successful.
    */
-  function request(method, path, body?: unknown) {
-    var opts = { method: method, headers: headers() };
+  function request<TResponse, TBody = unknown>(
+    method: string,
+    path: string,
+    body?: TBody
+  ): Promise<TResponse> {
+    const opts: RequestInit = {
+      method,
+      headers: headers(),
+    };
+
     if (body !== undefined) opts.body = JSON.stringify(body);
+
+
     return fetch(baseUrl + path, opts).then(function (res) {
       if (!res.ok) throw createRequestError(method, path, res);
-      var ct = res.headers.get('content-type') || '';
-      return ct.indexOf('json') !== -1 ? res.json() : res.text();
+      const contentType = res.headers.get('content-type') || '';
+
+      if (contentType.includes('json')) {
+        return res.json() as Promise<TResponse>;
+      }
+
+      return res.text() as unknown as TResponse;
     });
   }
 
@@ -179,10 +203,10 @@ function createHttpBackend(config) {
 
 /**
  * Create a new IPC backend for Tauri
- * @param {TauriBackendConfig} config
- * @returns {BackendAdapter}
+ * @param config
+ * @returns
  */
-function createTauriBackend(config) {
+function createTauriBackend(config: SF.TauriBackendConfig): SF.BackendAdapter {
   assert(typeof config === 'object', 'createBackend({}) is required for Tauri adapter');
   assert(typeof config.invoke === 'function', 'Tauri backend requires config.invoke');
   assert(typeof config.listen === 'function', 'Tauri backend requires config.listen');
@@ -203,13 +227,21 @@ function createTauriBackend(config) {
       return invoke(commands.getJobStatus || 'get_job_status', { id: id });
     },
     getSnapshot: function (id, snapshotRevision) {
-      var payload = { id: id };
-      if (snapshotRevision != null && snapshotRevision !== '') payload.snapshotRevision = snapshotRevision;
+      var payload = {
+        id: id,
+        ...(snapshotRevision != null && snapshotRevision !== ''
+          ? { snapshotRevision }
+          : {}),
+      };
       return invoke(commands.getSnapshot || 'get_snapshot', payload);
     },
     analyzeSnapshot: function (id, snapshotRevision) {
-      var payload = { id: id };
-      if (snapshotRevision != null && snapshotRevision !== '') payload.snapshotRevision = snapshotRevision;
+      var payload = {
+        id: id,
+        ...(snapshotRevision != null && snapshotRevision !== ''
+          ? { snapshotRevision }
+          : {}),
+      };
       return invoke(commands.analyzeSnapshot || 'analyze_snapshot', payload);
     },
     pauseJob: function (id) {
@@ -234,10 +266,10 @@ function createTauriBackend(config) {
       var targetId = String(id);
       var unlisten = null;
       listen(eventName, function (event) {
-        var payload = (event && event.payload) || /** @type {SolverEvent} */ ({});
+        var payload= (event && event.payload) || {} as  SF.SolverEvent ;
         var payloadId = resolveEventJobId(payload);
         if (payloadId && payloadId !== targetId) return;
-        onMessage(/** @type {SolverEvent} */(payload));
+        onMessage(payload as SF.SolverEvent);
       }).then(function (fn) { unlisten = fn; });
       return function close() { if (unlisten) unlisten(); };
     },
@@ -246,11 +278,11 @@ function createTauriBackend(config) {
 
 /**
  * Creates an enriched Error for SSE stream closure events.
- * @param {string} url
- * @returns {SseError}
+ * @param url
+ * @returns
  */
-function createSseClosedError(url) {
-  var err = /** @type {SseError} */ (new Error('Event stream closed for ' + url));
+function createSseClosedError(url: string): SF.SseError {
+  var err = (new Error('Event stream closed for ' + url)) as SF.SseError;
   err.code = 'SSE_CLOSED';
   err.transport = 'sse';
   err.url = url;

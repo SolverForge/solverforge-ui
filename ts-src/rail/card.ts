@@ -290,7 +290,7 @@ export const createCard = function (config) {
       state.unassigned = Array.isArray(items) ? items : [];
       if (state.unassigned.length === 0 && unassignedRail.parentNode) {
         unassignedRail.innerHTML = '';
-        unassignedRail.parentNode && unassignedRail.parentNode.removeChild(unassignedRail);
+        unassignedRail.parentNode?.removeChild(unassignedRail);
         return;
       }
       if (state.unassigned.length > 0) {

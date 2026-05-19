@@ -1206,7 +1206,7 @@ var createCard = function(config) {
       state.unassigned = Array.isArray(items) ? items : [];
       if (state.unassigned.length === 0 && unassignedRail.parentNode) {
         unassignedRail.innerHTML = "";
-        unassignedRail.parentNode && unassignedRail.parentNode.removeChild(unassignedRail);
+        unassignedRail.parentNode?.removeChild(unassignedRail);
         return;
       }
       if (state.unassigned.length > 0) {
@@ -2851,20 +2851,13 @@ var rail = {
 };
 
 // ts-src/solver/backend.ts
-var createBackend = function(config) {
-  config = config || {};
-  var type = config.type || "axum";
+function createBackend(config = {}) {
+  const type = config.type ?? "axum";
   if (type === "tauri") {
-    return createTauriBackend(
-      /** @type {TauriBackendConfig} */
-      config
-    );
+    return createTauriBackend(config);
   }
-  return createHttpBackend(
-    /** @type {HttpBackendConfig} */
-    config
-  );
-};
+  return createHttpBackend(config);
+}
 function resolveJobId(raw) {
   return normalizeCreateJobId(raw);
 }
@@ -2894,10 +2887,7 @@ function createHttpBackend(config) {
     };
   }
   function createRequestError(method, path, res) {
-    var err = (
-      /** @type {HttpError} */
-      new Error(res.status + " " + res.statusText)
-    );
+    var err = new Error(res.status + " " + res.statusText);
     err.status = res.status;
     err.statusText = res.statusText;
     err.method = method;
@@ -2906,12 +2896,18 @@ function createHttpBackend(config) {
     return err;
   }
   function request(method, path, body) {
-    var opts = { method, headers: headers() };
+    const opts = {
+      method,
+      headers: headers()
+    };
     if (body !== void 0) opts.body = JSON.stringify(body);
     return fetch(baseUrl + path, opts).then(function(res) {
       if (!res.ok) throw createRequestError(method, path, res);
-      var ct = res.headers.get("content-type") || "";
-      return ct.indexOf("json") !== -1 ? res.json() : res.text();
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("json")) {
+        return res.json();
+      }
+      return res.text();
     });
   }
   return {
@@ -2992,13 +2988,17 @@ function createTauriBackend(config) {
       return invoke(commands.getJobStatus || "get_job_status", { id });
     },
     getSnapshot: function(id, snapshotRevision) {
-      var payload = { id };
-      if (snapshotRevision != null && snapshotRevision !== "") payload.snapshotRevision = snapshotRevision;
+      var payload = {
+        id,
+        ...snapshotRevision != null && snapshotRevision !== "" ? { snapshotRevision } : {}
+      };
       return invoke(commands.getSnapshot || "get_snapshot", payload);
     },
     analyzeSnapshot: function(id, snapshotRevision) {
-      var payload = { id };
-      if (snapshotRevision != null && snapshotRevision !== "") payload.snapshotRevision = snapshotRevision;
+      var payload = {
+        id,
+        ...snapshotRevision != null && snapshotRevision !== "" ? { snapshotRevision } : {}
+      };
       return invoke(commands.analyzeSnapshot || "analyze_snapshot", payload);
     },
     pauseJob: function(id) {
@@ -3023,14 +3023,10 @@ function createTauriBackend(config) {
       var targetId = String(id);
       var unlisten = null;
       listen(eventName, function(event) {
-        var payload = event && event.payload || /** @type {SolverEvent} */
-        {};
+        var payload = event && event.payload || {};
         var payloadId = resolveEventJobId(payload);
         if (payloadId && payloadId !== targetId) return;
-        onMessage(
-          /** @type {SolverEvent} */
-          payload
-        );
+        onMessage(payload);
       }).then(function(fn) {
         unlisten = fn;
       });
@@ -3041,10 +3037,7 @@ function createTauriBackend(config) {
   };
 }
 function createSseClosedError(url) {
-  var err = (
-    /** @type {SseError} */
-    new Error("Event stream closed for " + url)
-  );
+  var err = new Error("Event stream closed for " + url);
   err.code = "SSE_CLOSED";
   err.transport = "sse";
   err.url = url;
@@ -3089,129 +3082,216 @@ var createSolver = function(config) {
   var pendingResume = null;
   var pendingCancel = null;
   var terminalSync = null;
-  var api = {};
-  api.start = function(data) {
-    if (retainedJobId) {
-      return Promise.reject(new Error("Cannot start a new solve while a retained job exists; wait for a terminal lifecycle state and call delete() first"));
-    }
-    if (phase !== "idle") return Promise.resolve();
-    resetForStart();
-    phase = "starting";
-    runToken += 1;
-    applyLifecycleState("STARTING");
-    updateMoves(null);
-    var token = runToken;
-    return backend.createJob(data).then(function(id) {
-      if (token !== runToken) return;
-      var jobId = ensureJobId(id);
-      activeJobId = jobId;
-      retainedJobId = jobId;
-      phase = "solving";
-      applyLifecycleState("SOLVING");
-      attachStream(token, jobId);
-      if (queuedAction === "pause") {
-        queuedAction = null;
-        requestPause(token, jobId);
-      } else if (queuedAction === "cancel") {
-        queuedAction = null;
-        requestCancel(token, jobId);
-      }
-    }).catch(function(err) {
-      if (token !== runToken) return;
+  var api = {
+    /**
+     * Start a new solver job.
+     * @param {unknown} [data]
+     * @returns {Promise<void>}
+     */
+    start: function(data) {
       if (retainedJobId) {
-        failTransport(err);
-      } else {
-        failStartup(err);
+        return Promise.reject(
+          new Error(
+            "Cannot start a new solve while a retained job exists; wait for a terminal lifecycle state and call delete() first"
+          )
+        );
       }
-      throw err;
-    });
-  };
-  api.pause = function() {
-    if (pendingPause) return pendingPause.promise;
-    if (phase === "starting" && !activeJobId) {
-      queuedAction = "pause";
+      if (phase !== "idle") {
+        return Promise.resolve();
+      }
+      resetForStart();
+      phase = "starting";
+      runToken += 1;
+      applyLifecycleState("STARTING");
+      updateMoves(null);
+      var token = runToken;
+      return backend.createJob(data).then(function(id) {
+        if (token !== runToken) return;
+        var jobId = ensureJobId(id);
+        activeJobId = jobId;
+        retainedJobId = jobId;
+        phase = "solving";
+        applyLifecycleState("SOLVING");
+        attachStream(token, jobId);
+        if (queuedAction === "pause") {
+          queuedAction = null;
+          requestPause(token, jobId);
+        } else if (queuedAction === "cancel") {
+          queuedAction = null;
+          requestCancel(token, jobId);
+        }
+      }).catch(function(err) {
+        if (token !== runToken) return;
+        if (retainedJobId) {
+          failTransport(err);
+        } else {
+          failStartup(err);
+        }
+        throw err;
+      });
+    },
+    /**
+     * Request to pause the current solver job.
+     * @returns {Promise<{snapshot: SolverSnapshot|null, meta: EventMeta, analysis: SolverAnalysis|null}|void>}
+     */
+    pause: function() {
+      if (pendingPause) {
+        return pendingPause.promise;
+      }
+      if (phase === "starting" && !activeJobId) {
+        queuedAction = "pause";
+        pendingPause = createDeferred();
+        return pendingPause.promise;
+      }
+      var jobId = currentJobId();
+      if (phase !== "solving" || !jobId) {
+        return Promise.resolve();
+      }
       pendingPause = createDeferred();
+      if (!ensureStreamAttached(runToken, jobId, "pause")) {
+        return pendingPause.promise;
+      }
+      requestPause(runToken, jobId);
       return pendingPause.promise;
-    }
-    var jobId = currentJobId();
-    if (phase !== "solving" || !jobId) return Promise.resolve();
-    pendingPause = createDeferred();
-    if (!ensureStreamAttached(runToken, jobId, "pause")) return pendingPause.promise;
-    requestPause(runToken, jobId);
-    return pendingPause.promise;
-  };
-  api.resume = function() {
-    if (pendingResume) return pendingResume.promise;
-    var jobId = currentJobId();
-    if (phase !== "paused" || !jobId) return Promise.resolve();
-    pendingResume = createDeferred();
-    if (!ensureStreamAttached(runToken, jobId, "resume")) return pendingResume.promise;
-    requestResume(runToken, jobId);
-    return pendingResume.promise;
-  };
-  api.cancel = function() {
-    if (pendingCancel) return pendingCancel.promise;
-    if (phase === "starting" && !activeJobId) {
-      queuedAction = "cancel";
+    },
+    /**
+     * Resume a paused solver job.
+     * @returns {Promise<EventMeta|void>}
+     */
+    resume: function() {
+      if (pendingResume) {
+        return pendingResume.promise;
+      }
+      var jobId = currentJobId();
+      if (phase !== "paused" || !jobId) {
+        return Promise.resolve();
+      }
+      pendingResume = createDeferred();
+      if (!ensureStreamAttached(runToken, jobId, "resume")) {
+        return pendingResume.promise;
+      }
+      requestResume(runToken, jobId);
+      return pendingResume.promise;
+    },
+    /**
+     * Request to cancel the current solver job.
+     * @returns {Promise<{snapshot: SolverSnapshot|null, meta: EventMeta, analysis: SolverAnalysis|null}|void>}
+     */
+    cancel: function() {
+      if (pendingCancel) {
+        return pendingCancel.promise;
+      }
+      if (phase === "starting" && !activeJobId) {
+        queuedAction = "cancel";
+        pendingCancel = createDeferred();
+        return pendingCancel.promise;
+      }
+      var jobId = currentJobId();
+      if (phase === "cancelling" && jobId) {
+        pendingCancel = createDeferred();
+        if (!ensureStreamAttached(runToken, jobId, "cancel")) {
+          return pendingCancel.promise;
+        }
+        return pendingCancel.promise;
+      }
+      if (!jobId || !isCancelablePhase()) {
+        return Promise.resolve();
+      }
       pendingCancel = createDeferred();
+      if (!ensureStreamAttached(runToken, jobId, "cancel")) {
+        return pendingCancel.promise;
+      }
+      requestCancel(runToken, jobId);
       return pendingCancel.promise;
+    },
+    /**
+     * Delete the retained job and its backend state.
+     * @returns {Promise<void>}
+     */
+    delete: function() {
+      if (!retainedJobId) {
+        return Promise.resolve();
+      }
+      if (!isTerminalLifecycle(lifecycleState)) {
+        return Promise.reject(
+          new Error(
+            "Cannot delete a retained job before it reaches a terminal lifecycle state"
+          )
+        );
+      }
+      var jobId = retainedJobId;
+      return ensureTerminalSyncBeforeDelete(jobId).then(function() {
+        if (retainedJobId !== jobId) return;
+        return backend.deleteJob(jobId);
+      }).then(function() {
+        if (retainedJobId !== jobId) return;
+        resetAfterDelete();
+      }).catch(function(err) {
+        notifyError(err);
+        throw err;
+      });
+    },
+    /**
+     * Get a snapshot for the current job.
+     * @param {number|string} [snapshotRevision]
+     * @returns {Promise<SolverSnapshot|null>}
+     */
+    getSnapshot: function(snapshotRevision) {
+      var jobId = currentJobId();
+      if (!jobId) {
+        return Promise.reject(
+          new Error("No retained job is available")
+        );
+      }
+      var revision = resolveRequestedSnapshotRevision(snapshotRevision);
+      return backend.getSnapshot(jobId, revision).then(function(payload) {
+        return normalizeSnapshot(payload, lastMeta);
+      });
+    },
+    /**
+     * Get analysis for a snapshot of the current job.
+     * @param {number|string} [snapshotRevision]
+     * @returns {Promise<SolverAnalysis|null>}
+     */
+    analyzeSnapshot: function(snapshotRevision) {
+      var jobId = currentJobId();
+      if (!jobId) {
+        return Promise.reject(
+          new Error("No retained job is available")
+        );
+      }
+      var revision = resolveRequestedSnapshotRevision(snapshotRevision);
+      return backend.analyzeSnapshot(jobId, revision).then(function(payload) {
+        return normalizeAnalysis(payload, lastMeta);
+      });
+    },
+    /**
+     * Check if the solver is currently running.
+     * @returns {boolean}
+     */
+    isRunning: function() {
+      return phase !== "idle" && phase !== "paused";
+    },
+    /**
+     * Get the current job ID.
+     */
+    getJobId: function() {
+      return activeJobId != null ? activeJobId : retainedJobId;
+    },
+    /**
+     * Get the current lifecycle state.
+     * @returns {LifecycleState}
+     */
+    getLifecycleState: function() {
+      return lifecycleState;
+    },
+    /**
+     * Get the current snapshot revision.
+     * @returns {number|string|null}
+     */
+    getSnapshotRevision: function() {
+      return lastSnapshotRevision;
     }
-    var jobId = currentJobId();
-    if (phase === "cancelling" && jobId) {
-      pendingCancel = createDeferred();
-      if (!ensureStreamAttached(runToken, jobId, "cancel")) return pendingCancel.promise;
-      return pendingCancel.promise;
-    }
-    if (!jobId || !isCancelablePhase()) return Promise.resolve();
-    pendingCancel = createDeferred();
-    if (!ensureStreamAttached(runToken, jobId, "cancel")) return pendingCancel.promise;
-    requestCancel(runToken, jobId);
-    return pendingCancel.promise;
-  };
-  api.delete = function() {
-    if (!retainedJobId) return Promise.resolve();
-    if (!isTerminalLifecycle(lifecycleState)) {
-      return Promise.reject(new Error("Cannot delete a retained job before it reaches a terminal lifecycle state"));
-    }
-    var jobId = retainedJobId;
-    return ensureTerminalSyncBeforeDelete(jobId).then(function() {
-      if (retainedJobId !== jobId) return;
-      return backend.deleteJob(jobId);
-    }).then(function() {
-      if (retainedJobId !== jobId) return;
-      resetAfterDelete();
-    }).catch(function(err) {
-      notifyError(err);
-      throw err;
-    });
-  };
-  api.getSnapshot = function(snapshotRevision) {
-    var jobId = currentJobId();
-    if (!jobId) return Promise.reject(new Error("No retained job is available"));
-    var revision = resolveRequestedSnapshotRevision(snapshotRevision);
-    return backend.getSnapshot(jobId, revision).then(function(payload) {
-      return normalizeSnapshot(payload, lastMeta);
-    });
-  };
-  api.analyzeSnapshot = function(snapshotRevision) {
-    var jobId = currentJobId();
-    if (!jobId) return Promise.reject(new Error("No retained job is available"));
-    var revision = resolveRequestedSnapshotRevision(snapshotRevision);
-    return backend.analyzeSnapshot(jobId, revision).then(function(payload) {
-      return normalizeAnalysis(payload, lastMeta);
-    });
-  };
-  api.isRunning = function() {
-    return phase !== "idle" && phase !== "paused";
-  };
-  api.getJobId = function() {
-    return activeJobId != null ? activeJobId : retainedJobId;
-  };
-  api.getLifecycleState = function() {
-    return lifecycleState;
-  };
-  api.getSnapshotRevision = function() {
-    return lastSnapshotRevision;
   };
   return api;
   function requestPause(token, id) {
@@ -3655,49 +3735,43 @@ function normalizeJobEvent(payload, expectedId) {
     readField(payload, ["eventType", "event_type", "type"])
   );
   if (!eventType) return null;
-  var jobId = (
-    /** @type {string|null} */
-    readField(payload, ["jobId", "job_id", "id"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata])
-  );
+  var jobId = readField(payload, ["jobId", "job_id", "id"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]);
   if (jobId == null || jobId === "") jobId = expectedId;
   if (jobId == null || jobId === "") return null;
   if (String(jobId) !== String(expectedId)) return null;
   var solution = payload.solution || payload.data && payload.data.solution || null;
   var solutionScore = readField(solution, ["score"], [solution]);
-  var meta = (
-    /** @type {EventMeta} */
-    {
-      id: String(jobId),
-      jobId: String(jobId),
-      eventType,
-      eventSequence: (
-        /** @type {number|null} */
-        readField(payload, ["eventSequence", "event_sequence"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata])
-      ),
-      lifecycleState: normalizeLifecycleState2(
-        /** @type {string|null} */
-        readField(payload, ["lifecycleState", "lifecycle_state", "solverStatus", "solver_status"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]),
-        eventType
-      ),
-      terminalReason: (
-        /** @type {string|null} */
-        readField(payload, ["terminalReason", "terminal_reason"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || null
-      ),
-      telemetry: normalizeTelemetry(readField(payload, ["telemetry"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]), payload),
-      currentScore: (
-        /** @type {string|null} */
-        readField(payload, ["currentScore", "current_score"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || (solutionScore != null ? String(solutionScore) : null) || null
-      ),
-      bestScore: (
-        /** @type {string|null} */
-        readField(payload, ["bestScore", "best_score"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || (solutionScore != null ? String(solutionScore) : null) || null
-      ),
-      snapshotRevision: (
-        /** @type {number|string|null} */
-        readField(payload, ["snapshotRevision", "snapshot_revision"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata])
-      )
-    }
-  );
+  var meta = {
+    id: String(jobId),
+    jobId: String(jobId),
+    eventType,
+    eventSequence: (
+      /** @type {number|null} */
+      readField(payload, ["eventSequence", "event_sequence"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata])
+    ),
+    lifecycleState: normalizeLifecycleState2(
+      /** @type {string|null} */
+      readField(payload, ["lifecycleState", "lifecycle_state", "solverStatus", "solver_status"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]),
+      eventType
+    ),
+    terminalReason: (
+      /** @type {string|null} */
+      readField(payload, ["terminalReason", "terminal_reason"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || null
+    ),
+    telemetry: normalizeTelemetry(readField(payload, ["telemetry"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]), payload),
+    currentScore: (
+      /** @type {string|null} */
+      readField(payload, ["currentScore", "current_score"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || (solutionScore != null ? String(solutionScore) : null) || null
+    ),
+    bestScore: (
+      /** @type {string|null} */
+      readField(payload, ["bestScore", "best_score"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || (solutionScore != null ? String(solutionScore) : null) || null
+    ),
+    snapshotRevision: (
+      /** @type {number|string|null} */
+      readField(payload, ["snapshotRevision", "snapshot_revision"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata])
+    )
+  };
   return (
     /** @type {NormalizedJobEvent} */
     {
@@ -3754,10 +3828,7 @@ function normalizeAnalysis(payload, fallbackMeta) {
   var constraints = readAnalysisConstraints(analysisBody);
   var jobId = readField(payload, ["jobId", "job_id", "id"], [payload, payload.data]);
   if (jobId == null || jobId === "") jobId = fallbackMeta && fallbackMeta.jobId;
-  var snapshotRevision = (
-    /** @type {number|string|null} */
-    readField(payload, ["snapshotRevision", "snapshot_revision"], [payload, payload.data])
-  );
+  var snapshotRevision = readField(payload, ["snapshotRevision", "snapshot_revision"], [payload, payload.data]);
   if (snapshotRevision == null || snapshotRevision === "") {
     snapshotRevision = fallbackMeta && fallbackMeta.snapshotRevision;
   }
@@ -3869,16 +3940,11 @@ function normalizeLifecycleState2(value, eventType) {
 }
 function normalizeTelemetry(rawTelemetry, payload) {
   if (rawTelemetry && typeof rawTelemetry === "object") return rawTelemetry;
-  var telemetry = (
-    /** @type {SolverTelemetry} */
-    {}
-  );
+  var telemetry = {};
   var movesPerSecond = readField(payload, ["movesPerSecond", "moves_per_second"]);
   var stepCount = readField(payload, ["stepCount", "step_count"]);
-  if (movesPerSecond != null) telemetry.movesPerSecond = /** @type {number} */
-  movesPerSecond;
-  if (stepCount != null) telemetry.stepCount = /** @type {number} */
-  stepCount;
+  if (movesPerSecond != null) telemetry.movesPerSecond = Number(movesPerSecond);
+  if (stepCount != null) telemetry.stepCount = Number(stepCount);
   return Object.keys(telemetry).length ? telemetry : null;
 }
 function readMovesPerSecond(telemetry) {
