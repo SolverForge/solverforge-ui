@@ -15,11 +15,14 @@ let app = api::router(state)
     .fallback_service(ServeDir::new("static"));
 ```
 
+The library ships both classic (`sf.js`) and ES module (`sf.mjs`) bundles.
+
 ```html
 <link rel="stylesheet" href="/sf/vendor/fontawesome/css/fontawesome.min.css">
 <link rel="stylesheet" href="/sf/vendor/fontawesome/css/solid.min.css">
 <link rel="stylesheet" href="/sf/sf.css">
 <script src="/sf/sf.js"></script>
+<!-- or ES module: <script type="module" src="/sf/sf.mjs"></script> -->
 ```
 
 That's it. Every asset is compiled into the binary via `include_dir!`.
@@ -33,9 +36,9 @@ This repository keeps both shipped UI code and design exploration in the same tr
 - When adding new surface area, update the JavaScript API, README, and runnable examples in the same change so the public contract stays explicit.
 
 For production caching, versioned bundle filenames are also emitted as
-`/sf/sf.<crate-version>.css` and `/sf/sf.<crate-version>.js`. Those versioned
-files are served with immutable caching, while the stable `sf.css` and `sf.js`
-paths remain available for compatibility.
+`/sf/sf.<crate-version>.css`, `/sf/sf.<crate-version>.js`, and `/sf/sf.<crate-version>.mjs`.
+Those versioned files are served with immutable caching, while the stable
+`sf.css`, `sf.js`, and `sf.mjs` paths remain available for compatibility.
 
 ## Screenshots
 
@@ -810,8 +813,9 @@ Use `make package-verify` to inspect the exact crate contents that would be publ
 The verification step checks that required bundled assets and crate metadata are present, and that development-only sources such as `css-src/`, `js-src/`, `scripts/`, and screenshots are not shipped in the published crate.
 
 Bundling writes both stable compatibility assets (`static/sf/sf.css`,
-`static/sf/sf.js`) and versioned assets (`static/sf/sf.<version>.css`,
-`static/sf/sf.<version>.js`).
+`static/sf/sf.js`, `static/sf/sf.mjs`) and versioned assets
+(`static/sf/sf.<version>.css`, `static/sf/sf.<version>.js`,
+`static/sf/sf.<version>.mjs`).
 
 ## Demo Fixtures
 

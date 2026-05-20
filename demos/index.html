@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,15 +9,49 @@
   <link rel="stylesheet" href="../static/sf/vendor/fontawesome/css/solid.min.css">
   <link rel="stylesheet" href="../static/sf/sf.css">
   <style>
-    body { margin: 0; }
-    .demo-shell { max-width: 960px; margin: 0 auto; padding: 48px 24px 72px; }
-    .demo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
-    .demo-card { background: white; border: 1px solid var(--sf-gray-200); border-radius: var(--sf-radius-base); padding: 20px; box-shadow: var(--sf-shadow-base); }
-    .demo-card h2 { margin: 0 0 10px; font-size: 20px; }
-    .demo-card p { margin: 0 0 16px; color: var(--sf-gray-600); line-height: 1.6; }
-    .demo-card a { color: var(--sf-emerald-700); font-weight: 600; text-decoration: none; }
+    body {
+      margin: 0;
+    }
+
+    .demo-shell {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 48px 24px 72px;
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .demo-card {
+      background: white;
+      border: 1px solid var(--sf-gray-200);
+      border-radius: var(--sf-radius-base);
+      padding: 20px;
+      box-shadow: var(--sf-shadow-base);
+    }
+
+    .demo-card h2 {
+      margin: 0 0 10px;
+      font-size: 20px;
+    }
+
+    .demo-card p {
+      margin: 0 0 16px;
+      color: var(--sf-gray-600);
+      line-height: 1.6;
+    }
+
+    .demo-card a {
+      color: var(--sf-emerald-700);
+      font-weight: 600;
+      text-decoration: none;
+    }
   </style>
 </head>
+
 <body class="sf-app">
   <main class="sf-main">
     <div class="demo-shell">
@@ -25,26 +60,37 @@
       <div class="demo-grid">
         <section class="demo-card">
           <h2>Full Surface</h2>
-          <p>Header, status bar, tabs, table, modal, toast, API guide, the canonical scheduling timeline, footer, and Gantt in one runnable fixture.</p>
+          <p>Header, status bar, tabs, table, modal, toast, API guide, the canonical scheduling timeline, footer, and
+            Gantt in one runnable fixture.</p>
           <a href="./full-surface.html">Open full-surface demo</a>
         </section>
         <section class="demo-card">
+          <h2>Full Surface ESM</h2>
+          <p>Header, status bar, tabs, table, modal, toast, API guide, the canonical scheduling timeline, footer, and
+            Gantt in one runnable fixture.</p>
+          <a href="./full-surface-esm.html">Open full-surface ESM demo</a>
+        </section>
+        <section class="demo-card">
           <h2>Scheduling Timeline</h2>
-          <p>A focused 28-day hospital-like scheduling example built with <code>SF.rail.createTimeline()</code>, including additive overview summaries and inline expansion.</p>
+          <p>A focused 28-day hospital-like scheduling example built with <code>SF.rail.createTimeline()</code>,
+            including additive overview summaries and inline expansion.</p>
           <a href="./timeline.html">Open timeline demo</a>
         </section>
         <section class="demo-card">
           <h2>Dense Timeline</h2>
-          <p>The repeatable 28-day, 100-lane, 1500-item validation fixture used for dense schedule acceptance and screenshot capture.</p>
+          <p>The repeatable 28-day, 100-lane, 1500-item validation fixture used for dense schedule acceptance and
+            screenshot capture.</p>
           <a href="./timeline-dense.html">Open dense timeline demo</a>
         </section>
         <section class="demo-card">
           <h2>Rail Primitives</h2>
-          <p>A smaller advanced fixture for validating low-level resource cards, gauges, changeovers, and positioned blocks.</p>
+          <p>A smaller advanced fixture for validating low-level resource cards, gauges, changeovers, and positioned
+            blocks.</p>
           <a href="./rail.html">Open rail demo</a>
         </section>
       </div>
     </div>
   </main>
 </body>
+
 </html>
