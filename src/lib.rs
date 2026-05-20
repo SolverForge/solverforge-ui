@@ -37,6 +37,7 @@ fn mime_from_path(path: &str) -> &'static str {
     match path.rsplit('.').next() {
         Some("css") => "text/css; charset=utf-8",
         Some("js") => "application/javascript; charset=utf-8",
+        Some("mjs") => "application/javascript; charset=utf-8",
         Some("svg") => "image/svg+xml",
         Some("woff2") => "font/woff2",
         Some("woff") => "font/woff",
@@ -71,7 +72,7 @@ fn is_versioned_bundle(path: &str) -> bool {
                         || ch == '+'
                         || ch.is_ascii_alphabetic()
                 })
-                && matches!(ext, "css" | "js")
+                && matches!(ext, "css" | "js" | "mjs")
         })
         .unwrap_or(false)
 }
@@ -89,11 +90,15 @@ mod tests {
     fn versioned_bundles_are_detected() {
         assert!(is_versioned_bundle("sf.0.3.0.css"));
         assert!(is_versioned_bundle("sf.0.3.0.js"));
+        assert!(is_versioned_bundle("sf.0.3.0.mjs"));
         assert!(is_versioned_bundle("sf.0.3.0-beta.1.js"));
         assert!(is_versioned_bundle("sf.0.3.0+build.7.css"));
+        assert!(is_versioned_bundle("sf.0.3.0+build.7.mjs"));
         assert!(!is_versioned_bundle("sf.css"));
         assert!(!is_versioned_bundle("sf.js"));
+        assert!(!is_versioned_bundle("sf.mjs"));
         assert!(!is_versioned_bundle("vendor/sf.0.3.0.js"));
+        assert!(!is_versioned_bundle("vendor/sf.0.3.0.mjs"));
     }
 
     #[test]
@@ -101,6 +106,10 @@ mod tests {
         assert_eq!(mime_from_path("styles/sf.css"), "text/css; charset=utf-8");
         assert_eq!(
             mime_from_path("scripts/sf.js"),
+            "application/javascript; charset=utf-8"
+        );
+        assert_eq!(
+            mime_from_path("scripts/sf.mjs"),
             "application/javascript; charset=utf-8"
         );
         assert_eq!(mime_from_path("img/logo.svg"), "image/svg+xml");
@@ -112,6 +121,8 @@ mod tests {
         assert!(is_immutable("sf.0.3.0.css"));
         assert!(is_immutable("sf.0.3.0+build.7.js"));
         assert!(!is_immutable("sf.css"));
+        assert!(is_immutable("sf.0.3.0+build.7.mjs"));
+        assert!(!is_immutable("sf.mjs"));
     }
 
     #[test]
@@ -119,6 +130,10 @@ mod tests {
         assert_eq!(mime_from_path("sf.0.3.0.css"), "text/css; charset=utf-8");
         assert_eq!(
             mime_from_path("sf.0.3.0+build.7.js"),
+            "application/javascript; charset=utf-8"
+        );
+        assert_eq!(
+            mime_from_path("sf.0.3.0+build.7.mjs"),
             "application/javascript; charset=utf-8"
         );
     }
