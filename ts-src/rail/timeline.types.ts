@@ -251,3 +251,34 @@ export interface TimelineToneObject {
 
   color?: string;
 }
+
+/* ============================================================================
+ * OVERVIEW GROUP
+ * ========================================================================== */
+
+/**
+ * Overview group for clustered timeline items.
+ */
+export interface RailOverviewGroup {
+	clusterId: string | null;
+	clusterKey: string | null;
+	count: number;
+	detailItems: unknown[];
+	endMinute: number;
+	isCluster: boolean;
+	items: unknown[];
+	label: string;
+	lane: unknown;
+	metaLabel: string;
+	renderId: string;
+	startMinute: number;
+	summary: {
+		count: number;
+		openCount: number | null;
+		primaryLabel: string;
+		primaryTone: unknown;
+		secondaryLabel: string;
+		toneSegments: unknown[];
+	};
+	tone: unknown;
+}

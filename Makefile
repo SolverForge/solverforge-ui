@@ -146,11 +146,11 @@ screenshots-update:
 		(printf "$(RED)$(CROSS) Screenshot baseline refresh failed$(RESET)\n" && exit 1)
 
 lint-frontend:
-	@printf "$(PROGRESS) Running frontend lint...\n"
+	@printf "$(PROGRESS) Running frontend lint and typecheck...\n"
 	@npm run lint:frontend --silent && \
 	    npm run typecheck:frontend --silent && \
-		printf "$(GREEN)$(CHECK) Frontend lint passed$(RESET)\n" || \
-		(printf "$(RED)$(CROSS) Frontend lint failed$(RESET)\n" && exit 1)
+		printf "$(GREEN)$(CHECK) Frontend lint and typecheck passed$(RESET)\n" || \
+		(printf "$(RED)$(CROSS) Frontend lint and typecheck failed$(RESET)\n" && exit 1)
 
 browser-setup:
 	@printf "$(PROGRESS) Installing browser test dependencies...\n"
@@ -199,7 +199,7 @@ ci-local: banner
 	@cargo build --quiet && printf "$(GREEN)$(CHECK) Build passed$(RESET)\n"
 	@printf "$(PROGRESS) Step 4/9: Clippy...\n"
 	@$(MAKE) clippy --no-print-directory
-	@printf "$(PROGRESS) Step 5/9: Frontend lint...\n"
+	@printf "$(PROGRESS) Step 5/9: Frontend lint and typecheck...\n"
 	@$(MAKE) lint-frontend --no-print-directory
 	@printf "$(PROGRESS) Step 6/9: Doctests...\n"
 	@cargo test --doc --quiet && printf "$(GREEN)$(CHECK) Doctests passed$(RESET)\n"
@@ -358,7 +358,7 @@ help: banner
 	@/bin/echo -e "  $(GREEN)make screenshots-update$(RESET) - Refresh tracked browser screenshot baselines"
 	@/bin/echo -e ""
 	@/bin/echo -e "$(CYAN)$(BOLD)Lint & Format:$(RESET)"
-	@/bin/echo -e "  $(GREEN)make lint$(RESET)           - Run fmt-check + clippy + frontend lint"
+	@/bin/echo -e "  $(GREEN)make lint$(RESET)           - Run fmt-check + clippy + frontend lint and typecheck"
 	@/bin/echo -e "  $(GREEN)make lint-frontend$(RESET)  - Run ESLint on ts-src/, tests/, and scripts/"
 	@/bin/echo -e "  $(GREEN)make fmt$(RESET)            - Format code"
 	@/bin/echo -e "  $(GREEN)make fmt-check$(RESET)      - Check formatting"

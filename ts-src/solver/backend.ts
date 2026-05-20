@@ -4,17 +4,25 @@
    ============================================================================ */
 
 import { assert, normalizeCreateJobId } from "../core";
+import type {
+	BackendConfig,
+	BackendAdapter,
+	SolverEvent,
+	HttpBackendConfig,
+	TauriBackendConfig,
+  HTTPError, SSEError
+} from "./api.types";
 
 /**
  * Creates a backend adapter for the given transport type.
  */
 export function createBackend(
-  config: SF.BackendConfig = {}
-): SF.BackendAdapter {
+  config: BackendConfig = {}
+): BackendAdapter {
   const type = config.type ?? 'axum';
 
   if (type === 'tauri') {
-    return createTauriBackend(config as SF.TauriBackendConfig);
+    return createTauriBackend(config as TauriBackendConfig);
   }
 
   return createHttpBackend(config);
@@ -33,7 +41,7 @@ function resolveJobId(raw: unknown): string {
  * @param payload
  * @returns
  */
-function resolveEventJobId(payload: SF.SolverEvent): string {
+function resolveEventJobId(payload: SolverEvent): string {
   if (!payload || typeof payload !== 'object') return '';
   if (payload.jobId != null) return String(payload.jobId).trim();
   if (payload.job_id != null) return String(payload.job_id).trim();
@@ -60,7 +68,7 @@ function withSnapshotRevision(path: string, snapshotRevision?: string | number):
  * @param config
  * @returns
  */
-function createHttpBackend(config: SF.HttpBackendConfig): SF.BackendAdapter {
+function createHttpBackend(config: HttpBackendConfig): BackendAdapter {
   var baseUrl = config.baseUrl || '';
   var jobsPath = config.jobsPath || '/jobs';
   var demoDataPath = config.demoDataPath || '/demo-data';
@@ -93,8 +101,8 @@ function createHttpBackend(config: SF.HttpBackendConfig): SF.BackendAdapter {
    * @param res
    * @returns
    */
-  function createRequestError(method: string, path: string, res: { status: number; statusText: string }): SF.HttpError {
-    var err = new Error(res.status + ' ' + res.statusText) as SF.HttpError;
+  function createRequestError(method: string, path: string, res: { status: number; statusText: string }): HTTPError {
+    var err = new Error(res.status + ' ' + res.statusText) as HTTPError;
     err.status = res.status;
     err.statusText = res.statusText;
     err.method = method;
@@ -206,7 +214,7 @@ function createHttpBackend(config: SF.HttpBackendConfig): SF.BackendAdapter {
  * @param config
  * @returns
  */
-function createTauriBackend(config: SF.TauriBackendConfig): SF.BackendAdapter {
+function createTauriBackend(config: TauriBackendConfig): BackendAdapter {
   assert(typeof config === 'object', 'createBackend({}) is required for Tauri adapter');
   assert(typeof config.invoke === 'function', 'Tauri backend requires config.invoke');
   assert(typeof config.listen === 'function', 'Tauri backend requires config.listen');
@@ -266,10 +274,10 @@ function createTauriBackend(config: SF.TauriBackendConfig): SF.BackendAdapter {
       var targetId = String(id);
       var unlisten = null;
       listen(eventName, function (event) {
-        var payload= (event && event.payload) || {} as  SF.SolverEvent ;
+        var payload= (event && event.payload) || {} as  SolverEvent ;
         var payloadId = resolveEventJobId(payload);
         if (payloadId && payloadId !== targetId) return;
-        onMessage(payload as SF.SolverEvent);
+        onMessage(payload as SolverEvent);
       }).then(function (fn) { unlisten = fn; });
       return function close() { if (unlisten) unlisten(); };
     },
@@ -281,8 +289,8 @@ function createTauriBackend(config: SF.TauriBackendConfig): SF.BackendAdapter {
  * @param url
  * @returns
  */
-function createSseClosedError(url: string): SF.SseError {
-  var err = (new Error('Event stream closed for ' + url)) as SF.SseError;
+function createSseClosedError(url: string): SSEError {
+  var err = (new Error('Event stream closed for ' + url)) as SSEError;
   err.code = 'SSE_CLOSED';
   err.transport = 'sse';
   err.url = url;

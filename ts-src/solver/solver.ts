@@ -5,12 +5,27 @@
 
 import { assert, normalizeCreateJobId } from "../core";
 
+import type {
+  SolverBackend,
+  SolverConfig,
+  SolverApi,
+  EventMeta,
+  SolverSnapshot,
+  SolverAnalysis,
+  LifecycleState,
+  BackendPayload,
+  SolverPhase,
+  Deferred,
+  TerminalSyncRecord,
+  NormalizedJobEvent,
+} from "./api.types";
+
 /**
  * Creates a shared solver lifecycle orchestrator.
  */
 export const createSolver = function (
-  config: SF.SolverConfig
-): SF.SolverApi {
+  config: SolverConfig
+): SolverApi {
   assert(config, 'createSolver(config) requires a configuration object');
   assert(config.backend, 'createSolver(config.backend) is required');
   assert(hasFunction(config.backend, 'createJob'), 'createSolver(config.backend.createJob) must be a function');
@@ -32,9 +47,9 @@ export const createSolver = function (
   assert(!config.onAnalysis || typeof config.onAnalysis === 'function', 'createSolver(config.onAnalysis) must be a function');
   assert(!config.onError || typeof config.onError === 'function', 'createSolver(config.onError) must be a function');
 
-  var backend: SF.SolverBackend = config.backend;
+  var backend: SolverBackend = config.backend;
 
-  var statusBar: SF.SolverConfig['statusBar'] =
+  var statusBar: SolverConfig['statusBar'] =
     config.statusBar;
 
   var closeStream: (() => void) | null = null;
@@ -43,45 +58,45 @@ export const createSolver = function (
 
   var retainedJobId: string | null = null;
 
-  var lifecycleState: SF.LifecycleState = 'IDLE';
+  var lifecycleState: LifecycleState = 'IDLE';
 
-  var phase: SF.SolverPhase = 'idle';
+  var phase: SolverPhase = 'idle';
 
   var runToken: number = 0;
 
   var lastSnapshotRevision: number | string | null =
     null;
 
-  var lastMeta: SF.EventMeta | null = null;
+  var lastMeta: EventMeta | null = null;
 
   var lastNotifiedError: Error | null = null;
 
   var queuedAction: string | null = null;
 
   var pendingPause:
-    | SF.Deferred<{
-      snapshot: SF.SolverSnapshot | null;
-      meta: SF.EventMeta;
-      analysis: SF.SolverAnalysis | null;
+    | Deferred<{
+      snapshot: SolverSnapshot | null;
+      meta: EventMeta;
+      analysis: SolverAnalysis | null;
     } | null>
     | null = null;
 
   var pendingResume:
-    | SF.Deferred<SF.EventMeta | null>
+    | Deferred<EventMeta | null>
     | null = null;
 
   var pendingCancel:
-    | SF.Deferred<{
-      snapshot: SF.SolverSnapshot | null;
-      meta: SF.EventMeta;
-      analysis: SF.SolverAnalysis | null;
+    | Deferred<{
+      snapshot: SolverSnapshot | null;
+      meta: EventMeta;
+      analysis: SolverAnalysis | null;
     } | null>
     | null = null;
 
-  var terminalSync: SF.TerminalSyncRecord | null =
+  var terminalSync: TerminalSyncRecord | null =
     null;
 
-  var api: SF.SolverApi = {
+  var api: SolverApi = {
     /**
      * Start a new solver job.
      */
@@ -147,7 +162,7 @@ export const createSolver = function (
     /**
      * Request to pause the current solver job.
      */
-    pause: function (): Promise<{ snapshot: SF.SolverSnapshot | null, meta: SF.EventMeta, analysis: SF.SolverAnalysis | null } | void> {
+    pause: function (): Promise<{ snapshot: SolverSnapshot | null, meta: EventMeta, analysis: SolverAnalysis | null } | void> {
       if (pendingPause) {
         return pendingPause.promise;
       }
@@ -179,7 +194,7 @@ export const createSolver = function (
     /**
      * Resume a paused solver job.
      */
-    resume: function (): Promise<SF.EventMeta | void> {
+    resume: function (): Promise<EventMeta | void> {
       if (pendingResume) {
         return pendingResume.promise;
       }
@@ -204,7 +219,7 @@ export const createSolver = function (
     /**
      * Request to cancel the current solver job.
      */
-    cancel: function (): Promise<{ snapshot: SF.SolverSnapshot | null, meta: SF.EventMeta, analysis: SF.SolverAnalysis | null } | void> {
+    cancel: function (): Promise<{ snapshot: SolverSnapshot | null, meta: EventMeta, analysis: SolverAnalysis | null } | void> {
       if (pendingCancel) {
         return pendingCancel.promise;
       }
@@ -281,7 +296,7 @@ export const createSolver = function (
     /**
      * Get a snapshot for the current job.
      */
-    getSnapshot: function (snapshotRevision?: number | string): Promise<SF.SolverSnapshot | null> {
+    getSnapshot: function (snapshotRevision?: number | string): Promise<SolverSnapshot | null> {
       var jobId = currentJobId();
 
       if (!jobId) {
@@ -296,14 +311,14 @@ export const createSolver = function (
       return backend
         .getSnapshot(jobId, revision)
         .then(function (payload) {
-          return normalizeSnapshot(payload as SF.BackendPayload, lastMeta);
+          return normalizeSnapshot(payload as BackendPayload, lastMeta);
         });
     },
 
     /**
      * Get analysis for a snapshot of the current job.
      */
-    analyzeSnapshot: function (snapshotRevision?: number | string): Promise<SF.SolverAnalysis | null> {
+    analyzeSnapshot: function (snapshotRevision?: number | string): Promise<SolverAnalysis | null> {
       var jobId = currentJobId();
 
       if (!jobId) {
@@ -318,7 +333,7 @@ export const createSolver = function (
       return backend
         .analyzeSnapshot(jobId, revision)
         .then(function (payload) {
-          return normalizeAnalysis(payload as SF.BackendPayload, lastMeta);
+          return normalizeAnalysis(payload as BackendPayload, lastMeta);
         });
     },
 
@@ -341,7 +356,7 @@ export const createSolver = function (
     /**
      * Get the current lifecycle state.
      */
-    getLifecycleState: function (): SF.LifecycleState {
+    getLifecycleState: function (): LifecycleState {
       return lifecycleState;
     },
 
@@ -426,7 +441,7 @@ export const createSolver = function (
    * Handle an incoming event from the solver backend.
    */
   function handleEvent(token: number, expectedId: string, payload: unknown): void {
-    var event = normalizeJobEvent(payload as SF.BackendPayload, expectedId);
+    var event = normalizeJobEvent(payload as BackendPayload, expectedId);
     if (!event) return;
 
     lastMeta = event.meta;
@@ -509,12 +524,12 @@ export const createSolver = function (
   /**
    * Fetch and sync snapshot and optional analysis for terminal events.
    */
-  function syncSnapshotBundle(meta: SF.EventMeta, requireSnapshot: boolean): Promise<{ meta: SF.EventMeta, snapshot: SF.SolverSnapshot | null, analysis: SF.SolverAnalysis | null }> {
+  function syncSnapshotBundle(meta: EventMeta, requireSnapshot: boolean): Promise<{ meta: EventMeta, snapshot: SolverSnapshot | null, analysis: SolverAnalysis | null }> {
     var analysisRequired = !!config.onAnalysis;
     var snapshotRevision = meta && meta.snapshotRevision != null ? meta.snapshotRevision : null;
 
     return backend.getSnapshot(meta.jobId, snapshotRevision).then(function (snapshotPayload) {
-      var snapshot = normalizeSnapshot(snapshotPayload as SF.BackendPayload, meta);
+      var snapshot = normalizeSnapshot(snapshotPayload as BackendPayload, meta);
       if (!snapshot) throw new Error('Solver backend returned an invalid snapshot payload');
 
       var mergedMeta = mergeMeta(meta, snapshot, meta.eventType);
@@ -527,7 +542,7 @@ export const createSolver = function (
       if (!analysisRequired) return result;
 
       return backend.analyzeSnapshot(meta.jobId, mergedMeta.snapshotRevision).then(function (analysisPayload) {
-        result.analysis = normalizeAnalysis(analysisPayload as SF.BackendPayload, mergedMeta);
+        result.analysis = normalizeAnalysis(analysisPayload as BackendPayload, mergedMeta);
         return result;
       });
     }).catch(function (err) {
@@ -537,7 +552,7 @@ export const createSolver = function (
       if (!analysisRequired || snapshotRevision == null) return fallback;
 
       return backend.analyzeSnapshot(meta.jobId, snapshotRevision).then(function (analysisPayload) {
-        fallback.analysis = normalizeAnalysis(analysisPayload as SF.BackendPayload, meta);
+        fallback.analysis = normalizeAnalysis(analysisPayload as BackendPayload, meta);
         return fallback;
       }).catch(function () {
         return fallback;
@@ -548,7 +563,7 @@ export const createSolver = function (
   /**
    * Apply a snapshot bundle to the current state.
    */
-  function applyBundle(bundle: { meta: SF.EventMeta, snapshot: SF.SolverSnapshot | null, analysis: SF.SolverAnalysis | null }): void {
+  function applyBundle(bundle: { meta: EventMeta, snapshot: SolverSnapshot | null, analysis: SolverAnalysis | null }): void {
     if (!bundle) return;
     lastMeta = bundle.meta;
     if (bundle.meta && bundle.meta.snapshotRevision != null) {
@@ -561,7 +576,7 @@ export const createSolver = function (
   /**
    * Finalize state after a terminal event.
    */
-  function finalizeTerminal(meta: SF.EventMeta): void {
+  function finalizeTerminal(meta: EventMeta): void {
     closeCurrentStream();
     activeJobId = null;
     queuedAction = null;
@@ -610,8 +625,8 @@ export const createSolver = function (
    * Apply event metadata to the UI status bar.
    */
   function applyEventMeta(
-    meta: SF.EventMeta | null,
-    analysis?: SF.SolverAnalysis | null
+    meta: EventMeta | null,
+    analysis?: SolverAnalysis | null
   ) {
     applyLifecycleState(meta && meta.lifecycleState ? meta.lifecycleState : lifecycleState);
     updateScore(readDisplayScore(meta, analysis));
@@ -627,7 +642,7 @@ export const createSolver = function (
   /**
    * Extract display score from meta or analysis.
    */
-  function readDisplayScore(meta: SF.EventMeta | null, analysis: SF.SolverAnalysis | null): string | number | null {
+  function readDisplayScore(meta: EventMeta | null, analysis: SolverAnalysis | null): string | number | null {
     if (meta && (meta.currentScore || meta.bestScore)) return meta.currentScore || meta.bestScore;
     if (analysis && analysis.score != null) return analysis.score;
     return null;
@@ -636,7 +651,7 @@ export const createSolver = function (
   /**
    * Apply lifecycle state to the UI status bar.
    */
-  function applyLifecycleState(state: SF.LifecycleState): void {
+  function applyLifecycleState(state: LifecycleState): void {
     lifecycleState = state || 'IDLE';
     if (!statusBar) return;
     if (typeof statusBar.setLifecycleState === 'function') {
@@ -725,7 +740,7 @@ export const createSolver = function (
   /**
    * Check if there's a newer event than the given meta.
    */
-  function hasNewerEvent(meta: SF.EventMeta): boolean {
+  function hasNewerEvent(meta: EventMeta): boolean {
     var currentSequence = lastMeta && typeof lastMeta.eventSequence === 'number' ? lastMeta.eventSequence : null;
     var candidateSequence = meta && typeof meta.eventSequence === 'number' ? meta.eventSequence : null;
     if (currentSequence == null || candidateSequence == null) return false;
@@ -743,7 +758,7 @@ export const createSolver = function (
   /**
    * Create a terminal sync record for an event.
    */
-  function createTerminalSync(event: { eventType: string, meta: SF.EventMeta }): SF.TerminalSyncRecord {
+  function createTerminalSync(event: { eventType: string, meta: EventMeta }): TerminalSyncRecord {
     var existing = terminalSync && terminalSync.jobId === event.meta.jobId ? terminalSync : null;
     terminalSync = {
       jobId: event.meta.jobId,
@@ -760,7 +775,7 @@ export const createSolver = function (
   /**
    * Run terminal sync for a completed/cancelled/failed event.
    */
-  function runTerminalSync(record: SF.TerminalSyncRecord, token: number, event: { eventType: string, meta: SF.EventMeta, error?: string }, requireSnapshot: boolean): Promise<unknown> {
+  function runTerminalSync(record: TerminalSyncRecord, token: number, event: { eventType: string, meta: EventMeta, error?: string }, requireSnapshot: boolean): Promise<unknown> {
     record.status = 'pending';
     record.error = null;
     record.meta = event.meta;
@@ -804,7 +819,7 @@ export const createSolver = function (
   /**
    * Retry terminal sync if it failed.
    */
-  function retryTerminalSync(record: SF.TerminalSyncRecord): Promise<void> {
+  function retryTerminalSync(record: TerminalSyncRecord): Promise<void> {
     var retryEvent = {
       eventType: record.eventType,
       meta: record.meta,
@@ -820,14 +835,14 @@ export const createSolver = function (
   /**
    * Check if a record requires successful terminal sync.
    */
-  function requiresSuccessfulTerminalSync(record: { eventType: string, meta: SF.EventMeta }): boolean {
+  function requiresSuccessfulTerminalSync(record: { eventType: string, meta: EventMeta }): boolean {
     return record.eventType === 'completed';
   }
 
   /**
    * Deliver terminal callback for completed/cancelled/failed events.
    */
-  function deliverTerminalCallback(record: SF.TerminalSyncRecord, event: { eventType: string, meta: SF.EventMeta, error?: string }, bundle: { meta: SF.EventMeta, snapshot: SF.SolverSnapshot | null, analysis: SF.SolverAnalysis | null }): void {
+  function deliverTerminalCallback(record: TerminalSyncRecord, event: { eventType: string, meta: EventMeta, error?: string }, bundle: { meta: EventMeta, snapshot: SolverSnapshot | null, analysis: SolverAnalysis | null }): void {
     if (record.callbackDelivered) return;
     if (event.eventType === 'completed') {
       if (config.onComplete && bundle.snapshot) config.onComplete(bundle.snapshot, bundle.meta);
@@ -842,7 +857,7 @@ export const createSolver = function (
   /**
    * Deliver failure callback when terminal sync fails.
    */
-  function deliverTerminalFailureCallback(record: SF.TerminalSyncRecord, event: { eventType: string, meta: SF.EventMeta, error?: string }): void {
+  function deliverTerminalFailureCallback(record: TerminalSyncRecord, event: { eventType: string, meta: EventMeta, error?: string }): void {
     if (record.callbackDelivered || event.eventType !== 'failed') return;
     if (config.onFailure) config.onFailure(event.error || 'Solver job failed', event.meta, null, null);
     record.callbackDelivered = true;
@@ -866,7 +881,7 @@ export const createSolver = function (
   /**
    * Map lifecycle state to internal phase.
    */
-  function phaseForLifecycleState(state: SF.LifecycleState): SF.SolverPhase {
+  function phaseForLifecycleState(state: LifecycleState): SolverPhase {
     if (state === 'STARTING') return 'starting';
     if (state === 'SOLVING') return 'solving';
     if (state === 'PAUSE_REQUESTED') return 'pause-requested';
@@ -879,7 +894,7 @@ export const createSolver = function (
   /**
    * Check if a lifecycle state is terminal.
    */
-  function isTerminalLifecycle(state: SF.LifecycleState): boolean {
+  function isTerminalLifecycle(state: LifecycleState): boolean {
     return state === 'COMPLETED'
       || state === 'CANCELLED'
       || state === 'FAILED'
@@ -889,7 +904,7 @@ export const createSolver = function (
   /**
    * Settle pending deferreds when a terminal event occurs.
    */
-  function settlePendingFromTerminal(eventType: string, bundle: { meta: SF.EventMeta, snapshot: SF.SolverSnapshot | null, analysis: SF.SolverAnalysis | null } | null, err: Error | null): void {
+  function settlePendingFromTerminal(eventType: string, bundle: { meta: EventMeta, snapshot: SolverSnapshot | null, analysis: SolverAnalysis | null } | null, err: Error | null): void {
     if (eventType === 'cancelled') {
       if (pendingCancel) {
         if (bundle) pendingCancel.resolve(bundle);
@@ -947,9 +962,9 @@ export const createSolver = function (
    * Set a deferred by name.
    */
   function setDeferred(name: string, value: unknown): void {
-    if (name === 'pause') pendingPause = value as SF.Deferred<{ snapshot: SF.SolverSnapshot | null; meta: SF.EventMeta; analysis: SF.SolverAnalysis | null } | null>;
-    if (name === 'resume') pendingResume = value as SF.Deferred<SF.EventMeta | null>;
-    if (name === 'cancel') pendingCancel = value as SF.Deferred<{ snapshot: SF.SolverSnapshot | null; meta: SF.EventMeta; analysis: SF.SolverAnalysis | null } | null>;
+    if (name === 'pause') pendingPause = value as Deferred<{ snapshot: SolverSnapshot | null; meta: EventMeta; analysis: SolverAnalysis | null } | null>;
+    if (name === 'resume') pendingResume = value as Deferred<EventMeta | null>;
+    if (name === 'cancel') pendingCancel = value as Deferred<{ snapshot: SolverSnapshot | null; meta: EventMeta; analysis: SolverAnalysis | null } | null>;
   }
 
   /**
@@ -981,7 +996,7 @@ function hasFunction(object: object, key: string): boolean {
 /**
  * Create a deferred promise object.
  */
-function createDeferred<T>(): SF.Deferred<T> {
+function createDeferred<T>(): Deferred<T> {
   var resolve: (value: T) => void;
   var reject: (error: Error) => void;
   var promise = new Promise<T>(function (res, rej) {
@@ -994,7 +1009,7 @@ function createDeferred<T>(): SF.Deferred<T> {
 /**
  * Normalize a job event payload into a standard event object.
  */
-function normalizeJobEvent(payload: SF.BackendPayload, expectedId: string): SF.NormalizedJobEvent | null {
+function normalizeJobEvent(payload: BackendPayload, expectedId: string): NormalizedJobEvent | null {
   if (!payload || typeof payload !== 'object') return null;
 
   var eventType = normalizeEventType(readField(payload, ['eventType', 'event_type', 'type']) as string | null);
@@ -1006,8 +1021,8 @@ function normalizeJobEvent(payload: SF.BackendPayload, expectedId: string): SF.N
   if (String(jobId) !== String(expectedId)) return null;
 
   var solution = payload.solution || (payload.data && payload.data.solution) || null;
-  var solutionScore = readField(solution as SF.BackendPayload | null, ['score'], [solution as SF.BackendPayload | null]);
-  var meta: SF.EventMeta = {
+  var solutionScore = readField(solution as BackendPayload | null, ['score'], [solution as BackendPayload | null]);
+  var meta: EventMeta = {
     id: String(jobId),
     jobId: String(jobId),
     eventType: eventType,
@@ -1032,15 +1047,15 @@ function normalizeJobEvent(payload: SF.BackendPayload, expectedId: string): SF.N
  * Normalize a snapshot payload into a standard snapshot object.
  */
 function normalizeSnapshot(
-  payload: SF.BackendPayload,
-  fallbackMeta: SF.EventMeta | null
-): SF.SolverSnapshot | null {
+  payload: BackendPayload,
+  fallbackMeta: EventMeta | null
+): SolverSnapshot | null {
   if (!payload || typeof payload !== 'object') return null;
 
   var jobId = readField(payload, ['jobId', 'job_id', 'id'], [payload, payload.data]) as string | null;
   if (jobId == null || jobId === '') jobId = fallbackMeta && fallbackMeta.jobId;
   var solution = payload.solution || (payload.data && payload.data.solution) || null;
-  var solutionScore = readField(solution as SF.BackendPayload | null, ['score'], [solution as SF.BackendPayload | null]);
+  var solutionScore = readField(solution as BackendPayload | null, ['score'], [solution as BackendPayload | null]);
   return {
     id: jobId != null ? String(jobId) : null,
     jobId: jobId != null ? String(jobId) : null,
@@ -1058,13 +1073,13 @@ function normalizeSnapshot(
  * Normalize an analysis payload into a standard analysis object.
  */
 function normalizeAnalysis(
-  payload: SF.BackendPayload,
-  fallbackMeta: SF.EventMeta | null
-): SF.SolverAnalysis | null {
+  payload: BackendPayload,
+  fallbackMeta: EventMeta | null
+): SolverAnalysis | null {
   if (!payload || typeof payload !== 'object') return null;
 
   var analysisBody = payload.analysis || (payload.data && payload.data.analysis) || payload;
-  var constraints = readAnalysisConstraints(analysisBody as SF.SolverAnalysis | null);
+  var constraints = readAnalysisConstraints(analysisBody as SolverAnalysis | null);
   var jobId = readField(payload, ['jobId', 'job_id', 'id'], [payload, payload.data]) as string | null;
   if (jobId == null || jobId === '') jobId = fallbackMeta && fallbackMeta.jobId;
   var snapshotRevision: number | string | null = (readField(payload, ['snapshotRevision', 'snapshot_revision'], [payload, payload.data]) as number | string | null);
@@ -1085,7 +1100,7 @@ function normalizeAnalysis(
 /**
  * Build a live snapshot from an event.
  */
-function buildLiveSnapshot(event: { eventType: string, meta: SF.EventMeta, solution: unknown }): SF.SolverSnapshot {
+function buildLiveSnapshot(event: { eventType: string, meta: EventMeta, solution: unknown }): SolverSnapshot {
   return {
     id: event.meta.jobId,
     jobId: event.meta.jobId,
@@ -1102,7 +1117,7 @@ function buildLiveSnapshot(event: { eventType: string, meta: SF.EventMeta, solut
 /**
  * Merge metadata from event and snapshot.
  */
-function mergeMeta(meta: SF.EventMeta | null, snapshot: SF.SolverSnapshot | null, eventType: string): SF.EventMeta {
+function mergeMeta(meta: EventMeta | null, snapshot: SolverSnapshot | null, eventType: string): EventMeta {
   if (!snapshot) return meta;
   return {
     id: meta && meta.id != null ? meta.id : snapshot.id,
@@ -1122,9 +1137,9 @@ function mergeMeta(meta: SF.EventMeta | null, snapshot: SF.SolverSnapshot | null
  * Read a field from a payload, trying multiple possible names and sources.
  */
 function readField(
-  payload: SF.BackendPayload,
+  payload: BackendPayload,
   names: string | string[],
-  sources?: SF.BackendPayload[]
+  sources?: BackendPayload[]
 ): unknown {
   var fields = Array.isArray(names) ? names : [names];
   var roots = sources || [payload];
@@ -1156,28 +1171,28 @@ function normalizeEventType(value: string): string | null {
 /**
  * Normalize a lifecycle state string.
  */
-function normalizeLifecycleState(value: string | null, eventType: string | null): SF.LifecycleState {
+function normalizeLifecycleState(value: string | null, eventType: string | null): LifecycleState {
   if (typeof value === 'string' && value.trim()) {
     return value
       .trim()
       .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
       .replace(/[\s-]+/g, '_')
-      .toUpperCase() as SF.LifecycleState;
+      .toUpperCase() as LifecycleState;
   }
 
-  if (eventType === 'progress' || eventType === 'best_solution' || eventType === 'resumed') return 'SOLVING' as SF.LifecycleState;
-  if (eventType === 'pause_requested') return 'PAUSE_REQUESTED' as SF.LifecycleState;
-  if (eventType === 'paused') return 'PAUSED' as SF.LifecycleState;
-  if (eventType === 'completed') return 'COMPLETED' as SF.LifecycleState;
-  if (eventType === 'cancelled') return 'CANCELLED' as SF.LifecycleState;
-  if (eventType === 'failed') return 'FAILED' as SF.LifecycleState;
-  return 'IDLE' as SF.LifecycleState;
+  if (eventType === 'progress' || eventType === 'best_solution' || eventType === 'resumed') return 'SOLVING' as LifecycleState;
+  if (eventType === 'pause_requested') return 'PAUSE_REQUESTED' as LifecycleState;
+  if (eventType === 'paused') return 'PAUSED' as LifecycleState;
+  if (eventType === 'completed') return 'COMPLETED' as LifecycleState;
+  if (eventType === 'cancelled') return 'CANCELLED' as LifecycleState;
+  if (eventType === 'failed') return 'FAILED' as LifecycleState;
+  return 'IDLE' as LifecycleState;
 }
 
 /**
  * Normalize telemetry data.
  */
-function normalizeTelemetry(rawTelemetry: unknown, payload: SF.BackendPayload): Record<string, number> | null {
+function normalizeTelemetry(rawTelemetry: unknown, payload: BackendPayload): Record<string, number> | null {
   if (rawTelemetry && typeof rawTelemetry === 'object') return rawTelemetry as Record<string, number>;
 
   var telemetry: Record<string, number> = ({});
@@ -1201,7 +1216,7 @@ function readMovesPerSecond(telemetry: Record<string, unknown> | null): number |
   return Number.isFinite(num) ? num : null;
 }
 
-function readAnalysisConstraints(analysis: SF.SolverAnalysis | null): unknown[] | null {
+function readAnalysisConstraints(analysis: SolverAnalysis | null): unknown[] | null {
   if (!analysis || typeof analysis !== 'object') return null;
   const a = analysis as unknown as Record<string, unknown>;
   if (Array.isArray(a.constraints)) return a.constraints as unknown[];
@@ -1213,7 +1228,7 @@ function readAnalysisConstraints(analysis: SF.SolverAnalysis | null): unknown[] 
 /**
  * Check if a lifecycle state is active (not idle or terminal).
  */
-function isActiveLifecycle(state: SF.LifecycleState): boolean {
+function isActiveLifecycle(state: LifecycleState): boolean {
   return state === 'STARTING'
     || state === 'SOLVING'
     || state === 'PAUSE_REQUESTED'

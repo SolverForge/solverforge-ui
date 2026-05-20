@@ -1,3 +1,5 @@
+import type { SolverEvent, SolverBackend } from "../../ts-src/solver/api.types";
+
 const axumBackend = window.SF.createBackend({
 	type: 'axum',
 	baseUrl: '',
@@ -23,7 +25,7 @@ const aliasBackend = window.SF.createBackend({
 const tauriBackend = window.SF.createBackend({
 	type: 'tauri',
 	invoke: async (_command: string, _payload?: Record<string, unknown>) => ({ id: 'job-1' }),
-	listen: async (_event: string, _handler: (event: { payload: SF.SolverEvent }) => void) => () => {},
+	listen: async (_event: string, _handler: (event: { payload: SolverEvent }) => void) => () => {},
 	eventName: 'solver-update',
 	commands: {
 		createJob: 'create_job',
@@ -36,7 +38,7 @@ const tauriBackend = window.SF.createBackend({
 	},
 });
 
-const customSolverBackend: SF.SolverBackend = {
+const customSolverBackend: SolverBackend = {
 	createJob: async () => ({ jobId: 0 }),
 	getSnapshot: async () => ({ jobId: '0', snapshotRevision: 1, solution: {} }),
 	analyzeSnapshot: async () => ({ jobId: '0', snapshotRevision: 1, analysis: { constraints: [] } }),

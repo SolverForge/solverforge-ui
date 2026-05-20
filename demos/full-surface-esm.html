@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>solverforge-ui full surface demo</title>
+  <title>solverforge-ui full surface demo esm</title>
   <link rel="stylesheet" href="../static/sf/vendor/fontawesome/css/fontawesome.min.css">
   <link rel="stylesheet" href="../static/sf/vendor/fontawesome/css/solid.min.css">
   <link rel="stylesheet" href="../static/sf/vendor/frappe-gantt/frappe-gantt.min.css">
@@ -268,7 +268,7 @@
         }
       ];
 
-      var gantt = SFgantt.create({
+      var ganttChart = SFgantt.create({
         gridTitle: 'Tasks',
         chartTitle: 'Schedule',
         viewMode: 'Half Day',
@@ -297,8 +297,8 @@
         mountIfNeeded: function () {
           if (mounted) return;
           if (!mount.isConnected || mount.offsetWidth === 0 || mount.offsetHeight === 0) return;
-          gantt.mount(mount);
-          gantt.setTasks(tasks);
+          ganttChart.mount(mount);
+          ganttChart.setTasks(tasks);
           mounted = true;
         },
         el: mount

@@ -9,6 +9,7 @@ import type {
   TimelineConfig,
   TimelineLane,
   TimelineApi,
+  RailOverviewGroup,
 } from './timeline.types';
 
 var DAY_MINUTES = 24 * 60;
@@ -515,7 +516,7 @@ function buildDetailedRender(lane, items) {
 function buildOverviewRender(lane, state, rerender) {
   var groups = groupOverviewItems(lane);
   var expandedClusterId = state.expandedClusters[lane.id] || null;
-  var expandedGroup: SF.RailOverviewGroup|null = null;
+  var expandedGroup: RailOverviewGroup|null = null;
   var packedExpanded = null;
   var expandedDetailsTop = 0;
 

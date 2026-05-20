@@ -7,7 +7,7 @@
 // @ts-nocheck frappe gantt does not provide types
 // https://github.com/frappe/gantt/issues/341
 
-import {assert, bindActivation, el, escHtml, uid} from "../core";
+import { assert, bindActivation, el, escHtml, uid } from "../core";
 
 export const create = function (config) {
   config = config || {};
@@ -400,5 +400,5 @@ export const create = function (config) {
 
 // Export a gantt namespace object for backwards compatibility
 const gantt = { create };
-export {gantt};
+export { gantt };
 export default gantt;

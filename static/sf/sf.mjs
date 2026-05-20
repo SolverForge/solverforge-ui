@@ -25,14 +25,16 @@ var el = function(tag, attrs = {}, ...children) {
   var el2 = document.createElement(tag);
   if (attrs) {
     Object.keys(attrs).forEach(function(key) {
-      if (key === "className") el2.className = attrs[key];
-      else if (key === "style" && typeof attrs[key] === "object") {
-        Object.assign(el2.style, attrs[key]);
-      } else if (key.indexOf("on") === 0) el2.addEventListener(key.slice(2).toLowerCase(), attrs[key]);
-      else if (key === "dataset") Object.assign(el2.dataset, attrs[key]);
-      else if (key === "html") el2.textContent = attrs[key];
-      else if (key === "unsafeHtml") el2.innerHTML = attrs[key];
-      else el2.setAttribute(key, attrs[key]);
+      var value = attrs[key];
+      if (key === "className") el2.className = value;
+      else if (key === "style" && typeof value === "object") {
+        Object.assign(el2.style, value);
+      } else if (key.indexOf("on") === 0) {
+        el2.addEventListener(key.slice(2).toLowerCase(), value);
+      } else if (key === "dataset") Object.assign(el2.dataset, value);
+      else if (key === "html") el2.textContent = value;
+      else if (key === "unsafeHtml") el2.innerHTML = value;
+      else el2.setAttribute(key, value);
     });
   }
   children.forEach(function(child) {
@@ -369,9 +371,9 @@ function setBodyContent(target, content, explicitUnsafeHtml) {
     target.innerHTML = explicitUnsafeHtml;
   } else if (typeof content === "string") {
     target.textContent = content;
-  } else if (content && content.unsafeBody) {
+  } else if (content && typeof content === "object" && "unsafeBody" in content) {
     target.innerHTML = content.unsafeBody;
-  } else if (content && content.unsafeHtml) {
+  } else if (content && typeof content === "object" && "unsafeHtml" in content) {
     target.innerHTML = content.unsafeHtml;
   } else if (content instanceof Node) {
     target.appendChild(content);
@@ -723,7 +725,7 @@ var showError = function(title, detail) {
   showToast({ title: "Error", message: title, detail, variant: "danger", delay: 3e4 });
 };
 
-// ts-src/gantt/gant.ts
+// ts-src/gantt/gantt.ts
 var create = function(config) {
   config = config || {};
   var instanceId = uid("sf-gantt");
@@ -1728,20 +1730,22 @@ function measurePackedHeight(packed) {
   return packed.trackCount > 0 ? TRACK_PADDING * 2 + packed.trackCount * TRACK_HEIGHT + Math.max(0, packed.trackCount - 1) * TRACK_GAP : OVERVIEW_HEIGHT;
 }
 function buildDetailBlockConfig(item, lane, trackIndex, top, config = {}) {
+  const i = item;
+  const l = lane;
   return {
     clusterId: config.clusterId || null,
     detailHint: config.detailHint || "",
-    endMinute: item.endMinute,
+    endMinute: i.endMinute,
     height: TRACK_HEIGHT,
-    itemId: item.id,
+    itemId: i.id,
     kindClass: "sf-rail-timeline-item--detail",
-    label: item.label,
-    metaLabel: describeMeta(item.meta),
-    startMinute: item.startMinute,
+    label: i.label,
+    metaLabel: describeMeta(i.meta),
+    startMinute: i.startMinute,
     top,
-    ariaLabel: buildItemAriaLabel(item, lane),
-    tooltip: buildItemTooltip(item, lane),
-    tone: item.tone,
+    ariaLabel: buildItemAriaLabel(i, l),
+    tooltip: buildItemTooltip(i, l),
+    tone: i.tone,
     trackIndex
   };
 }
@@ -3085,8 +3089,6 @@ var createSolver = function(config) {
   var api = {
     /**
      * Start a new solver job.
-     * @param {unknown} [data]
-     * @returns {Promise<void>}
      */
     start: function(data) {
       if (retainedJobId) {
@@ -3132,7 +3134,6 @@ var createSolver = function(config) {
     },
     /**
      * Request to pause the current solver job.
-     * @returns {Promise<{snapshot: SolverSnapshot|null, meta: EventMeta, analysis: SolverAnalysis|null}|void>}
      */
     pause: function() {
       if (pendingPause) {
@@ -3156,7 +3157,6 @@ var createSolver = function(config) {
     },
     /**
      * Resume a paused solver job.
-     * @returns {Promise<EventMeta|void>}
      */
     resume: function() {
       if (pendingResume) {
@@ -3175,7 +3175,6 @@ var createSolver = function(config) {
     },
     /**
      * Request to cancel the current solver job.
-     * @returns {Promise<{snapshot: SolverSnapshot|null, meta: EventMeta, analysis: SolverAnalysis|null}|void>}
      */
     cancel: function() {
       if (pendingCancel) {
@@ -3206,7 +3205,6 @@ var createSolver = function(config) {
     },
     /**
      * Delete the retained job and its backend state.
-     * @returns {Promise<void>}
      */
     delete: function() {
       if (!retainedJobId) {
@@ -3233,8 +3231,6 @@ var createSolver = function(config) {
     },
     /**
      * Get a snapshot for the current job.
-     * @param {number|string} [snapshotRevision]
-     * @returns {Promise<SolverSnapshot|null>}
      */
     getSnapshot: function(snapshotRevision) {
       var jobId = currentJobId();
@@ -3250,8 +3246,6 @@ var createSolver = function(config) {
     },
     /**
      * Get analysis for a snapshot of the current job.
-     * @param {number|string} [snapshotRevision]
-     * @returns {Promise<SolverAnalysis|null>}
      */
     analyzeSnapshot: function(snapshotRevision) {
       var jobId = currentJobId();
@@ -3267,7 +3261,6 @@ var createSolver = function(config) {
     },
     /**
      * Check if the solver is currently running.
-     * @returns {boolean}
      */
     isRunning: function() {
       return phase !== "idle" && phase !== "paused";
@@ -3280,14 +3273,12 @@ var createSolver = function(config) {
     },
     /**
      * Get the current lifecycle state.
-     * @returns {LifecycleState}
      */
     getLifecycleState: function() {
       return lifecycleState;
     },
     /**
      * Get the current snapshot revision.
-     * @returns {number|string|null}
      */
     getSnapshotRevision: function() {
       return lastSnapshotRevision;
@@ -3673,14 +3664,24 @@ var createSolver = function(config) {
   }
   function settlePendingFromTerminal(eventType, bundle, err) {
     if (eventType === "cancelled") {
-      resolveDeferred("cancel", bundle);
+      if (pendingCancel) {
+        if (bundle) pendingCancel.resolve(bundle);
+        else pendingCancel.reject(err || new Error("Cancel did not settle before the job terminated"));
+        pendingCancel = null;
+      }
     } else if (pendingCancel) {
       if (bundle) pendingCancel.resolve(bundle);
       else pendingCancel.reject(err || new Error("Cancel did not settle before the job terminated"));
       pendingCancel = null;
     }
-    rejectDeferred("pause", err || new Error("Job terminated before pause settled"));
-    rejectDeferred("resume", err || new Error("Job terminated before resume settled"));
+    if (pendingPause) {
+      pendingPause.reject(err || new Error("Job terminated before pause settled"));
+      pendingPause = null;
+    }
+    if (pendingResume) {
+      pendingResume.reject(err || new Error("Job terminated before resume settled"));
+      pendingResume = null;
+    }
   }
   function resolveDeferred(name, value) {
     var deferred = getDeferred(name);
@@ -3730,10 +3731,7 @@ function createDeferred() {
 }
 function normalizeJobEvent(payload, expectedId) {
   if (!payload || typeof payload !== "object") return null;
-  var eventType = normalizeEventType(
-    /** @type {string|null} */
-    readField(payload, ["eventType", "event_type", "type"])
-  );
+  var eventType = normalizeEventType(readField(payload, ["eventType", "event_type", "type"]));
   if (!eventType) return null;
   var jobId = readField(payload, ["jobId", "job_id", "id"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]);
   if (jobId == null || jobId === "") jobId = expectedId;
@@ -3745,45 +3743,20 @@ function normalizeJobEvent(payload, expectedId) {
     id: String(jobId),
     jobId: String(jobId),
     eventType,
-    eventSequence: (
-      /** @type {number|null} */
-      readField(payload, ["eventSequence", "event_sequence"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata])
-    ),
-    lifecycleState: normalizeLifecycleState2(
-      /** @type {string|null} */
-      readField(payload, ["lifecycleState", "lifecycle_state", "solverStatus", "solver_status"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]),
-      eventType
-    ),
-    terminalReason: (
-      /** @type {string|null} */
-      readField(payload, ["terminalReason", "terminal_reason"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || null
-    ),
+    eventSequence: readField(payload, ["eventSequence", "event_sequence"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]),
+    lifecycleState: normalizeLifecycleState2(readField(payload, ["lifecycleState", "lifecycle_state", "solverStatus", "solver_status"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]), eventType),
+    terminalReason: readField(payload, ["terminalReason", "terminal_reason"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || null,
     telemetry: normalizeTelemetry(readField(payload, ["telemetry"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]), payload),
-    currentScore: (
-      /** @type {string|null} */
-      readField(payload, ["currentScore", "current_score"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || (solutionScore != null ? String(solutionScore) : null) || null
-    ),
-    bestScore: (
-      /** @type {string|null} */
-      readField(payload, ["bestScore", "best_score"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || (solutionScore != null ? String(solutionScore) : null) || null
-    ),
-    snapshotRevision: (
-      /** @type {number|string|null} */
-      readField(payload, ["snapshotRevision", "snapshot_revision"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata])
-    )
+    currentScore: readField(payload, ["currentScore", "current_score"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || (solutionScore != null ? String(solutionScore) : null) || null,
+    bestScore: readField(payload, ["bestScore", "best_score"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata]) || (solutionScore != null ? String(solutionScore) : null) || null,
+    snapshotRevision: readField(payload, ["snapshotRevision", "snapshot_revision"], [payload, payload.metadata, payload.data, payload.data && payload.data.metadata])
   };
-  return (
-    /** @type {NormalizedJobEvent} */
-    {
-      eventType,
-      meta,
-      solution,
-      error: (
-        /** @type {string|null} */
-        readField(payload, ["error"], [payload, payload.data]) || null
-      )
-    }
-  );
+  return {
+    eventType,
+    meta,
+    solution,
+    error: readField(payload, ["error"], [payload, payload.data]) || null
+  };
 }
 function normalizeSnapshot(payload, fallbackMeta) {
   if (!payload || typeof payload !== "object") return null;
@@ -3791,36 +3764,17 @@ function normalizeSnapshot(payload, fallbackMeta) {
   if (jobId == null || jobId === "") jobId = fallbackMeta && fallbackMeta.jobId;
   var solution = payload.solution || payload.data && payload.data.solution || null;
   var solutionScore = readField(solution, ["score"], [solution]);
-  return (
-    /** @type {SolverSnapshot} */
-    {
-      id: jobId != null ? String(jobId) : null,
-      jobId: jobId != null ? String(jobId) : null,
-      snapshotRevision: (
-        /** @type {number|string|null} */
-        readField(payload, ["snapshotRevision", "snapshot_revision"], [payload, payload.data])
-      ),
-      lifecycleState: normalizeLifecycleState2(
-        /** @type {string|null} */
-        readField(payload, ["lifecycleState", "lifecycle_state"], [payload, payload.data]),
-        fallbackMeta && fallbackMeta.eventType
-      ),
-      terminalReason: (
-        /** @type {string|null} */
-        readField(payload, ["terminalReason", "terminal_reason"], [payload, payload.data]) || null
-      ),
-      currentScore: (
-        /** @type {string|null} */
-        readField(payload, ["currentScore", "current_score"], [payload, payload.data]) || (solutionScore != null ? String(solutionScore) : null) || null
-      ),
-      bestScore: (
-        /** @type {string|null} */
-        readField(payload, ["bestScore", "best_score"], [payload, payload.data]) || (solutionScore != null ? String(solutionScore) : null) || null
-      ),
-      telemetry: normalizeTelemetry(readField(payload, ["telemetry"], [payload, payload.data]), payload),
-      solution
-    }
-  );
+  return {
+    id: jobId != null ? String(jobId) : null,
+    jobId: jobId != null ? String(jobId) : null,
+    snapshotRevision: readField(payload, ["snapshotRevision", "snapshot_revision"], [payload, payload.data]),
+    lifecycleState: normalizeLifecycleState2(readField(payload, ["lifecycleState", "lifecycle_state"], [payload, payload.data]), fallbackMeta && fallbackMeta.eventType),
+    terminalReason: readField(payload, ["terminalReason", "terminal_reason"], [payload, payload.data]) || null,
+    currentScore: readField(payload, ["currentScore", "current_score"], [payload, payload.data]) || (solutionScore != null ? String(solutionScore) : null) || null,
+    bestScore: readField(payload, ["bestScore", "best_score"], [payload, payload.data]) || (solutionScore != null ? String(solutionScore) : null) || null,
+    telemetry: normalizeTelemetry(readField(payload, ["telemetry"], [payload, payload.data]), payload),
+    solution
+  };
 }
 function normalizeAnalysis(payload, fallbackMeta) {
   if (!payload || typeof payload !== "object") return null;
@@ -3832,28 +3786,15 @@ function normalizeAnalysis(payload, fallbackMeta) {
   if (snapshotRevision == null || snapshotRevision === "") {
     snapshotRevision = fallbackMeta && fallbackMeta.snapshotRevision;
   }
-  return (
-    /** @type {SolverAnalysis} */
-    {
-      jobId: jobId != null ? String(jobId) : null,
-      snapshotRevision: snapshotRevision != null ? snapshotRevision : null,
-      lifecycleState: normalizeLifecycleState2(
-        /** @type {string|null} */
-        readField(payload, ["lifecycleState", "lifecycle_state"], [payload, payload.data]),
-        fallbackMeta && fallbackMeta.eventType
-      ),
-      terminalReason: (
-        /** @type {string|null} */
-        readField(payload, ["terminalReason", "terminal_reason"], [payload, payload.data]) || fallbackMeta && fallbackMeta.terminalReason || null
-      ),
-      analysis: analysisBody,
-      score: analysisBody && analysisBody.score != null ? (
-        /** @type {string|number} */
-        analysisBody.score
-      ) : null,
-      constraints
-    }
-  );
+  return {
+    jobId: jobId != null ? String(jobId) : null,
+    snapshotRevision: snapshotRevision != null ? snapshotRevision : null,
+    lifecycleState: normalizeLifecycleState2(readField(payload, ["lifecycleState", "lifecycle_state"], [payload, payload.data]), fallbackMeta && fallbackMeta.eventType),
+    terminalReason: readField(payload, ["terminalReason", "terminal_reason"], [payload, payload.data]) || fallbackMeta && fallbackMeta.terminalReason || null,
+    analysis: analysisBody,
+    score: analysisBody.score != null ? analysisBody.score : null,
+    constraints
+  };
 }
 function buildLiveSnapshot(event) {
   return {
@@ -3904,39 +3845,15 @@ function normalizeEventType(value) {
 }
 function normalizeLifecycleState2(value, eventType) {
   if (typeof value === "string" && value.trim()) {
-    return (
-      /** @type {LifecycleState} */
-      value.trim().replace(/([a-z0-9])([A-Z])/g, "$1_$2").replace(/[\s-]+/g, "_").toUpperCase()
-    );
+    return value.trim().replace(/([a-z0-9])([A-Z])/g, "$1_$2").replace(/[\s-]+/g, "_").toUpperCase();
   }
-  if (eventType === "progress" || eventType === "best_solution" || eventType === "resumed") return (
-    /** @type {LifecycleState} */
-    "SOLVING"
-  );
-  if (eventType === "pause_requested") return (
-    /** @type {LifecycleState} */
-    "PAUSE_REQUESTED"
-  );
-  if (eventType === "paused") return (
-    /** @type {LifecycleState} */
-    "PAUSED"
-  );
-  if (eventType === "completed") return (
-    /** @type {LifecycleState} */
-    "COMPLETED"
-  );
-  if (eventType === "cancelled") return (
-    /** @type {LifecycleState} */
-    "CANCELLED"
-  );
-  if (eventType === "failed") return (
-    /** @type {LifecycleState} */
-    "FAILED"
-  );
-  return (
-    /** @type {LifecycleState} */
-    "IDLE"
-  );
+  if (eventType === "progress" || eventType === "best_solution" || eventType === "resumed") return "SOLVING";
+  if (eventType === "pause_requested") return "PAUSE_REQUESTED";
+  if (eventType === "paused") return "PAUSED";
+  if (eventType === "completed") return "COMPLETED";
+  if (eventType === "cancelled") return "CANCELLED";
+  if (eventType === "failed") return "FAILED";
+  return "IDLE";
 }
 function normalizeTelemetry(rawTelemetry, payload) {
   if (rawTelemetry && typeof rawTelemetry === "object") return rawTelemetry;
@@ -3949,14 +3866,17 @@ function normalizeTelemetry(rawTelemetry, payload) {
 }
 function readMovesPerSecond(telemetry) {
   if (!telemetry || typeof telemetry !== "object") return null;
-  if (telemetry.movesPerSecond != null) return telemetry.movesPerSecond;
-  if (telemetry.moves_per_second != null) return telemetry.moves_per_second;
-  return null;
+  const value = telemetry.movesPerSecond ?? telemetry.moves_per_second;
+  if (value == null) return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
 }
 function readAnalysisConstraints(analysis) {
   if (!analysis || typeof analysis !== "object") return null;
-  if (Array.isArray(analysis.constraints)) return analysis.constraints;
-  if (analysis.analysis && Array.isArray(analysis.analysis.constraints)) return analysis.analysis.constraints;
+  const a = analysis;
+  if (Array.isArray(a.constraints)) return a.constraints;
+  const nested = a.analysis;
+  if (nested && Array.isArray(nested.constraints)) return nested.constraints;
   return null;
 }
 function isActiveLifecycle2(state) {
@@ -4020,7 +3940,6 @@ export {
   assert,
   bindActivation,
   colorClass,
-  create,
   createApiGuide,
   createBackend,
   createButton,
