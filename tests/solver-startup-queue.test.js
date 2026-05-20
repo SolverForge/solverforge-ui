@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadSf, flush } from './support/load-sf.js';
+import { createSolver } from '../static/sf/sf.mjs';
+import { flush } from './support/utils.js';
 
 
 test('solver queues pause during startup until the job exists', async () => {
-  const { SF } = loadSf();
   const calls = [];
   let resolveCreate;
   let onMessage;
@@ -46,7 +46,7 @@ test('solver queues pause during startup until the job exists', async () => {
   };
 
   const paused = [];
-  const solver = SF.createSolver({
+  const solver = createSolver({
     backend,
     onPaused(snapshot) {
       paused.push(snapshot);
@@ -84,7 +84,6 @@ test('solver queues pause during startup until the job exists', async () => {
 });
 
 test('solver queues cancel during startup and settles on the terminal cancelled event', async () => {
-  const { SF } = loadSf();
   const calls = [];
   let resolveCreate;
   let onMessage;
@@ -126,7 +125,7 @@ test('solver queues cancel during startup and settles on the terminal cancelled 
   };
 
   const cancellations = [];
-  const solver = SF.createSolver({
+  const solver = createSolver({
     backend,
     onCancelled(snapshot) {
       cancellations.push(snapshot);

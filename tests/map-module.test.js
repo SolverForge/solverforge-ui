@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadSf } from './support/load-sf.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { mockGlobals } from './support/mock-globals.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, '..');
 
 function createLeafletStub() {
   const calls = {
@@ -81,9 +87,14 @@ function createLeafletStub() {
   return { L, calls };
 }
 
-test('map fitBounds uses a Leaflet feature group with bounds support', () => {
+test('map fitBounds uses a Leaflet feature group with bounds support', (t) => {
   const { L, calls } = createLeafletStub();
-  const { SF } = loadSf(['static/sf/modules/sf-map.js'], { L });
+
+  // Load sf-map.js which attaches SF.map
+  const SF = {};
+  globalThis.L = L;
+  const mapModuleSource = fs.readFileSync(path.join(ROOT, 'static', 'sf', 'modules', 'sf-map.js'), 'utf8');
+  new Function('SF', mapModuleSource).call(null, SF);
 
   const map = SF.map.create({
     container: 'map',
@@ -96,4 +107,8 @@ test('map fitBounds uses a Leaflet feature group with bounds support', () => {
   assert.equal(calls.fitBounds.length, 1);
   assert.equal(calls.fitBounds[0].options.padding[0], 30);
   assert.equal(calls.fitBounds[0].options.padding[1], 30);
+
+  t.after(() => {
+    delete globalThis.L;
+  });
 });

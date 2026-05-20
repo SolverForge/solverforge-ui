@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadSf } from './support/load-sf.js';
+import { createButton, rail } from '../static/sf/sf.mjs';
+import { createDom } from './support/fake-dom.js';
+import { mockGlobals } from './support/mock-globals.js';
 
-test('iconOnly buttons keep an accessible label without rendering text content', () => {
-  const { SF } = loadSf();
+test('iconOnly buttons keep an accessible label without rendering text content', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const button = SF.createButton({
+  const button = createButton({
     text: 'Settings',
     icon: 'fa-gear',
     iconOnly: true,
@@ -15,10 +18,11 @@ test('iconOnly buttons keep an accessible label without rendering text content',
   assert.equal(button.attributes['aria-label'], 'Settings');
 });
 
-test('rail card badges accept a single string badge and preserve heatmap alignment', () => {
-  const { SF } = loadSf();
+test('rail card badges accept a single string badge and preserve heatmap alignment', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const card = SF.rail.createCard({
+  const card = rail.createCard({
     name: 'Kiln 1',
     badges: 'TEMPRA',
     labelWidth: 220,

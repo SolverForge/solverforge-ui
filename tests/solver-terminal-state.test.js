@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadSf, flush } from './support/load-sf.js';
+import { createSolver } from '../static/sf/sf.mjs';
+import { flush } from './support/utils.js';
 
 
 test('solver ignores stale paused snapshot work after a newer cancelled event', async () => {
-  const { SF } = loadSf();
   let onMessage;
   let resolvePausedSnapshot;
   let snapshotCallCount = 0;
@@ -39,7 +39,7 @@ test('solver ignores stale paused snapshot work after a newer cancelled event', 
 
   const paused = [];
   const cancelled = [];
-  const solver = SF.createSolver({
+  const solver = createSolver({
     backend,
     onPaused(snapshot) {
       paused.push(snapshot);
@@ -84,7 +84,6 @@ test('solver ignores stale paused snapshot work after a newer cancelled event', 
 });
 
 test('solver keeps terminal lifecycle metadata when retained snapshots are pause-bound', async () => {
-  const { SF } = loadSf();
   let onMessage;
   const backend = {
     createJob: async () => 'job-terminal-meta',
@@ -118,7 +117,7 @@ test('solver keeps terminal lifecycle metadata when retained snapshots are pause
   const cancelledReady = new Promise((resolve) => {
     resolveCancelled = resolve;
   });
-  const solver = SF.createSolver({
+  const solver = createSolver({
     backend,
     onCancelled(snapshot, meta) {
       cancelled.push([snapshot, meta]);
@@ -156,7 +155,6 @@ test('solver keeps terminal lifecycle metadata when retained snapshots are pause
   { eventType: 'completed', lifecycleState: 'TERMINATED_BY_CONFIG' },
 ].forEach((scenario) => {
   test(`solver delete clears the retained job after terminal ${scenario.lifecycleState}`, async () => {
-    const { SF } = loadSf();
     let onMessage;
     const calls = [];
     let createCount = 0;
@@ -193,7 +191,7 @@ test('solver keeps terminal lifecycle metadata when retained snapshots are pause
     const terminalReady = new Promise((resolve) => {
       resolveTerminal = resolve;
     });
-    const solver = SF.createSolver({
+    const solver = createSolver({
       backend,
       onComplete() {
         resolveTerminal();
@@ -230,7 +228,6 @@ test('solver keeps terminal lifecycle metadata when retained snapshots are pause
 });
 
 test('solver preserves terminal retained state when backend deletion fails', async () => {
-  const { SF } = loadSf();
   let onMessage;
   const errors = [];
   const backend = {
@@ -257,7 +254,7 @@ test('solver preserves terminal retained state when backend deletion fails', asy
   const completedReady = new Promise((resolve) => {
     resolveCompleted = resolve;
   });
-  const solver = SF.createSolver({
+  const solver = createSolver({
     backend,
     onComplete() {
       resolveCompleted();
@@ -284,7 +281,6 @@ test('solver preserves terminal retained state when backend deletion fails', asy
 });
 
 test('solver blocks completed retained cleanup when terminal sync fails', async () => {
-  const { SF } = loadSf();
   let onMessage;
   const calls = [];
   const errors = [];
@@ -314,7 +310,7 @@ test('solver blocks completed retained cleanup when terminal sync fails', async 
       calls.push(['deleteJob', id]);
     },
   };
-  const solver = SF.createSolver({
+  const solver = createSolver({
     backend,
     onComplete(snapshot, meta) {
       completed.push([snapshot, meta]);
@@ -352,7 +348,6 @@ test('solver blocks completed retained cleanup when terminal sync fails', async 
 });
 
 test('solver retries completed terminal sync during delete and delivers completion once', async () => {
-  const { SF } = loadSf();
   let onMessage;
   const calls = [];
   const errors = [];
@@ -387,7 +382,7 @@ test('solver retries completed terminal sync during delete and delivers completi
       calls.push(['deleteJob', id]);
     },
   };
-  const solver = SF.createSolver({
+  const solver = createSolver({
     backend,
     onComplete(snapshot, meta) {
       completed.push([snapshot, meta]);
@@ -426,7 +421,6 @@ test('solver retries completed terminal sync during delete and delivers completi
 });
 
 test('solver delete waits for terminal snapshot settlement before clearing pending commands', async () => {
-  const { SF } = loadSf();
   let onMessage;
   let resolveSnapshot;
   let cancelSettled = false;
@@ -459,7 +453,7 @@ test('solver delete waits for terminal snapshot settlement before clearing pendi
       calls.push(['deleteJob', id]);
     },
   };
-  const solver = SF.createSolver({ backend });
+  const solver = createSolver({ backend });
 
   await solver.start({});
   const cancelPromise = solver.cancel();
@@ -506,7 +500,6 @@ test('solver delete waits for terminal snapshot settlement before clearing pendi
 });
 
 test('solver derives terminal status score from retained snapshot solution score', async () => {
-  const { SF } = loadSf();
   let onMessage;
   const scoreUpdates = [];
   const backend = {
@@ -531,7 +524,7 @@ test('solver derives terminal status score from retained snapshot solution score
   const completedReady = new Promise((resolve) => {
     resolveCompleted = resolve;
   });
-  const solver = SF.createSolver({
+  const solver = createSolver({
     backend,
     statusBar: {
       setLifecycleState() { },
@@ -558,7 +551,6 @@ test('solver derives terminal status score from retained snapshot solution score
 });
 
 test('solver derives terminal status score from snapshot-bound analysis score', async () => {
-  const { SF } = loadSf();
   let onMessage;
   const scoreUpdates = [];
   const backend = {
@@ -588,7 +580,7 @@ test('solver derives terminal status score from snapshot-bound analysis score', 
   const completedReady = new Promise((resolve) => {
     resolveCompleted = resolve;
   });
-  const solver = SF.createSolver({
+  const solver = createSolver({
     backend,
     statusBar: {
       setLifecycleState() { },

@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadSf, flush } from './support/load-sf.js';
+import { createSolver } from '../static/sf/sf.mjs';
+import { flush } from './support/utils.js';
 
 
 test('createSolver requires deleteJob for retained job cleanup', () => {
-  const { SF } = loadSf();
-  assert.throws(() => SF.createSolver({
+  assert.throws(() => createSolver({
     backend: {
       createJob: async () => 'job-missing-delete',
       streamJobEvents() {
@@ -21,7 +21,6 @@ test('createSolver requires deleteJob for retained job cleanup', () => {
 });
 
 test('solver normalizes numeric retained job id zero before lifecycle guards', async () => {
-  const { SF } = loadSf();
   const calls = [];
   const backend = {
     createJob: async () => 0,
@@ -43,7 +42,7 @@ test('solver normalizes numeric retained job id zero before lifecycle guards', a
     deleteJob: async () => { },
   };
 
-  const solver = SF.createSolver({ backend });
+  const solver = createSolver({ backend });
   await solver.start({});
 
   assert.equal(solver.getJobId(), '0');
@@ -64,7 +63,6 @@ test('solver normalizes documented object createJob ids before stream attachment
   ];
 
   for (const [createJobResult, expectedId] of cases) {
-    const { SF } = loadSf();
     const calls = [];
     const backend = {
       createJob: async () => createJobResult,
@@ -86,7 +84,7 @@ test('solver normalizes documented object createJob ids before stream attachment
       deleteJob: async () => { },
     };
 
-    const solver = SF.createSolver({ backend });
+    const solver = createSolver({ backend });
     await solver.start({});
 
     assert.equal(solver.getJobId(), expectedId);
@@ -110,7 +108,6 @@ test('solver rejects non-scalar createJob ids before stream attachment', async (
   ];
 
   for (const createJobResult of invalidResponses) {
-    const { SF } = loadSf();
     const calls = [];
     const backend = {
       createJob: async () => createJobResult,
@@ -126,7 +123,7 @@ test('solver rejects non-scalar createJob ids before stream attachment', async (
       deleteJob: async () => { },
     };
 
-    const solver = SF.createSolver({ backend });
+    const solver = createSolver({ backend });
     await assert.rejects(
       () => solver.start({}),
       /Invalid solver backend createJob response/
@@ -139,7 +136,6 @@ test('solver rejects non-scalar createJob ids before stream attachment', async (
 });
 
 test('solver lifecycle handles progress, pause, resume, completion, and snapshot-bound analysis', async () => {
-  const { SF } = loadSf();
   const calls = [];
   const statusBar = {
     setLifecycleState(value) {
@@ -215,7 +211,7 @@ test('solver lifecycle handles progress, pause, resume, completion, and snapshot
   const completedReady = new Promise((resolve) => {
     resolveCompleted = resolve;
   });
-  const solver = SF.createSolver({
+  const solver = createSolver({
     backend,
     statusBar,
     onProgress(meta) {
@@ -367,7 +363,6 @@ test('solver lifecycle handles progress, pause, resume, completion, and snapshot
 });
 
 test('solver preserves retained runtime lifecycle after stream transport interruption', async () => {
-  const { SF } = loadSf();
   let onStreamError;
   let onMessage;
   const calls = [];
@@ -411,7 +406,7 @@ test('solver preserves retained runtime lifecycle after stream transport interru
   };
 
   const errors = [];
-  const solver = SF.createSolver({
+  const solver = createSolver({
     backend,
     onError(message) {
       errors.push(message);
@@ -464,7 +459,6 @@ test('solver preserves retained runtime lifecycle after stream transport interru
 });
 
 test('solver rejects pending lifecycle operations when the stream dies before authoritative state arrives', async () => {
-  const { SF } = loadSf();
   let onStreamError;
   const backend = {
     createJob: async () => 'job-pending',
@@ -480,7 +474,7 @@ test('solver rejects pending lifecycle operations when the stream dies before au
     deleteJob: async () => { },
   };
 
-  const solver = SF.createSolver({ backend });
+  const solver = createSolver({ backend });
 
   await solver.start({});
   const pausePromise = solver.pause();
@@ -501,7 +495,6 @@ test('solver rejects pending lifecycle operations when the stream dies before au
 });
 
 test('solver does not duplicate pause after authoritative pause-requested state loses transport', async () => {
-  const { SF } = loadSf();
   let onMessage;
   let onStreamError;
   const calls = [];
@@ -528,7 +521,7 @@ test('solver does not duplicate pause after authoritative pause-requested state 
     },
     deleteJob: async () => { },
   };
-  const solver = SF.createSolver({ backend });
+  const solver = createSolver({ backend });
 
   await solver.start({});
   const pausePromise = solver.pause();
@@ -554,7 +547,6 @@ test('solver does not duplicate pause after authoritative pause-requested state 
 });
 
 test('solver does not duplicate resume or send pause after authoritative resuming state loses transport', async () => {
-  const { SF } = loadSf();
   let onMessage;
   let onStreamError;
   const calls = [];
@@ -586,7 +578,7 @@ test('solver does not duplicate resume or send pause after authoritative resumin
     },
     deleteJob: async () => { },
   };
-  const solver = SF.createSolver({ backend });
+  const solver = createSolver({ backend });
 
   await solver.start({});
   onMessage({
@@ -621,7 +613,6 @@ test('solver does not duplicate resume or send pause after authoritative resumin
 });
 
 test('solver does not duplicate cancel after authoritative cancelling state loses transport', async () => {
-  const { SF } = loadSf();
   let onMessage;
   let onStreamError;
   const calls = [];
@@ -648,7 +639,7 @@ test('solver does not duplicate cancel after authoritative cancelling state lose
     },
     deleteJob: async () => { },
   };
-  const solver = SF.createSolver({ backend });
+  const solver = createSolver({ backend });
 
   await solver.start({});
   const cancelPromise = solver.cancel();
@@ -687,7 +678,6 @@ test('solver does not duplicate cancel after authoritative cancelling state lose
 });
 
 test('solver resets lifecycle state when job creation fails', async () => {
-  const { SF } = loadSf();
   const states = [];
   const errors = [];
   const backend = {
@@ -705,7 +695,7 @@ test('solver resets lifecycle state when job creation fails', async () => {
     deleteJob: async () => { },
   };
 
-  const solver = SF.createSolver({
+  const solver = createSolver({
     backend,
     statusBar: {
       setLifecycleState(value) {
@@ -728,7 +718,6 @@ test('solver resets lifecycle state when job creation fails', async () => {
 });
 
 test('solver accepts an initial best_solution event before any progress event', async () => {
-  const { SF } = loadSf();
   const calls = [];
   const statusBar = {
     setLifecycleState(value) {
@@ -758,7 +747,7 @@ test('solver accepts an initial best_solution event before any progress event', 
     deleteJob: async () => { },
   };
 
-  const solver = SF.createSolver({
+  const solver = createSolver({
     backend,
     statusBar,
     onSolution(snapshot, meta) {
@@ -797,7 +786,6 @@ test('solver accepts an initial best_solution event before any progress event', 
 });
 
 test('solver ignores malformed and mismatched lifecycle events without corrupting state', async () => {
-  const { SF } = loadSf();
   const calls = [];
   const statusBar = {
     setLifecycleState(value) {
@@ -829,7 +817,7 @@ test('solver ignores malformed and mismatched lifecycle events without corruptin
     deleteJob: async () => { },
   };
 
-  const solver = SF.createSolver({
+  const solver = createSolver({
     backend,
     statusBar,
     onProgress(meta) {
