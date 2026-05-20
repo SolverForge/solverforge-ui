@@ -1,7 +1,6 @@
-const assert = require('node:assert/strict');
-const test = require('node:test');
-
-const { loadSf } = require('./support/load-sf');
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { loadSf } from './support/load-sf.js';
 
 function buildAxis(dayCount, initialViewport) {
   return {
@@ -95,7 +94,7 @@ function buildDenseHospitalLikeModel() {
 
       return {
         id: overview ? `location-${laneIndex}` : `employee-${laneIndex}`,
-        label: overview ? `By location · Unit ${laneIndex + 1}` : `By employee · Clinician ${laneIndex + 1}`,
+        label: overview ? `By location \u00b7 Unit ${laneIndex + 1}` : `By employee \u00b7 Clinician ${laneIndex + 1}`,
         mode: overview ? 'overview' : 'detailed',
         items: laneItems,
       };

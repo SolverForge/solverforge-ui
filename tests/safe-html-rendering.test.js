@@ -1,7 +1,6 @@
-const assert = require('node:assert/strict');
-const test = require('node:test');
-
-const { loadSf } = require('./support/load-sf')
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { loadSf } from './support/load-sf.js';
 
 test('createModal renders unsafeBody as raw HTML and preserves text mode by default', () => {
   const { SF } = loadSf();

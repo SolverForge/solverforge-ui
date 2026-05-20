@@ -1,7 +1,6 @@
-const assert = require('node:assert/strict');
-const test = require('node:test');
-
-const { loadSf, flush } = require('./support/load-sf');
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { loadSf, flush } from './support/load-sf.js';
 
 
 test('createSolver requires deleteJob for retained job cleanup', () => {

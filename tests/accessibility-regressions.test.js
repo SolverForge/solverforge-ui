@@ -1,10 +1,11 @@
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const test = require('node:test');
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { loadSf } from './support/load-sf.js';
 
-const { loadSf } = require('./support/load-sf');
-
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 
 test('status bar constraint dots keep stable ids for solver analysis coloring', () => {
@@ -45,6 +46,6 @@ test('modal, toast, and api guide copy controls expose aria-label attributes', (
 test('reduced-motion CSS only targets solverforge scoped classes', () => {
   const css = fs.readFileSync(path.join(ROOT, 'css-src/14-animations.css'), 'utf8');
 
-  assert.match(css, /\[class\^="sf-"\]/);
+  assert.ok(css.includes('[class^="sf-"]'));
   assert.doesNotMatch(css, /@media \(prefers-reduced-motion: reduce\)\s*\{\s*\*,/);
 });

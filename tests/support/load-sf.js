@@ -1,9 +1,10 @@
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
+import { createDom } from './fake-dom.js';
+import { fileURLToPath } from 'node:url';
 
-const { createDom } = require('./fake-dom');
-
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..');
 const STATIC_DIR = path.resolve(ROOT, 'static', 'sf');
 const SF_LIB = "sf.js";
@@ -42,7 +43,7 @@ async function flush() {
   await Promise.resolve();
 }
 
-module.exports = {
+export {
   loadSf,
   flush,
 };

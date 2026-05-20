@@ -1,7 +1,6 @@
-const assert = require('node:assert/strict');
-const test = require('node:test');
-
-const { loadSf } = require('./support/load-sf')
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { loadSf } from './support/load-sf.js';
 
 test('status bars only toggle the controls on their bound header', () => {
   const { SF } = loadSf();

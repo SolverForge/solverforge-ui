@@ -1,7 +1,6 @@
-const assert = require('node:assert/strict');
-const test = require('node:test');
-
-const { loadSf } = require('./support/load-sf')
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { loadSf } from './support/load-sf.js';
 
 test('tauri createJob normalizes documented object and numeric ids to strings', async () => {
   const calls = [];

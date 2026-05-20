@@ -39,6 +39,7 @@ def main() -> None:
 
     old, new = sys.argv[1], sys.argv[2]
 
+    rewrite("package.json", rf'"version":\s*"{re.escape(old)}"', f'"version": "{new}"')
     rewrite("Cargo.toml", rf'^version = "{re.escape(old)}"$', f'version = "{new}"')
     rewrite(
         "ts-src/core/index.ts",

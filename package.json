@@ -1,6 +1,16 @@
 {
   "name": "solverforge-ui",
+  "version": "0.6.5",
   "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./static/sf/sf.mjs",
+    "./sf.js": "./static/sf/sf.js",
+    "./sf.css": "./static/sf/sf.css"
+  },
+  "files": [
+    "static/sf"
+  ],
   "scripts": {
     "lint:frontend": "eslint ts-src tests scripts",
     "typecheck:frontend": "tsc --noEmit",

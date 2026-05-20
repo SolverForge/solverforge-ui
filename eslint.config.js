@@ -1,6 +1,6 @@
-const globals = require('globals');
-const ts = require('@typescript-eslint/eslint-plugin');
-const tsParser = require('@typescript-eslint/parser');
+import globals from 'globals';
+import ts from '@typescript-eslint/eslint-plugin';
+import tsParser from '@typescript-eslint/parser';
 
 const baseRules = {
   'no-dupe-keys': 'error',
@@ -28,7 +28,7 @@ const tsRules = {
   ],
 };
 
-module.exports = [
+export default [
   {
     ignores: [
       'node_modules/**',
@@ -70,7 +70,7 @@ module.exports = [
     files: ['tests/**/*.js', 'scripts/**/*.js'],
     languageOptions: {
       ecmaVersion: 2021,
-      sourceType: 'commonjs',
+      sourceType: 'module',
       globals: {
         ...globals.node,
         ...globals.browser,

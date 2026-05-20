@@ -1,8 +1,10 @@
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const http = require('node:http');
-const path = require('node:path');
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import http from 'node:http';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const SCREENSHOT_BASELINE_DIR = path.join(ROOT, 'screenshots');
 const SCREENSHOT_ARTIFACT_DIR = path.join(ROOT, 'target', 'browser-smoke', 'screenshots');
@@ -128,7 +130,7 @@ function createStaticServer(rootDir) {
 async function withPage(callback) {
   let playwright;
   try {
-    playwright = require('playwright');
+    playwright = await import('playwright');
   } catch (error) {
     throw new Error('Playwright is not installed. Run `make browser-setup` first.');
   }
