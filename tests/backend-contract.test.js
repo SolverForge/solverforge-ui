@@ -3,6 +3,18 @@ import test from 'node:test';
 import { mockGlobals } from './support/mock-globals.js';
 import { createBackend } from '../static/sf/sf.mjs';
 
+test('createBackend defaults null and omitted config to HTTP backend', () => {
+  const omitted = createBackend();
+  const explicitNull = createBackend(null);
+  const emptyConfig = createBackend({ baseUrl: '' });
+
+  for (const backend of [omitted, explicitNull, emptyConfig]) {
+    assert.equal(typeof backend.createJob, 'function');
+    assert.equal(typeof backend.deleteJob, 'function');
+    assert.equal(typeof backend.streamJobEvents, 'function');
+  }
+});
+
 test('tauri createJob normalizes documented object and numeric ids to strings', async (t) => {
   const calls = [];
   mockGlobals(t, {

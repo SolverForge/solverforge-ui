@@ -16,7 +16,7 @@
     "typecheck:frontend": "tsc --noEmit",
     "test:browser": "node tests/demo-browser-check.js",
     "build:esm": "esbuild ts-src/index.ts --bundle --format=esm --outfile=static/sf/sf.mjs",
-    "build:iife": "esbuild ts-src/index.ts --bundle --format=iife --global-name=SF --outfile=static/sf/sf.js"
+    "build:iife": "esbuild ts-src/index.ts --bundle --format=iife --global-name=SF --footer:js=\"if (typeof window !== 'undefined') window.SF = SF;\" --outfile=static/sf/sf.js"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.59.3",

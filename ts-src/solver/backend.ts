@@ -17,15 +17,16 @@ import type {
  * Creates a backend adapter for the given transport type.
  */
 export function createBackend(
-  config: BackendConfig = {}
+  config: BackendConfig | null = {}
 ): BackendAdapter {
-  const type = config.type ?? 'axum';
+  const resolvedConfig = config || {};
+  const type = resolvedConfig.type ?? 'axum';
 
   if (type === 'tauri') {
-    return createTauriBackend(config as TauriBackendConfig);
+    return createTauriBackend(resolvedConfig as TauriBackendConfig);
   }
 
-  return createHttpBackend(config);
+  return createHttpBackend(resolvedConfig);
 }
 
 /**

@@ -110,7 +110,6 @@ export type SolverPhase =
 	| 'resuming'
 	| 'cancelling';
 
-	
 /**
  * Deferred promise for async operations (pause, resume, cancel).
  */

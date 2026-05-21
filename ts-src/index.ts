@@ -1,5 +1,8 @@
 // IIFE — window.SF unchanged for existing integrators
 
+import * as colorsApi from "./utils/colors";
+import * as scoreApi from "./utils/score";
+
 export * from "./core/index";
 export * from "./components/api-guide";
 export * from "./components/buttons";
@@ -16,3 +19,19 @@ export * from "./solver/backend";
 export * from "./solver/solver";
 export * from "./utils/colors";
 export * from "./utils/score";
+
+// Retain the shipped classic API namespaces while also exposing flat ESM
+// named exports from the utility modules above.
+export const colors = {
+  pick: colorsApi.pick,
+  project: colorsApi.project,
+  reset: colorsApi.reset,
+};
+
+export const score = {
+  parseHard: scoreApi.parseHard,
+  parseSoft: scoreApi.parseSoft,
+  parseMedium: scoreApi.parseMedium,
+  getComponents: scoreApi.getComponents,
+  colorClass: scoreApi.colorClass,
+};

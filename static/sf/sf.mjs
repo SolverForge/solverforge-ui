@@ -1,3 +1,86 @@
+// ts-src/utils/colors.ts
+var SEQUENCE_1 = [9101876, 16574799, 7512015, 15317358, 11370408];
+var SEQUENCE_2 = [7590422, 15586304, 3433892, 12680465, 7688315];
+var colorMap = {};
+var nextColorCount = 0;
+function buildPercentageColor(floor, ceil, pct) {
+  var red = (floor & 16711680) + Math.floor(pct * ((ceil & 16711680) - (floor & 16711680))) & 16711680;
+  var green = (floor & 65280) + Math.floor(pct * ((ceil & 65280) - (floor & 65280))) & 65280;
+  var blue = (floor & 255) + Math.floor(pct * ((ceil & 255) - (floor & 255))) & 255;
+  return red | green | blue;
+}
+function nextColor() {
+  var colorIndex = nextColorCount % SEQUENCE_1.length;
+  var shadeIndex = Math.floor(nextColorCount / SEQUENCE_1.length);
+  var color;
+  if (shadeIndex === 0) {
+    color = SEQUENCE_1[colorIndex];
+  } else if (shadeIndex === 1) {
+    color = SEQUENCE_2[colorIndex];
+  } else {
+    shadeIndex -= 3;
+    var base = Math.floor(shadeIndex / 2 + 1);
+    var divisor = 2;
+    while (base >= divisor) divisor *= 2;
+    base = base * 2 - divisor + 1;
+    color = buildPercentageColor(SEQUENCE_2[colorIndex], SEQUENCE_1[colorIndex], base / divisor);
+  }
+  nextColorCount++;
+  return "#" + color.toString(16).padStart(6, "0");
+}
+var pick = function(key) {
+  if (colorMap[key] !== void 0) return colorMap[key];
+  var c = nextColor();
+  colorMap[key] = c;
+  return c;
+};
+var reset = function() {
+  colorMap = {};
+  nextColorCount = 0;
+};
+var PROJECT_COLORS = [
+  { main: "#10b981", dark: "#047857", light: "rgba(16,185,129,0.15)" },
+  { main: "#3b82f6", dark: "#1d4ed8", light: "rgba(59,130,246,0.15)" },
+  { main: "#8b5cf6", dark: "#6d28d9", light: "rgba(139,92,246,0.15)" },
+  { main: "#f59e0b", dark: "#b45309", light: "rgba(245,158,11,0.15)" },
+  { main: "#ec4899", dark: "#be185d", light: "rgba(236,72,153,0.15)" },
+  { main: "#06b6d4", dark: "#0e7490", light: "rgba(6,182,212,0.15)" },
+  { main: "#f43f5e", dark: "#be123c", light: "rgba(244,63,94,0.15)" },
+  { main: "#84cc16", dark: "#4d7c0f", light: "rgba(132,204,22,0.15)" }
+];
+var project = function(index) {
+  return PROJECT_COLORS[index % PROJECT_COLORS.length];
+};
+
+// ts-src/utils/score.ts
+var parseHard = function(scoreStr) {
+  if (!scoreStr) return 0;
+  var m = scoreStr.match(/(-?\d+)hard/);
+  return m ? parseInt(m[1], 10) : 0;
+};
+var parseSoft = function(scoreStr) {
+  if (!scoreStr) return 0;
+  var m = scoreStr.match(/(-?\d+)soft/);
+  return m ? parseInt(m[1], 10) : 0;
+};
+var parseMedium = function(scoreStr) {
+  if (!scoreStr) return 0;
+  var m = scoreStr.match(/(-?\d+)medium/);
+  return m ? parseInt(m[1], 10) : 0;
+};
+var getComponents = function(scoreStr) {
+  return {
+    hard: parseHard(scoreStr),
+    medium: parseMedium(scoreStr),
+    soft: parseSoft(scoreStr)
+  };
+};
+var colorClass = function(scoreStr) {
+  var hard = parseHard(scoreStr);
+  var soft = parseSoft(scoreStr);
+  return hard < 0 ? "score-red" : soft < 0 ? "score-yellow" : "score-green";
+};
+
 // ts-src/core/index.ts
 var version = "0.6.5";
 var uidCounter = 0;
@@ -379,35 +462,6 @@ function setBodyContent(target, content, explicitUnsafeHtml) {
     target.appendChild(content);
   }
 }
-
-// ts-src/utils/score.ts
-var parseHard = function(scoreStr) {
-  if (!scoreStr) return 0;
-  var m = scoreStr.match(/(-?\d+)hard/);
-  return m ? parseInt(m[1], 10) : 0;
-};
-var parseSoft = function(scoreStr) {
-  if (!scoreStr) return 0;
-  var m = scoreStr.match(/(-?\d+)soft/);
-  return m ? parseInt(m[1], 10) : 0;
-};
-var parseMedium = function(scoreStr) {
-  if (!scoreStr) return 0;
-  var m = scoreStr.match(/(-?\d+)medium/);
-  return m ? parseInt(m[1], 10) : 0;
-};
-var getComponents = function(scoreStr) {
-  return {
-    hard: parseHard(scoreStr),
-    medium: parseMedium(scoreStr),
-    soft: parseSoft(scoreStr)
-  };
-};
-var colorClass = function(scoreStr) {
-  var hard = parseHard(scoreStr);
-  var soft = parseSoft(scoreStr);
-  return hard < 0 ? "score-red" : soft < 0 ? "score-yellow" : "score-green";
-};
 
 // ts-src/components/statusbar.ts
 var createStatusBar = function(config = {}) {
@@ -2856,11 +2910,12 @@ var rail = {
 
 // ts-src/solver/backend.ts
 function createBackend(config = {}) {
-  const type = config.type ?? "axum";
+  const resolvedConfig = config || {};
+  const type = resolvedConfig.type ?? "axum";
   if (type === "tauri") {
-    return createTauriBackend(config);
+    return createTauriBackend(resolvedConfig);
   }
-  return createHttpBackend(config);
+  return createHttpBackend(resolvedConfig);
 }
 function resolveJobId(raw) {
   return normalizeCreateJobId(raw);
@@ -3504,9 +3559,9 @@ var createSolver = function(config) {
       statusBar.setSolving(isActiveLifecycle2(lifecycleState));
     }
   }
-  function updateScore(score) {
+  function updateScore(score2) {
     if (statusBar && typeof statusBar.updateScore === "function") {
-      statusBar.updateScore(score);
+      statusBar.updateScore(score2);
     }
   }
   function updateMoves(value) {
@@ -3883,63 +3938,24 @@ function isActiveLifecycle2(state) {
   return state === "STARTING" || state === "SOLVING" || state === "PAUSE_REQUESTED" || state === "RESUMING" || state === "CANCELLING";
 }
 
-// ts-src/utils/colors.ts
-var SEQUENCE_1 = [9101876, 16574799, 7512015, 15317358, 11370408];
-var SEQUENCE_2 = [7590422, 15586304, 3433892, 12680465, 7688315];
-var colorMap = {};
-var nextColorCount = 0;
-function buildPercentageColor(floor, ceil, pct) {
-  var red = (floor & 16711680) + Math.floor(pct * ((ceil & 16711680) - (floor & 16711680))) & 16711680;
-  var green = (floor & 65280) + Math.floor(pct * ((ceil & 65280) - (floor & 65280))) & 65280;
-  var blue = (floor & 255) + Math.floor(pct * ((ceil & 255) - (floor & 255))) & 255;
-  return red | green | blue;
-}
-function nextColor() {
-  var colorIndex = nextColorCount % SEQUENCE_1.length;
-  var shadeIndex = Math.floor(nextColorCount / SEQUENCE_1.length);
-  var color;
-  if (shadeIndex === 0) {
-    color = SEQUENCE_1[colorIndex];
-  } else if (shadeIndex === 1) {
-    color = SEQUENCE_2[colorIndex];
-  } else {
-    shadeIndex -= 3;
-    var base = Math.floor(shadeIndex / 2 + 1);
-    var divisor = 2;
-    while (base >= divisor) divisor *= 2;
-    base = base * 2 - divisor + 1;
-    color = buildPercentageColor(SEQUENCE_2[colorIndex], SEQUENCE_1[colorIndex], base / divisor);
-  }
-  nextColorCount++;
-  return "#" + color.toString(16).padStart(6, "0");
-}
-var pick = function(key) {
-  if (colorMap[key] !== void 0) return colorMap[key];
-  var c = nextColor();
-  colorMap[key] = c;
-  return c;
+// ts-src/index.ts
+var colors = {
+  pick,
+  project,
+  reset
 };
-var reset = function() {
-  colorMap = {};
-  nextColorCount = 0;
-};
-var PROJECT_COLORS = [
-  { main: "#10b981", dark: "#047857", light: "rgba(16,185,129,0.15)" },
-  { main: "#3b82f6", dark: "#1d4ed8", light: "rgba(59,130,246,0.15)" },
-  { main: "#8b5cf6", dark: "#6d28d9", light: "rgba(139,92,246,0.15)" },
-  { main: "#f59e0b", dark: "#b45309", light: "rgba(245,158,11,0.15)" },
-  { main: "#ec4899", dark: "#be185d", light: "rgba(236,72,153,0.15)" },
-  { main: "#06b6d4", dark: "#0e7490", light: "rgba(6,182,212,0.15)" },
-  { main: "#f43f5e", dark: "#be123c", light: "rgba(244,63,94,0.15)" },
-  { main: "#84cc16", dark: "#4d7c0f", light: "rgba(132,204,22,0.15)" }
-];
-var project = function(index) {
-  return PROJECT_COLORS[index % PROJECT_COLORS.length];
+var score = {
+  parseHard,
+  parseSoft,
+  parseMedium,
+  getComponents,
+  colorClass
 };
 export {
   assert,
   bindActivation,
   colorClass,
+  colors,
   createApiGuide,
   createBackend,
   createButton,
@@ -3962,6 +3978,7 @@ export {
   project,
   rail,
   reset,
+  score,
   showError,
   showTab,
   showToast,
