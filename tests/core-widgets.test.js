@@ -1,18 +1,15 @@
-const assert = require('node:assert/strict');
-const test = require('node:test');
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { createButton, createTable, createTabs, showTab } from '../static/sf/sf.mjs';
+import { createDom } from './support/fake-dom.js';
+import { mockGlobals } from './support/mock-globals.js';
 
-const { loadSf } = require('./support/load-sf');
-
-test('button, table, and tabs render and respond to basic interactions', () => {
-  const { SF, document } = loadSf([
-    'js-src/00-core.js',
-    'js-src/03-buttons.js',
-    'js-src/07-tabs.js',
-    'js-src/08-table.js',
-  ]);
+test('button, table, and tabs render and respond to basic interactions', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
   let clicked = 0;
-  const button = SF.createButton({
+  const button = createButton({
     text: 'Solve',
     variant: 'success',
     size: 'small',
@@ -31,7 +28,7 @@ test('button, table, and tabs render and respond to basic interactions', () => {
   assert.equal(clicked, 1);
 
   let selectedRow = null;
-  const table = SF.createTable({
+  const table = createTable({
     columns: [{ label: 'Job', className: 'job-col' }, { label: 'Status', align: 'right' }],
     rows: [['A-1', 'Ready']],
     onRowClick(index, row) {
@@ -46,14 +43,14 @@ test('button, table, and tabs render and respond to basic interactions', () => {
   assert.equal(table.querySelectorAll('td')[0].textContent, 'A-1');
   assert.equal(table.querySelectorAll('td')[1].style.textAlign, 'right');
 
-  const tabs = SF.createTabs({
+  const tabs = createTabs({
     tabs: [
       { id: 'plan', active: true, content: 'Plan' },
       { id: 'gantt', content: 'Gantt' },
     ],
   });
   document.body.appendChild(tabs.el);
-  SF.showTab('gantt');
+  showTab('gantt');
   assert.equal(tabs.el.querySelector('[data-tab-id="plan"]').classList.contains('active'), false);
   assert.equal(tabs.el.querySelector('[data-tab-id="gantt"]').classList.contains('active'), true);
 });

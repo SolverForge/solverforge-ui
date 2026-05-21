@@ -24,9 +24,10 @@ SEMVER_RE := '^[0-9]+\.[0-9]+\.[0-9]+$$'
 
 # ============== Asset Sources ==============
 CSS_SRC := $(sort $(wildcard css-src/*.css))
-JS_SRC  := $(sort $(wildcard js-src/*.js))
+TS_SRC := $(sort $(shell find ts-src -type f \( -name '*.ts' -o -name '*.d.ts' \)))
 VERSIONED_CSS := static/sf/sf.$(VERSION).css
 VERSIONED_JS := static/sf/sf.$(VERSION).js
+VERSIONED_MJS := static/sf/sf.$(VERSION).mjs
 
 # ============== Phony Targets ==============
 .PHONY: banner help assets build build-release test test-quick test-doc test-unit test-frontend test-browser test-one \
@@ -44,7 +45,7 @@ banner:
 
 # ============== Asset Targets ==============
 
-assets: static/sf/sf.css static/sf/sf.js $(VERSIONED_CSS) $(VERSIONED_JS)
+assets: static/sf/sf.css static/sf/sf.js static/sf/sf.mjs $(VERSIONED_CSS) $(VERSIONED_JS) $(VERSIONED_MJS)
 
 static/sf/sf.css $(VERSIONED_CSS): $(CSS_SRC)
 	@printf "$(PROGRESS) CSS  sf.css ($(words $(CSS_SRC)) files)\n"
@@ -52,12 +53,17 @@ static/sf/sf.css $(VERSIONED_CSS): $(CSS_SRC)
 	@cp static/sf/sf.css $(VERSIONED_CSS)
 	@printf "$(GREEN)$(CHECK) CSS bundled$(RESET)\n"
 
-static/sf/sf.js $(VERSIONED_JS): $(JS_SRC)
-	@printf "$(PROGRESS) JS   sf.js ($(words $(JS_SRC)) files)\n"
-	@cat $(JS_SRC) > static/sf/sf.js
+static/sf/sf.js $(VERSIONED_JS): $(TS_SRC)
+	@printf "$(PROGRESS) JS   sf.js (TypeScript bundle)\n"
+	@npm run build:iife
 	@cp static/sf/sf.js $(VERSIONED_JS)
 	@printf "$(GREEN)$(CHECK) JS bundled$(RESET)\n"
 
+static/sf/sf.mjs $(VERSIONED_MJS): $(TS_SRC)
+	@printf "$(PROGRESS) JS   sf.mjs (ES Module bundle)\n"
+	@npm run build:esm
+	@cp static/sf/sf.mjs $(VERSIONED_MJS)
+	@printf "$(GREEN)$(CHECK) ESM bundled$(RESET)\n"
 # ============== Build Targets ==============
 
 build: banner assets
@@ -86,7 +92,7 @@ test: banner
 	@printf "$(CYAN)$(BOLD)╚══════════════════════════════════════╝$(RESET)\n\n"
 	@printf "$(ARROW) $(BOLD)Running all tests...$(RESET)\n"
 	@cargo test && \
-		node --test tests/*.test.js && \
+		$(MAKE) test-frontend --no-print-directory && \
 		node tests/demo-browser-check.js && \
 		printf "\n$(GREEN)$(CHECK) All tests passed$(RESET)\n\n" || \
 		(printf "\n$(RED)$(CROSS) Tests failed$(RESET)\n\n" && exit 1)
@@ -103,10 +109,7 @@ test-quick: banner
 	@cargo test --lib --quiet && \
 		printf "$(GREEN)$(CHECK) Unit tests passed$(RESET)\n\n" || \
 		(printf "$(RED)$(CROSS) Unit tests failed$(RESET)\n\n" && exit 1)
-	@printf "$(PROGRESS) Running frontend tests...\n"
-	@node --test tests/*.test.js && \
-		printf "$(GREEN)$(CHECK) Frontend tests passed$(RESET)\n\n" || \
-		(printf "$(RED)$(CROSS) Frontend tests failed$(RESET)\n\n" && exit 1)
+	@$(MAKE) test-frontend --no-print-directory
 	@printf "$(PROGRESS) Running browser demo smoke tests...\n"
 	@node tests/demo-browser-check.js && \
 		printf "$(GREEN)$(CHECK) Browser smoke tests passed$(RESET)\n\n" || \
@@ -124,7 +127,7 @@ test-unit:
 		printf "$(GREEN)$(CHECK) Unit tests passed$(RESET)\n" || \
 		(printf "$(RED)$(CROSS) Unit tests failed$(RESET)\n" && exit 1)
 
-test-frontend:
+test-frontend: assets
 	@printf "$(PROGRESS) Running frontend tests...\n"
 	@node --test tests/*.test.js && \
 		printf "$(GREEN)$(CHECK) Frontend tests passed$(RESET)\n" || \
@@ -143,10 +146,11 @@ screenshots-update:
 		(printf "$(RED)$(CROSS) Screenshot baseline refresh failed$(RESET)\n" && exit 1)
 
 lint-frontend:
-	@printf "$(PROGRESS) Running frontend lint...\n"
+	@printf "$(PROGRESS) Running frontend lint and typecheck...\n"
 	@npm run lint:frontend --silent && \
-		printf "$(GREEN)$(CHECK) Frontend lint passed$(RESET)\n" || \
-		(printf "$(RED)$(CROSS) Frontend lint failed$(RESET)\n" && exit 1)
+	    npm run typecheck:frontend --silent && \
+		printf "$(GREEN)$(CHECK) Frontend lint and typecheck passed$(RESET)\n" || \
+		(printf "$(RED)$(CROSS) Frontend lint and typecheck failed$(RESET)\n" && exit 1)
 
 browser-setup:
 	@printf "$(PROGRESS) Installing browser test dependencies...\n"
@@ -195,14 +199,14 @@ ci-local: banner
 	@cargo build --quiet && printf "$(GREEN)$(CHECK) Build passed$(RESET)\n"
 	@printf "$(PROGRESS) Step 4/9: Clippy...\n"
 	@$(MAKE) clippy --no-print-directory
-	@printf "$(PROGRESS) Step 5/9: Frontend lint...\n"
+	@printf "$(PROGRESS) Step 5/9: Frontend lint and typecheck...\n"
 	@$(MAKE) lint-frontend --no-print-directory
 	@printf "$(PROGRESS) Step 6/9: Doctests...\n"
 	@cargo test --doc --quiet && printf "$(GREEN)$(CHECK) Doctests passed$(RESET)\n"
 	@printf "$(PROGRESS) Step 7/9: Unit tests...\n"
 	@cargo test --lib --quiet && printf "$(GREEN)$(CHECK) Unit tests passed$(RESET)\n"
 	@printf "$(PROGRESS) Step 8/9: Frontend tests...\n"
-	@node --test tests/*.test.js && printf "$(GREEN)$(CHECK) Frontend tests passed$(RESET)\n"
+	@$(MAKE) test-frontend --no-print-directory
 	@printf "$(PROGRESS) Step 9/9: Browser smoke tests...\n"
 	@node tests/demo-browser-check.js && printf "$(GREEN)$(CHECK) Browser smoke tests passed$(RESET)\n"
 	@printf "\n$(GREEN)$(BOLD)╔══════════════════════════════════════════════════════════╗$(RESET)\n"
@@ -232,7 +236,7 @@ bump-version: banner
 	fi; \
 	printf "$(ARROW) Syncing version surfaces: v$$CURRENT_VERSION -> v$(VERSION)\n"; \
 	python3 scripts/sync-version.py "$$CURRENT_VERSION" "$(VERSION)"; \
-	rm -f "static/sf/sf.$$CURRENT_VERSION.css" "static/sf/sf.$$CURRENT_VERSION.js"; \
+	rm -f "static/sf/sf.$$CURRENT_VERSION.css" "static/sf/sf.$$CURRENT_VERSION.js" "static/sf/sf.$$CURRENT_VERSION.mjs"; \
 	$(MAKE) assets --no-print-directory; \
 	printf "$(GREEN)$(CHECK) Version updated to v$(VERSION)$(RESET)\n"; \
 	printf "$(GRAY)Changelog unchanged. Run 'make release-tag' separately when ready.$(RESET)\n"
@@ -317,7 +321,7 @@ publish: banner
 clean:
 	@printf "$(ARROW) Cleaning build artifacts...\n"
 	@cargo clean
-	@rm -f static/sf/sf.css static/sf/sf.js static/sf/sf.*.css static/sf/sf.*.js
+	@rm -f static/sf/sf.css static/sf/sf.js static/sf/sf.mjs static/sf/sf.*.css static/sf/sf.*.js static/sf/sf.*.mjs
 	@printf "$(GREEN)$(CHECK) Clean complete$(RESET)\n"
 
 # ============== Development ==============
@@ -354,8 +358,8 @@ help: banner
 	@/bin/echo -e "  $(GREEN)make screenshots-update$(RESET) - Refresh tracked browser screenshot baselines"
 	@/bin/echo -e ""
 	@/bin/echo -e "$(CYAN)$(BOLD)Lint & Format:$(RESET)"
-	@/bin/echo -e "  $(GREEN)make lint$(RESET)           - Run fmt-check + clippy + frontend lint"
-	@/bin/echo -e "  $(GREEN)make lint-frontend$(RESET)  - Run ESLint on js-src/, tests/, and scripts/"
+	@/bin/echo -e "  $(GREEN)make lint$(RESET)           - Run fmt-check + clippy + frontend lint and typecheck"
+	@/bin/echo -e "  $(GREEN)make lint-frontend$(RESET)  - Run ESLint on ts-src/, tests/, and scripts/"
 	@/bin/echo -e "  $(GREEN)make fmt$(RESET)            - Format code"
 	@/bin/echo -e "  $(GREEN)make fmt-check$(RESET)      - Check formatting"
 	@/bin/echo -e "  $(GREEN)make clippy$(RESET)         - Run clippy lints"

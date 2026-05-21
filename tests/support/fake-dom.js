@@ -274,7 +274,7 @@ function walk(node, visit) {
 }
 
 function matchesSelector(node, selector) {
-  var dataMatch = selector.match(/^\[data-([a-z0-9-]+)=\"([^\"]+)\"\]$/i);
+  var dataMatch = selector.match(/^\[data-([a-z0-9-]+)="([^"]+)"\]$/i);
   if (dataMatch) {
     return node.dataset[toCamel(dataMatch[1])] === dataMatch[2];
   }
@@ -320,4 +320,4 @@ function createDom() {
   return { document, window: { document }, Node: FakeNode };
 }
 
-module.exports = { createDom, FakeElement, FakeNode, FakeTextNode };
+export { createDom, FakeElement, FakeNode, FakeTextNode };

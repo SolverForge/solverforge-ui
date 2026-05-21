@@ -1,44 +1,19 @@
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const test = require('node:test');
-const vm = require('node:vm');
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { createStatusBar, createModal, showToast, createApiGuide } from '../static/sf/sf.mjs';
+import { createDom } from './support/fake-dom.js';
+import { mockGlobals } from './support/mock-globals.js';
 
-const { createDom } = require('./support/fake-dom');
-
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 
-function loadSf(files, overrides = {}) {
+test('status bar constraint dots keep stable ids for solver analysis coloring', (t) => {
   const { document, window, Node } = createDom();
-  const context = vm.createContext({
-    console,
-    document,
-    window,
-    Node,
-    navigator: {
-      clipboard: {
-        writeText() {
-          return Promise.resolve();
-        },
-      },
-    },
-    setTimeout,
-    clearTimeout,
-    ...overrides,
-  });
-
-  files.forEach((file) => {
-    const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
-    vm.runInContext(source, context, { filename: file });
-  });
-
-  return { SF: context.window.SF, document };
-}
-
-test('status bar constraint dots keep stable ids for solver analysis coloring', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/01-score.js', 'js-src/05-statusbar.js']);
-
-  const statusBar = SF.createStatusBar({
+  mockGlobals(t, { document, window, Node });
+  const statusBar = createStatusBar({
     constraints: [
       { name: 'Hard A', type: 'hard' },
       { name: 'Soft B', type: 'soft' },
@@ -50,25 +25,21 @@ test('status bar constraint dots keep stable ids for solver analysis coloring', 
   assert.equal(dots[1].id, 'sf-cdot-1');
 });
 
-test('modal, toast, and api guide copy controls expose aria-label attributes', () => {
-  const { SF } = loadSf([
-    'js-src/00-core.js',
-    'js-src/06-modal.js',
-    'js-src/09-toast.js',
-    'js-src/12-api-guide.js',
-  ]);
+test('modal, toast, and api guide copy controls expose aria-label attributes', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const modal = SF.createModal({ title: 'Example', body: 'Body' });
+  const modal = createModal({ title: 'Example', body: 'Body' });
   const modalClose = modal.el.querySelector('.sf-modal-close');
   assert.equal(modalClose.attributes['aria-label'], 'Close modal');
   assert.equal(modalClose.textContent, '×');
 
-  SF.showToast({ message: 'Saved' });
+  showToast({ message: 'Saved' });
   const toastBtn = modal.el.ownerDocument.body.querySelector('.sf-toast-close');
   assert.equal(toastBtn.attributes['aria-label'], 'Dismiss toast');
   assert.equal(toastBtn.textContent, '×');
 
-  const guide = SF.createApiGuide({
+  const guide = createApiGuide({
     endpoints: [{ path: '/x', curl: 'curl /x' }],
   });
   const copyBtn = guide.querySelector('.sf-copy-btn');
@@ -78,6 +49,6 @@ test('modal, toast, and api guide copy controls expose aria-label attributes', (
 test('reduced-motion CSS only targets solverforge scoped classes', () => {
   const css = fs.readFileSync(path.join(ROOT, 'css-src/14-animations.css'), 'utf8');
 
-  assert.match(css, /\[class\^="sf-"\]/);
+  assert.ok(css.includes('[class^="sf-"]'));
   assert.doesNotMatch(css, /@media \(prefers-reduced-motion: reduce\)\s*\{\s*\*,/);
 });

@@ -1,13 +1,30 @@
 {
   "name": "solverforge-ui",
+  "version": "0.6.5",
   "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./static/sf/sf.mjs",
+    "./sf.js": "./static/sf/sf.js",
+    "./sf.css": "./static/sf/sf.css"
+  },
+  "files": [
+    "static/sf"
+  ],
   "scripts": {
-    "lint:frontend": "eslint js-src tests scripts",
-    "test:browser": "node tests/demo-browser-check.js"
+    "lint:frontend": "eslint ts-src tests scripts",
+    "typecheck:frontend": "tsc --noEmit",
+    "test:browser": "node tests/demo-browser-check.js",
+    "build:esm": "esbuild ts-src/index.ts --bundle --format=esm --outfile=static/sf/sf.mjs",
+    "build:iife": "esbuild ts-src/index.ts --bundle --format=iife --global-name=SF --footer:js=\"if (typeof window !== 'undefined') window.SF = SF;\" --outfile=static/sf/sf.js"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.59.3",
+    "@typescript-eslint/parser": "^8.59.3",
+    "esbuild": "^0.28.0",
     "eslint": "^10.2.1",
     "globals": "^17.5.0",
-    "playwright": "^1.59.1"
+    "playwright": "^1.59.1",
+    "typescript": "^6.0.3"
   }
 }

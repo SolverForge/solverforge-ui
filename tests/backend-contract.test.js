@@ -1,51 +1,37 @@
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const test = require('node:test');
-const vm = require('node:vm');
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { mockGlobals } from './support/mock-globals.js';
+import { createBackend } from '../static/sf/sf.mjs';
 
-const { createDom } = require('./support/fake-dom');
+test('createBackend defaults null and omitted config to HTTP backend', () => {
+  const omitted = createBackend();
+  const explicitNull = createBackend(null);
+  const emptyConfig = createBackend({ baseUrl: '' });
 
-const ROOT = path.resolve(__dirname, '..');
+  for (const backend of [omitted, explicitNull, emptyConfig]) {
+    assert.equal(typeof backend.createJob, 'function');
+    assert.equal(typeof backend.deleteJob, 'function');
+    assert.equal(typeof backend.streamJobEvents, 'function');
+  }
+});
 
-function loadSf(files, overrides = {}) {
-  const { document, window, Node } = createDom();
-  const context = vm.createContext({
-    console,
-    document,
-    window,
-    Node,
-    Promise,
-    setTimeout,
-    clearTimeout,
-    ...overrides,
-  });
-
-  files.forEach((file) => {
-    const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
-    vm.runInContext(source, context, { filename: file });
-  });
-
-  return { SF: context.window.SF, document };
-}
-
-test('tauri createJob normalizes documented object and numeric ids to strings', async () => {
+test('tauri createJob normalizes documented object and numeric ids to strings', async (t) => {
   const calls = [];
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js'], {
+  mockGlobals(t, {
     fetch() {
       throw new Error('unexpected fetch');
     },
   });
 
   function createTauriBackend(result) {
-    return SF.createBackend({
+    return createBackend({
       type: 'tauri',
       invoke(command, payload) {
         calls.push({ command, payload });
         return Promise.resolve(result);
       },
       listen() {
-        return Promise.resolve(function () {});
+        return Promise.resolve(function () { });
       },
     });
   }
@@ -63,21 +49,21 @@ test('tauri createJob normalizes documented object and numeric ids to strings', 
   assert.equal(await backendWithNumber.createJob({}), '7');
 });
 
-test('tauri createJob rejects non-scalar job id payloads', async () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js'], {
+test('tauri createJob rejects non-scalar job id payloads', async (t) => {
+  mockGlobals(t, {
     fetch() {
       throw new Error('unexpected fetch');
     },
   });
 
   function createTauriBackend(result) {
-    return SF.createBackend({
+    return createBackend({
       type: 'tauri',
       invoke() {
         return Promise.resolve(result);
       },
       listen() {
-        return Promise.resolve(function () {});
+        return Promise.resolve(function () { });
       },
     });
   }
@@ -90,16 +76,15 @@ test('tauri createJob rejects non-scalar job id payloads', async () => {
 
 test('tauri backend uses neutral job lifecycle command names', async () => {
   const calls = [];
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js']);
 
-  const backend = SF.createBackend({
+  const backend = createBackend({
     type: 'tauri',
     invoke(command, payload) {
       calls.push({ command, payload });
       return Promise.resolve(null);
     },
     listen() {
-      return Promise.resolve(function () {});
+      return Promise.resolve(function () { });
     },
   });
 
@@ -122,9 +107,9 @@ test('tauri backend uses neutral job lifecycle command names', async () => {
   assert.equal(calls[5].payload.snapshotRevision, 5);
 });
 
-test('HTTP backend uses configured job paths and snapshot revision query parameters', async () => {
+test('HTTP backend uses configured job paths and snapshot revision query parameters', async (t) => {
   const requests = [];
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js'], {
+  mockGlobals(t, {
     fetch(url, opts) {
       requests.push({ url, opts });
       return Promise.resolve({
@@ -135,7 +120,7 @@ test('HTTP backend uses configured job paths and snapshot revision query paramet
     },
   });
 
-  const backend = SF.createBackend({
+  const backend = createBackend({
     type: 'rails',
     baseUrl: '/api',
     jobsPath: '/jobs',
@@ -160,7 +145,7 @@ test('HTTP backend uses configured job paths and snapshot revision query paramet
   assert.equal(requests[6].opts.method, 'DELETE');
 });
 
-test('HTTP backend lets EventSource reconnect without surfacing transient errors', async () => {
+test('HTTP backend lets EventSource reconnect without surfacing transient errors', async (t) => {
   let instance;
   const errors = [];
   function FakeEventSource(url) {
@@ -175,17 +160,17 @@ test('HTTP backend lets EventSource reconnect without surfacing transient errors
     this.readyState = FakeEventSource.CLOSED;
   };
 
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js'], {
+  mockGlobals(t, {
     EventSource: FakeEventSource,
   });
 
-  const backend = SF.createBackend({
+  const backend = createBackend({
     type: 'rails',
     baseUrl: '/api',
     jobsPath: '/jobs',
   });
 
-  const close = backend.streamJobEvents('job-9', function () {}, function (error) {
+  const close = backend.streamJobEvents('job-9', function () { }, function (error) {
     errors.push(error);
   });
 
@@ -207,16 +192,14 @@ test('HTTP backend lets EventSource reconnect without surfacing transient errors
 test('tauri streamJobEvents keeps id-less updates and filters mismatched job ids', async () => {
   let handler = null;
   const received = [];
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/10-backend.js']);
-
-  const backend = SF.createBackend({
+  const backend = createBackend({
     type: 'tauri',
     invoke() {
       return Promise.resolve('job-1');
     },
     listen(_eventName, onEvent) {
       handler = onEvent;
-      return Promise.resolve(function () {});
+      return Promise.resolve(function () { });
     },
   });
 

@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>solverforge-ui full surface demo esm</title>
+  <link rel="stylesheet" href="../static/sf/vendor/fontawesome/css/fontawesome.min.css">
+  <link rel="stylesheet" href="../static/sf/vendor/fontawesome/css/solid.min.css">
+  <link rel="stylesheet" href="../static/sf/vendor/frappe-gantt/frappe-gantt.min.css">
+  <link rel="stylesheet" href="../static/sf/sf.css">
+  <script src="../static/sf/vendor/split/split.min.js"></script>
+  <script src="../static/sf/vendor/frappe-gantt/frappe-gantt.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+    }
+
+    .demo-stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .demo-card {
+      background: white;
+      border: 1px solid var(--sf-gray-200);
+      border-radius: var(--sf-radius-base);
+      box-shadow: var(--sf-shadow-base);
+      padding: 18px;
+    }
+
+    .demo-card h2 {
+      margin: 0 0 12px;
+    }
+
+    .demo-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .demo-gantt {
+      height: 520px;
+    }
+
+    .demo-footer-space {
+      height: 32px;
+    }
+  </style>
+</head>
+
+<body class="sf-app">
+  <script type="module">
+    import { createTable, rail, gantt as SFgantt, createApiGuide, createHeader, showTab, showToast, createStatusBar, createModal, createButton, createTabs, showError, createFooter } from "../static/sf/sf.mjs";
+    var scoreModal;
+
+    function buildPlannerTable() {
+      return createTable({
+        columns: [
+          { label: 'Task' },
+          { label: 'Machine' },
+          { label: 'Due', align: 'right' }
+        ],
+        rows: [
+          ['ODL-2847', 'FORNO 1', 'Mon 14:00'],
+          ['ODL-3012', 'FORNO 2', 'Mon 17:30'],
+          ['ODL-1802', 'FORNO 1', 'Tue 09:15']
+        ],
+        onRowClick: function (index, row) {
+          showToast({
+            title: 'Row selected',
+            message: row[0] + ' on ' + row[1],
+            variant: 'success',
+            delay: 2500
+          });
+        }
+      });
+    }
+
+    function dayMinute(dayIndex, hour, minute) {
+      return dayIndex * 1440 + hour * 60 + (minute || 0);
+    }
+
+    function buildTimelineModel() {
+      var weekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      var days = [];
+      var ticks = [];
+      var dayCount = 28;
+
+      for (var dayIndex = 0; dayIndex < dayCount; dayIndex += 1) {
+        days.push({
+          label: weekday[dayIndex % 7] + ' ' + (20 + dayIndex),
+          startMinute: dayIndex * 1440,
+          endMinute: (dayIndex + 1) * 1440,
+          isWeekend: dayIndex % 7 === 5 || dayIndex % 7 === 6,
+          subLabel: dayIndex % 7 === 0 ? 'Rotation' : ''
+        });
+      }
+
+      for (var minute = 0; minute < dayCount * 1440; minute += 360) {
+        var hour = Math.floor((minute % 1440) / 60);
+        ticks.push({
+          minute: minute,
+          label: (hour < 10 ? '0' + hour : String(hour)) + ':00'
+        });
+      }
+
+      return {
+        axis: {
+          startMinute: 0,
+          endMinute: dayCount * 1440,
+          days: days,
+          ticks: ticks,
+          initialViewport: {
+            startMinute: 0,
+            endMinute: 14 * 1440
+          }
+        },
+        lanes: [
+          {
+            id: 'location-east',
+            label: 'By location · Ward East',
+            mode: 'overview',
+            badges: ['default', { label: 'overview', style: { bg: 'rgba(59,130,246,0.12)', color: '#1d4ed8', border: '1px solid rgba(59,130,246,0.22)' } }],
+            stats: [
+              { label: 'Coverage', value: '92%' },
+              { label: 'Requests', value: 18 }
+            ],
+            overlays: [
+              { dayIndex: 5, label: 'Unavailable', tone: 'red' },
+              { dayIndex: 11, dayCount: 2, label: 'Desired weekend', tone: 'emerald' }
+            ],
+            items: [
+              {
+                id: 'east-rush',
+                clusterId: 'east-rush',
+                startMinute: dayMinute(0, 6),
+                endMinute: dayMinute(0, 18),
+                label: 'Monday intake surge',
+                tone: 'blue',
+                summary: {
+                  primaryLabel: 'Monday intake surge',
+                  secondaryLabel: 'ER intake · trauma hold · overflow beds',
+                  count: 24,
+                  openCount: 3,
+                  toneSegments: [
+                    { tone: 'blue', count: 15 },
+                    { tone: 'amber', count: 6 },
+                    { tone: 'rose', count: 3 }
+                  ]
+                },
+                detailItems: [
+                  { id: 'east-1', startMinute: dayMinute(0, 6), endMinute: dayMinute(0, 14), label: 'ER intake', meta: '8 clinicians', tone: 'blue' },
+                  { id: 'east-2', startMinute: dayMinute(0, 7), endMinute: dayMinute(0, 16), label: 'Trauma hold', meta: '6 clinicians', tone: 'amber' },
+                  { id: 'east-3', startMinute: dayMinute(0, 8), endMinute: dayMinute(0, 18), label: 'Overflow beds', meta: '10 clinicians', tone: 'rose' }
+                ]
+              },
+              { id: 'east-4', startMinute: dayMinute(2, 6), endMinute: dayMinute(2, 18), label: 'Cardio block', meta: '5 clinicians', tone: 'emerald' }
+            ]
+          },
+          {
+            id: 'location-west',
+            label: 'By location · Ward West',
+            mode: 'overview',
+            badges: ['secondary', { label: 'overview', style: { bg: 'rgba(139,92,246,0.12)', color: '#6d28d9', border: '1px solid rgba(139,92,246,0.22)' } }],
+            stats: [
+              { label: 'Coverage', value: '88%' },
+              { label: 'Requests', value: 12 }
+            ],
+            overlays: [
+              { dayIndex: 6, label: 'Unavailable', tone: 'red' },
+              { dayIndex: 15, dayCount: 3, label: 'Preferred span', tone: 'emerald' }
+            ],
+            items: [
+              {
+                id: 'west-rush',
+                clusterId: 'west-rush',
+                startMinute: dayMinute(1, 6),
+                endMinute: dayMinute(1, 15),
+                label: 'Tuesday reassignment wave',
+                tone: 'violet',
+                summary: {
+                  primaryLabel: 'Tuesday reassignment wave',
+                  secondaryLabel: 'Pediatrics triage · float pool',
+                  count: 9,
+                  openCount: 1,
+                  toneSegments: [
+                    { tone: 'violet', count: 6 },
+                    { tone: 'cyan', count: 2 },
+                    { tone: 'rose', count: 1 }
+                  ]
+                },
+                detailItems: [
+                  { id: 'west-1', startMinute: dayMinute(1, 6), endMinute: dayMinute(1, 13), label: 'Pediatrics triage', meta: '4 clinicians', tone: 'violet' },
+                  { id: 'west-2', startMinute: dayMinute(1, 8), endMinute: dayMinute(1, 15), label: 'Float pool', meta: '3 clinicians', tone: 'cyan' }
+                ]
+              },
+              { id: 'west-3', startMinute: dayMinute(4, 7), endMinute: dayMinute(4, 19), label: 'Ward reset', meta: '2 clinicians', tone: 'cyan' },
+              { id: 'west-4', startMinute: dayMinute(7, 6), endMinute: dayMinute(7, 18), label: 'Rotation handoff', meta: '5 clinicians', tone: 'blue' }
+            ]
+          },
+          {
+            id: 'employee-ada',
+            label: 'By employee · Ada',
+            mode: 'detailed',
+            badges: ['detailed'],
+            stats: [
+              { label: 'Hours', value: '38h' },
+              { label: 'PTO', value: '1 day' }
+            ],
+            overlays: [
+              { dayIndex: 10, label: 'Unavailable', tone: 'red' },
+              { dayIndex: 12, dayCount: 2, label: 'Desired', tone: 'emerald' }
+            ],
+            items: [
+              { id: 'ada-1', startMinute: dayMinute(2, 6), endMinute: dayMinute(2, 14), label: 'Primary shift', meta: 'Ward East', tone: 'amber' },
+              { id: 'ada-2', startMinute: dayMinute(2, 11), endMinute: dayMinute(2, 17), label: 'Handoff overlap', meta: 'Safety round', tone: 'amber' },
+              { id: 'ada-3', startMinute: dayMinute(3, 7), endMinute: dayMinute(3, 15), label: 'Primary shift', meta: 'Ward West', tone: 'amber' },
+              { id: 'ada-4', startMinute: dayMinute(3, 14), endMinute: dayMinute(3, 20), label: 'Late coverage', meta: 'ER intake', tone: 'amber' }
+            ]
+          }
+        ]
+      };
+    }
+
+    function buildRailTimeline() {
+      return rail.createTimeline({
+        title: 'Read-only schedule',
+        subtitle: 'Overview by location, detailed by employee, focus or hover for detail, drag to pan.',
+        label: 'Staffing lane',
+        labelWidth: 280,
+        model: buildTimelineModel()
+      }).el;
+    }
+
+    function createGanttPanel() {
+      var mount = document.createElement('div');
+      mount.className = 'demo-gantt';
+      var mounted = false;
+      var tasks = [
+        {
+          id: 'task-1',
+          name: 'Design review',
+          start: '2026-03-20 09:00',
+          end: '2026-03-20 10:30',
+          priority: 1,
+          custom_class: 'project-color-0 priority-1',
+          dependencies: ''
+        },
+        {
+          id: 'task-2',
+          name: 'Implementation',
+          start: '2026-03-20 10:30',
+          end: '2026-03-20 14:00',
+          priority: 2,
+          custom_class: 'project-color-1 priority-2',
+          dependencies: 'task-1'
+        },
+        {
+          id: 'task-3',
+          name: 'Validation',
+          start: '2026-03-20 14:30',
+          end: '2026-03-20 17:00',
+          priority: 3,
+          custom_class: 'project-color-2 priority-3',
+          dependencies: 'task-2'
+        }
+      ];
+
+      var ganttChart = SFgantt.create({
+        gridTitle: 'Tasks',
+        chartTitle: 'Schedule',
+        viewMode: 'Half Day',
+        splitSizes: [38, 62],
+        columns: [
+          { key: 'name', label: 'Task' },
+          { key: 'start', label: 'Start' },
+          { key: 'end', label: 'End' },
+          {
+            key: 'priority', label: 'P', render: function (task) {
+              return '<span class="sf-priority-badge priority-' + task.priority + '">P' + task.priority + '</span>';
+            }
+          }
+        ],
+        onTaskClick: function (task) {
+          showToast({
+            title: 'Gantt task',
+            message: task.name,
+            variant: 'success',
+            delay: 1800
+          });
+        }
+      });
+
+      return {
+        mountIfNeeded: function () {
+          if (mounted) return;
+          if (!mount.isConnected || mount.offsetWidth === 0 || mount.offsetHeight === 0) return;
+          ganttChart.mount(mount);
+          ganttChart.setTasks(tasks);
+          mounted = true;
+        },
+        el: mount
+      };
+    }
+
+    function buildApiGuide() {
+      return createApiGuide({
+        endpoints: [
+          {
+            method: 'POST',
+            path: '/schedules',
+            description: 'Start a new solving session.',
+            curl: 'curl -X POST http://localhost:3000/schedules'
+          },
+          {
+            method: 'GET',
+            path: '/schedules/{id}',
+            description: 'Fetch the current best solution.',
+            curl: 'curl http://localhost:3000/schedules/job-123'
+          }
+        ]
+      });
+    }
+
+    function openScoreModal() {
+      scoreModal.setBody('<p>Hard: 0</p><p>Soft: -42</p><p>Moves/s: 12,400</p>');
+      scoreModal.open();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      var ganttPanel = createGanttPanel();
+
+      var header = createHeader({
+        logo: '../static/sf/img/ouroboros.svg',
+        title: 'Planner123',
+        subtitle: 'solverforge-ui fixture',
+        tabs: [
+          { id: 'overview', label: 'Overview', icon: 'fa-table-columns', active: true },
+          { id: 'gantt', label: 'Gantt', icon: 'fa-chart-gantt' },
+          { id: 'api', label: 'API', icon: 'fa-plug' }
+        ],
+        onTabChange: function (id) {
+          showTab(id);
+          if (id === 'gantt') {
+            requestAnimationFrame(function () {
+              ganttPanel.mountIfNeeded();
+            });
+          }
+        },
+        actions: {
+          onSolve: function () {
+            statusBar.setSolving(true);
+            statusBar.updateScore('0hard/-42soft');
+            statusBar.updateMoves(12400);
+            showToast({ title: 'Solve started', message: 'Fixture solver state updated', variant: 'success', delay: 2200 });
+          },
+          onStop: function () {
+            statusBar.setSolving(false);
+            statusBar.updateMoves(null);
+            showToast({ title: 'Solve stopped', message: 'Fixture solver state reset', variant: 'warning', delay: 2200 });
+          },
+          onAnalyze: openScoreModal
+        }
+      });
+      document.body.prepend(header);
+
+      var statusBar = createStatusBar({
+        constraints: [
+          { name: 'Machine capacity', type: 'hard' },
+          { name: 'Preferred due date', type: 'soft' },
+          { name: 'Setup continuity', type: 'soft' }
+        ],
+        onConstraintClick: function (index) {
+          showToast({ title: 'Constraint selected', message: 'Constraint #' + (index + 1), variant: 'success', delay: 1600 });
+        }
+      });
+      header.after(statusBar.el);
+      statusBar.updateScore('0hard/0soft');
+
+      scoreModal = createModal({
+        title: 'Score Analysis',
+        body: '<p>Use the Analyze action to inspect the current score snapshot.</p>',
+        footer: [
+          createButton({ text: 'Close', variant: 'default', onClick: function () { scoreModal.close(); } })
+        ]
+      });
+
+      var tabs = createTabs({
+        tabs: [
+          {
+            id: 'overview',
+            active: true,
+            content: (function () {
+              var panel = document.createElement('div');
+              panel.className = 'demo-stack';
+
+              var controls = document.createElement('section');
+              controls.className = 'demo-card';
+              controls.innerHTML = '<h2>Interactive controls</h2>';
+              var actions = document.createElement('div');
+              actions.className = 'demo-actions';
+              actions.appendChild(createButton({
+                text: 'Show success toast', variant: 'primary', onClick: function () {
+                  showToast({ title: 'Saved', message: 'Fixture action completed', variant: 'success' });
+                }
+              }));
+              actions.appendChild(createButton({
+                text: 'Show error toast', variant: 'danger', onClick: function () {
+                  showError('Fixture error', 'This is a demo error payload.');
+                }
+              }));
+              actions.appendChild(createButton({ text: 'Open score modal', variant: 'default', onClick: openScoreModal }));
+              controls.appendChild(actions);
+              panel.appendChild(controls);
+
+              var railSection = document.createElement('section');
+              railSection.className = 'demo-card';
+              railSection.innerHTML = '<h2>Scheduling timeline</h2>';
+              railSection.appendChild(buildRailTimeline());
+              panel.appendChild(railSection);
+
+              var tableSection = document.createElement('section');
+              tableSection.className = 'demo-card';
+              tableSection.innerHTML = '<h2>Table</h2>';
+              tableSection.appendChild(buildPlannerTable());
+              panel.appendChild(tableSection);
+
+              return panel;
+            })()
+          },
+          {
+            id: 'gantt',
+            content: (function () {
+              var panel = document.createElement('section');
+              panel.className = 'demo-card';
+              panel.innerHTML = '<h2>Gantt</h2>';
+              panel.appendChild(ganttPanel.el);
+              return panel;
+            })()
+          },
+          {
+            id: 'api',
+            content: (function () {
+              var panel = document.createElement('section');
+              panel.className = 'demo-card';
+              panel.innerHTML = '<h2>API Guide</h2>';
+              panel.appendChild(buildApiGuide());
+              return panel;
+            })()
+          }
+        ]
+      });
+
+      var main = document.createElement('main');
+      main.className = 'sf-main';
+      main.appendChild(tabs.el);
+      document.body.appendChild(main);
+
+      requestAnimationFrame(function () {
+        ganttPanel.mountIfNeeded();
+      });
+
+      document.body.appendChild(createFooter({
+        links: [
+          { label: 'Demo Index', url: './index.html' },
+          { label: 'Repository', url: 'https://github.com/SolverForge/solverforge-ui' }
+        ],
+        version: 'fixture v0.6.4'
+      }));
+    });
+  </script>
+</body>
+
+</html>

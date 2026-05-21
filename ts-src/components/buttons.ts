@@ -2,11 +2,10 @@
    SolverForge UI — Button Factory
    ============================================================================ */
 
-(function (sf) {
-  'use strict';
+import {assert, el} from "../core";
 
-  sf.createButton = function (config) {
-    sf.assert(config, 'createButton(config) requires a configuration object');
+export const createButton = function (config) {
+    assert(config, 'createButton(config) requires a configuration object');
 
     var classes = ['sf-btn'];
 
@@ -18,17 +17,17 @@
     if (config.outline) classes.push('sf-btn--outline');
     if (config.iconOnly) classes.push('sf-btn--icon');
 
-    var btn = sf.el('button', {
+    var btn = <HTMLButtonElement>el('button', {
       className: classes.join(' '),
       type: 'button',
     });
 
     if (config.disabled) btn.disabled = true;
 
-    sf.assert(!config.onClick || typeof config.onClick === 'function', 'createButton(onClick) must be a function');
+    assert(!config.onClick || typeof config.onClick === 'function', 'createButton(onClick) must be a function');
 
     if (config.icon) {
-      var icon = sf.el('i', { className: 'fa-solid ' + config.icon });
+      var icon = el('i', { className: 'fa-solid ' + config.icon });
       btn.appendChild(icon);
     }
 
@@ -62,5 +61,3 @@
 
     return btn;
   };
-
-})(SF);

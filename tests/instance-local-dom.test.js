@@ -1,45 +1,16 @@
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const test = require('node:test');
-const vm = require('node:vm');
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { createHeader, createStatusBar, createTabs, showTab, gantt } from '../static/sf/sf.mjs';
+import { createDom } from './support/fake-dom.js';
+import { mockGlobals } from './support/mock-globals.js';
 
-const { createDom } = require('./support/fake-dom');
-
-const ROOT = path.resolve(__dirname, '..');
-
-function loadSf(files, overrides = {}) {
+test('status bars only toggle the controls on their bound header', (t) => {
   const { document, window, Node } = createDom();
-  const context = vm.createContext({
-    console,
-    document,
-    window,
-    Node,
-    setTimeout,
-    clearTimeout,
-    ...overrides,
-  });
-
-  files.forEach((file) => {
-    const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
-    vm.runInContext(source, context, { filename: file });
-  });
-
-  return { SF: context.window.SF, document };
-}
-
-test('status bars only toggle the controls on their bound header', () => {
-  const { SF } = loadSf([
-    'js-src/00-core.js',
-    'js-src/03-buttons.js',
-    'js-src/04-header.js',
-    'js-src/05-statusbar.js',
-  ]);
-
-  const headerOne = SF.createHeader({ actions: { onSolve() {}, onPause() {}, onResume() {}, onCancel() {} } });
-  const headerTwo = SF.createHeader({ actions: { onSolve() {}, onPause() {}, onResume() {}, onCancel() {} } });
-  const barOne = SF.createStatusBar({ header: headerOne });
-  const barTwo = SF.createStatusBar({ header: headerTwo });
+  mockGlobals(t, { document, window, Node });
+  const headerOne = createHeader({ actions: { onSolve() { }, onPause() { }, onResume() { }, onCancel() { } } });
+  const headerTwo = createHeader({ actions: { onSolve() { }, onPause() { }, onResume() { }, onCancel() { } } });
+  const barOne = createStatusBar({ header: headerOne });
+  const barTwo = createStatusBar({ header: headerTwo });
   function isVisible(btn) {
     return btn.style.display !== 'none';
   }
@@ -84,14 +55,11 @@ test('status bars only toggle the controls on their bound header', () => {
   assertControls(headerTwo, { state: 'SOLVING', solve: false, pause: true, resume: false, cancel: true, spinner: true });
 });
 
-test('status bar can show the same score again after reset', () => {
-  const { SF, document } = loadSf([
-    'js-src/00-core.js',
-    'js-src/01-score.js',
-    'js-src/05-statusbar.js',
-  ]);
+test('status bar can show the same score again after reset', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const bar = SF.createStatusBar({});
+  const bar = createStatusBar({});
   document.body.appendChild(bar.el);
   const score = document.getElementById('sfScoreDisplay');
 
@@ -105,16 +73,17 @@ test('status bar can show the same score again after reset', () => {
   assert.equal(score.textContent, '0hard/0soft');
 });
 
-test('tab switching stays scoped to the owning tab container', () => {
-  const { SF, document } = loadSf(['js-src/00-core.js', 'js-src/07-tabs.js']);
+test('tab switching stays scoped to the owning tab container', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const tabsOne = SF.createTabs({
+  const tabsOne = createTabs({
     tabs: [
       { id: 'plan', active: true, content: 'Plan' },
       { id: 'gantt', content: 'Gantt' },
     ],
   });
-  const tabsTwo = SF.createTabs({
+  const tabsTwo = createTabs({
     tabs: [
       { id: 'alpha', active: true, content: 'Alpha' },
       { id: 'beta', content: 'Beta' },
@@ -131,16 +100,17 @@ test('tab switching stays scoped to the owning tab container', () => {
   assert.equal(tabsTwo.el.querySelector('[data-tab-id="beta"]').classList.contains('active'), false);
 });
 
-test('global showTab updates every matching tab container independently', () => {
-  const { SF, document } = loadSf(['js-src/00-core.js', 'js-src/07-tabs.js']);
+test('global showTab updates every matching tab container independently', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const tabsOne = SF.createTabs({
+  const tabsOne = createTabs({
     tabs: [
       { id: 'plan', active: true, content: 'Plan A' },
       { id: 'gantt', content: 'Gantt A' },
     ],
   });
-  const tabsTwo = SF.createTabs({
+  const tabsTwo = createTabs({
     tabs: [
       { id: 'plan', active: true, content: 'Plan B' },
       { id: 'gantt', content: 'Gantt B' },
@@ -150,23 +120,24 @@ test('global showTab updates every matching tab container independently', () => 
   document.body.appendChild(tabsOne.el);
   document.body.appendChild(tabsTwo.el);
 
-  SF.showTab('gantt');
+  showTab('gantt');
   assert.equal(tabsOne.el.querySelector('[data-tab-id="plan"]').classList.contains('active'), false);
   assert.equal(tabsOne.el.querySelector('[data-tab-id="gantt"]').classList.contains('active'), true);
   assert.equal(tabsTwo.el.querySelector('[data-tab-id="plan"]').classList.contains('active'), false);
   assert.equal(tabsTwo.el.querySelector('[data-tab-id="gantt"]').classList.contains('active'), true);
 });
 
-test('root-scoped showTab only updates the targeted tab container', () => {
-  const { SF, document } = loadSf(['js-src/00-core.js', 'js-src/07-tabs.js']);
+test('root-scoped showTab only updates the targeted tab container', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const tabsOne = SF.createTabs({
+  const tabsOne = createTabs({
     tabs: [
       { id: 'plan', active: true, content: 'Plan A' },
       { id: 'gantt', content: 'Gantt A' },
     ],
   });
-  const tabsTwo = SF.createTabs({
+  const tabsTwo = createTabs({
     tabs: [
       { id: 'plan', active: true, content: 'Plan B' },
       { id: 'gantt', content: 'Gantt B' },
@@ -176,23 +147,24 @@ test('root-scoped showTab only updates the targeted tab container', () => {
   document.body.appendChild(tabsOne.el);
   document.body.appendChild(tabsTwo.el);
 
-  SF.showTab('gantt', tabsOne.el);
+  showTab('gantt', tabsOne.el);
   assert.equal(tabsOne.el.querySelector('[data-tab-id="plan"]').classList.contains('active'), false);
   assert.equal(tabsOne.el.querySelector('[data-tab-id="gantt"]').classList.contains('active'), true);
   assert.equal(tabsTwo.el.querySelector('[data-tab-id="plan"]').classList.contains('active'), true);
   assert.equal(tabsTwo.el.querySelector('[data-tab-id="gantt"]').classList.contains('active'), false);
 });
 
-test('missing tab ids only clear active state inside the targeted tab container', () => {
-  const { SF, document } = loadSf(['js-src/00-core.js', 'js-src/07-tabs.js']);
+test('missing tab ids only clear active state inside the targeted tab container', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const tabsOne = SF.createTabs({
+  const tabsOne = createTabs({
     tabs: [
       { id: 'plan', active: true, content: 'Plan A' },
       { id: 'gantt', content: 'Gantt A' },
     ],
   });
-  const tabsTwo = SF.createTabs({
+  const tabsTwo = createTabs({
     tabs: [
       { id: 'plan', active: true, content: 'Plan B' },
       { id: 'gantt', content: 'Gantt B' },
@@ -209,11 +181,12 @@ test('missing tab ids only clear active state inside the targeted tab container'
   assert.equal(tabsTwo.el.querySelector('[data-tab-id="gantt"]').classList.contains('active'), false);
 });
 
-test('gantt instances get unique generated IDs by default', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js']);
+test('gantt instances get unique generated IDs by default', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const ganttOne = SF.gantt.create({});
-  const ganttTwo = SF.gantt.create({});
+  const ganttOne = gantt.create({});
+  const ganttTwo = gantt.create({});
   const onePanes = ganttOne.el.querySelectorAll('.sf-gantt-pane');
   const twoPanes = ganttTwo.el.querySelectorAll('.sf-gantt-pane');
   const oneContainer = ganttOne.el.querySelector('.sf-gantt-container');
@@ -224,12 +197,13 @@ test('gantt instances get unique generated IDs by default', () => {
   assert.equal(oneContainer.id === twoContainer.id, false);
 });
 
-test('gantt.create falls back to built-in defaults when config is omitted', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js']);
+test('gantt.create falls back to built-in defaults when config is omitted', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const gantt = SF.gantt.create();
-  const panes = gantt.el.querySelectorAll('.sf-gantt-pane');
-  const chartContainer = gantt.el.querySelector('.sf-gantt-container');
+  const ganttChart = gantt.create();
+  const panes = ganttChart.el.querySelectorAll('.sf-gantt-pane');
+  const chartContainer = ganttChart.el.querySelector('.sf-gantt-container');
 
   assert.equal(panes.length, 2);
   assert.equal(Boolean(panes[0].id), true);
@@ -237,27 +211,31 @@ test('gantt.create falls back to built-in defaults when config is omitted', () =
   assert.equal(Boolean(chartContainer.id), true);
 });
 
-test('gantt remount recreates the chart and preserves refresh behavior', () => {
+test('gantt remount recreates the chart and preserves refresh behavior', (t) => {
   const splitCalls = [];
   const refreshCalls = [];
   let ganttInstanceCount = 0;
 
-  const { SF, document } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js'], {
-    Split: function (targets, options) {
-      splitCalls.push({ targets, options });
-      return {
-        destroy() {},
-      };
-    },
-    Gantt: function () {
-      ganttInstanceCount++;
-      return {
-        change_view_mode() {},
-        refresh(tasks) {
-          refreshCalls.push(tasks);
-        },
-      };
-    },
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
+  globalThis.Split = function (targets, options) {
+    splitCalls.push({ targets, options });
+    return {
+      destroy() { },
+    };
+  };
+  globalThis.Gantt = function () {
+    ganttInstanceCount++;
+    return {
+      change_view_mode() { },
+      refresh(tasks) {
+        refreshCalls.push(tasks);
+      },
+    };
+  };
+  t.after(() => {
+    delete globalThis.Split;
+    delete globalThis.Gantt;
   });
 
   const mountOne = document.createElement('div');
@@ -265,37 +243,41 @@ test('gantt remount recreates the chart and preserves refresh behavior', () => {
   document.body.appendChild(mountOne);
   document.body.appendChild(mountTwo);
 
-  const gantt = SF.gantt.create({});
-  gantt.setTasks([{ id: 'task-1', start: '2026-03-21', end: '2026-03-22' }]);
-  gantt.mount(mountOne);
-  gantt.mount(mountTwo);
-  gantt.refresh();
+  const ganttChart = gantt.create({});
+  ganttChart.setTasks([{ id: 'task-1', start: '2026-03-21', end: '2026-03-22' }]);
+  ganttChart.mount(mountOne);
+  ganttChart.mount(mountTwo);
+  ganttChart.refresh();
 
   assert.equal(ganttInstanceCount >= 2, true);
-  assert.equal(mountOne.childNodes.includes(gantt.el), false);
-  assert.equal(mountTwo.childNodes.includes(gantt.el), true);
-  assert.notEqual(gantt.getChart(), null);
+  assert.equal(mountOne.childNodes.includes(ganttChart.el), false);
+  assert.equal(mountTwo.childNodes.includes(ganttChart.el), true);
+  assert.notEqual(ganttChart.getChart(), null);
   assert.equal(refreshCalls.length, 1);
   assert.equal(splitCalls.length, 2);
 });
 
-test('failed gantt remount keeps the existing mounted chart intact', () => {
+test('failed gantt remount keeps the existing mounted chart intact', (t) => {
   let destroyCount = 0;
 
-  const { SF, document } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js'], {
-    Split: function () {
-      return {
-        destroy() {
-          destroyCount++;
-        },
-      };
-    },
-    Gantt: function () {
-      return {
-        change_view_mode() {},
-        refresh() {},
-      };
-    },
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
+  globalThis.Split = function () {
+    return {
+      destroy() {
+        destroyCount++;
+      },
+    };
+  };
+  globalThis.Gantt = function () {
+    return {
+      change_view_mode() { },
+      refresh() { },
+    };
+  };
+  t.after(() => {
+    delete globalThis.Split;
+    delete globalThis.Gantt;
   });
 
   const validMount = document.createElement('div');
@@ -307,86 +289,95 @@ test('failed gantt remount keeps the existing mounted chart intact', () => {
   document.body.appendChild(validMount);
   document.body.appendChild(hiddenMount);
 
-  const gantt = SF.gantt.create({});
-  gantt.setTasks([{ id: 'task-1', start: '2026-03-21', end: '2026-03-22' }]);
-  gantt.mount(validMount);
+  const ganttChart = gantt.create({});
+  ganttChart.setTasks([{ id: 'task-1', start: '2026-03-21', end: '2026-03-22' }]);
+  ganttChart.mount(validMount);
 
   assert.throws(function () {
-    gantt.mount(hiddenMount);
+    ganttChart.mount(hiddenMount);
   }, /target is not laid out yet/);
-  assert.equal(validMount.childNodes.includes(gantt.el), true);
-  assert.equal(hiddenMount.childNodes.includes(gantt.el), false);
+  assert.equal(validMount.childNodes.includes(ganttChart.el), true);
+  assert.equal(hiddenMount.childNodes.includes(ganttChart.el), false);
   assert.equal(destroyCount, 0);
 });
 
-test('gantt initSplit keeps accepting scalar splitMinSize values', () => {
+test('gantt initSplit keeps accepting scalar splitMinSize values', (t) => {
   const splitCalls = [];
 
-  const { SF, document } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js'], {
-    Split: function (targets, options) {
-      splitCalls.push({ targets, options });
-      return {
-        destroy() {},
-      };
-    },
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
+  globalThis.Split = function (targets, options) {
+    splitCalls.push({ targets, options });
+    return {
+      destroy() { },
+    };
+  };
+  t.after(() => {
+    delete globalThis.Split;
   });
 
   const mount = document.createElement('div');
   document.body.appendChild(mount);
 
-  const gantt = SF.gantt.create({ splitMinSize: 160 });
-  gantt.mount(mount);
+  const ganttChart = gantt.create({ splitMinSize: 160 });
+  ganttChart.mount(mount);
 
   assert.equal(splitCalls.length, 1);
   assert.equal(splitCalls[0].options.minSize[0], 160);
   assert.equal(splitCalls[0].options.minSize[1], 160);
 });
 
-test('gantt sortable columns render and reorder grid rows without throwing', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js'], {
-    Gantt: function () {
-      return {
-        change_view_mode() {},
-        refresh() {},
-      };
-    },
+test('gantt sortable columns render and reorder grid rows without throwing', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
+  globalThis.Gantt = function () {
+    return {
+      change_view_mode() { },
+      refresh() { },
+    };
+  };
+  t.after(() => {
+    delete globalThis.Gantt;
   });
 
-  const gantt = SF.gantt.create({
+  const ganttChart = gantt.create({
     columns: [
       { key: 'name', label: 'Task', sortable: true },
       { key: 'start', label: 'Start' },
     ],
   });
 
-  gantt.setTasks([
+  ganttChart.setTasks([
     { id: 'b', name: 'Beta', start: '2026-03-22', end: '2026-03-23' },
     { id: 'a', name: 'Alpha', start: '2026-03-21', end: '2026-03-22' },
   ]);
 
-  const header = gantt.el.querySelector('th');
+  const header = ganttChart.el.querySelector('th');
   header.click();
 
-  const rows = gantt.el.querySelectorAll('.sf-gantt-row');
+  const rows = ganttChart.el.querySelectorAll('.sf-gantt-row');
   assert.equal(rows[0].dataset.taskId, 'a');
   assert.equal(rows[1].dataset.taskId, 'b');
 });
 
-test('gantt pinned tasks propagate pinned custom class to chart tasks', () => {
+test('gantt pinned tasks propagate pinned custom class to chart tasks', (t) => {
   let seenTasks = null;
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/14-gantt.js'], {
-    Gantt: function (_selector, tasks) {
-      seenTasks = tasks;
-      return {
-        change_view_mode() {},
-        refresh() {},
-      };
-    },
+  globalThis.Gantt = function (_selector, tasks) {
+    seenTasks = tasks;
+    return {
+      change_view_mode() { },
+      refresh() { },
+    };
+  };
+  t.after(() => {
+    delete globalThis.Gantt;
   });
 
-  const gantt = SF.gantt.create({});
-  gantt.setTasks([
+  const ganttChart = gantt.create({});
+  ganttChart.setTasks([
     { id: 'task-1', start: '2026-03-21', end: '2026-03-22', pinned: true, custom_class: 'critical' },
   ]);
 

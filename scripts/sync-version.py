@@ -39,11 +39,12 @@ def main() -> None:
 
     old, new = sys.argv[1], sys.argv[2]
 
+    rewrite("package.json", rf'"version":\s*"{re.escape(old)}"', f'"version": "{new}"')
     rewrite("Cargo.toml", rf'^version = "{re.escape(old)}"$', f'version = "{new}"')
     rewrite(
-        "js-src/00-core.js",
-        rf"const sf = \{{ version: '{re.escape(old)}' \}};",
-        f"const sf = {{ version: '{new}' }};",
+        "ts-src/core/index.ts",
+        rf"export const version =\s*'{re.escape(old)}';",
+        f"export const version =  '{new}';",
     )
     rewrite(
         "README.md",

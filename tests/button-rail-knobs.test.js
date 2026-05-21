@@ -1,37 +1,14 @@
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const test = require('node:test');
-const vm = require('node:vm');
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { createButton, rail } from '../static/sf/sf.mjs';
+import { createDom } from './support/fake-dom.js';
+import { mockGlobals } from './support/mock-globals.js';
 
-const { createDom } = require('./support/fake-dom');
-
-const ROOT = path.resolve(__dirname, '..');
-
-function loadSf(files, overrides = {}) {
+test('iconOnly buttons keep an accessible label without rendering text content', (t) => {
   const { document, window, Node } = createDom();
-  const context = vm.createContext({
-    console,
-    document,
-    window,
-    Node,
-    setTimeout,
-    clearTimeout,
-    ...overrides,
-  });
+  mockGlobals(t, { document, window, Node });
 
-  files.forEach((file) => {
-    const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
-    vm.runInContext(source, context, { filename: file });
-  });
-
-  return { SF: context.window.SF, document };
-}
-
-test('iconOnly buttons keep an accessible label without rendering text content', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/03-buttons.js']);
-
-  const button = SF.createButton({
+  const button = createButton({
     text: 'Settings',
     icon: 'fa-gear',
     iconOnly: true,
@@ -41,10 +18,11 @@ test('iconOnly buttons keep an accessible label without rendering text content',
   assert.equal(button.attributes['aria-label'], 'Settings');
 });
 
-test('rail card badges accept a single string badge and preserve heatmap alignment', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js']);
+test('rail card badges accept a single string badge and preserve heatmap alignment', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const card = SF.rail.createCard({
+  const card = rail.createCard({
     name: 'Kiln 1',
     badges: 'TEMPRA',
     labelWidth: 220,

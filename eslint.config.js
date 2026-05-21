@@ -1,15 +1,34 @@
-const globals = require('globals');
+import globals from 'globals';
+import ts from '@typescript-eslint/eslint-plugin';
+import tsParser from '@typescript-eslint/parser';
 
-const correctnessRules = {
+const baseRules = {
   'no-dupe-keys': 'error',
   'no-redeclare': 'error',
   'no-unreachable': 'error',
-  'no-undef': 'error',
-  'no-unused-vars': ['error', { args: 'none', caughtErrors: 'none' }],
   'valid-typeof': 'error',
 };
 
-module.exports = [
+const tsRules = {
+  ...baseRules,
+  ...ts.configs.recommended.rules,
+
+  // Disable JS version (important)
+  'no-unused-vars': 'off',
+
+  // Use TS-aware version
+  '@typescript-eslint/no-unused-vars': [
+    'error',
+    {
+      args: 'all',
+      argsIgnorePattern: '^_',
+      varsIgnorePattern: '^_',
+      caughtErrors: 'none',
+    },
+  ],
+};
+
+export default [
   {
     ignores: [
       'node_modules/**',
@@ -17,11 +36,20 @@ module.exports = [
       'target/**',
     ],
   },
+
+  // =========================
+  // TypeScript files
+  // =========================
   {
-    files: ['js-src/**/*.js'],
+    files: ['ts-src/**/*.ts'],
     languageOptions: {
       ecmaVersion: 2021,
-      sourceType: 'script',
+      sourceType: 'module',
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2021,
+        sourceType: 'module',
+      },
       globals: {
         SF: 'readonly',
         Split: 'readonly',
@@ -29,25 +57,31 @@ module.exports = [
         ...globals.browser,
       },
     },
-    rules: correctnessRules,
-  },
-  {
-    files: ['js-src/00-core.js'],
-    rules: {
-      'no-redeclare': 'off',
-      'no-unused-vars': ['error', { args: 'none', caughtErrors: 'none', varsIgnorePattern: '^SF$' }],
+    plugins: {
+      '@typescript-eslint': ts,
     },
+    rules: tsRules,
   },
+
+  // =========================
+  // JS tests & scripts (Node)
+  // =========================
   {
     files: ['tests/**/*.js', 'scripts/**/*.js'],
     languageOptions: {
       ecmaVersion: 2021,
-      sourceType: 'commonjs',
+      sourceType: 'module',
       globals: {
-        ...globals.browser,
         ...globals.node,
+        ...globals.browser,
       },
     },
-    rules: correctnessRules,
+    rules: {
+      ...baseRules,
+
+      // Re-enable JS-native checks in Node files
+      'no-undef': 'error',
+      'no-unused-vars': ['error', { args: 'none', caughtErrors: 'none' }],
+    },
   },
 ];

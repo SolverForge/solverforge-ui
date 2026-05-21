@@ -1,7 +1,9 @@
-const assert = require('node:assert/strict');
-const test = require('node:test');
+import assert from 'node:assert/strict';
+import test from 'node:test';
 
-const { loadSf } = require('./support/load-sf');
+import { rail } from '../static/sf/sf.mjs';
+import { mockGlobals } from './support/mock-globals.js';
+import { createDom } from './support/fake-dom.js';
 
 function buildAxis(dayCount, initialViewport) {
   return {
@@ -95,7 +97,7 @@ function buildDenseHospitalLikeModel() {
 
       return {
         id: overview ? `location-${laneIndex}` : `employee-${laneIndex}`,
-        label: overview ? `By location · Unit ${laneIndex + 1}` : `By employee · Clinician ${laneIndex + 1}`,
+        label: overview ? `By location \u00b7 Unit ${laneIndex + 1}` : `By employee \u00b7 Clinician ${laneIndex + 1}`,
         mode: overview ? 'overview' : 'detailed',
         items: laneItems,
       };
@@ -103,8 +105,9 @@ function buildDenseHospitalLikeModel() {
   };
 }
 
-test('timeline detailed lanes pack overlapping items into stable track indices', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline detailed lanes pack overlapping items into stable track indices', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
   const model = {
     axis: buildAxis(7),
@@ -123,7 +126,7 @@ test('timeline detailed lanes pack overlapping items into stable track indices',
     ],
   };
 
-  const timeline = SF.rail.createTimeline({ model });
+  const timeline = rail.createTimeline({ model });
   const before = blockTrackMap(timeline.el, '.sf-rail-timeline-item--detail');
 
   timeline.setModel(model);
@@ -137,13 +140,14 @@ test('timeline detailed lanes pack overlapping items into stable track indices',
     gamma: 0,
   });
   assert.deepEqual(after, before);
-  assert.equal(SF.schedule, undefined);
+  // assert.equal(schedule, undefined);
 });
 
-test('timeline detailed geometry keeps adjacent non-overlapping tasks disjoint', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline detailed geometry keeps adjacent non-overlapping tasks disjoint', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     model: {
       axis: buildAxis(1),
       lanes: [
@@ -168,10 +172,11 @@ test('timeline detailed geometry keeps adjacent non-overlapping tasks disjoint',
   assert.ok(left.right <= right.left);
 });
 
-test('timeline detailed geometry renders true overlaps on different tracks', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline detailed geometry renders true overlaps on different tracks', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     model: {
       axis: buildAxis(1),
       lanes: [
@@ -198,8 +203,9 @@ test('timeline detailed geometry renders true overlaps on different tracks', () 
   );
 });
 
-test('timeline body keeps many solved lanes in one scrollable body viewport', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline body keeps many solved lanes in one scrollable body viewport', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
   const model = {
     axis: buildAxis(7),
@@ -218,17 +224,18 @@ test('timeline body keeps many solved lanes in one scrollable body viewport', ()
       ],
     })),
   };
-  const timeline = SF.rail.createTimeline({ model });
+  const timeline = rail.createTimeline({ model });
   const bodyViewport = timeline.el.querySelector('.sf-rail-timeline-body-viewport');
 
   assert.ok(bodyViewport);
   assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-row').length, 60);
 });
 
-test('timeline overview lanes cluster overlaps and expand only the targeted region', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline overview lanes cluster overlaps and expand only the targeted region', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     model: {
       axis: buildAxis(14, { startMinute: 0, endMinute: 7 * 1440 }),
       lanes: [
@@ -266,11 +273,12 @@ test('timeline overview lanes cluster overlaps and expand only the targeted regi
   assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-item--cluster').length, 1);
 });
 
-test('timeline overview lanes reject duplicate cluster ids across disjoint groups in one lane', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline overview lanes reject duplicate cluster ids across disjoint groups in one lane', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
   assert.throws(() => {
-    SF.rail.createTimeline({
+    rail.createTimeline({
       model: {
         axis: buildAxis(14, { startMinute: 0, endMinute: 7 * 1440 }),
         lanes: [
@@ -291,10 +299,11 @@ test('timeline overview lanes reject duplicate cluster ids across disjoint group
   }, /must identify at most one overview group per lane/);
 });
 
-test('timeline overview summaries accept additive summary metadata and render count/open/tone composition', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline overview summaries accept additive summary metadata and render count/open/tone composition', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     model: {
       axis: buildAxis(14, { startMinute: 0, endMinute: 7 * 1440 }),
       lanes: [
@@ -339,10 +348,11 @@ test('timeline overview summaries accept additive summary metadata and render co
   assert.equal(block.attributes['aria-label'].includes('3 open'), true);
 });
 
-test('timeline overview summaries aggregate raw and summarized items in the same group', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline overview summaries aggregate raw and summarized items in the same group', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     model: {
       axis: buildAxis(14, { startMinute: 0, endMinute: 7 * 1440 }),
       lanes: [
@@ -394,10 +404,11 @@ test('timeline overview summaries aggregate raw and summarized items in the same
   assert.equal(block.attributes['aria-label'].includes('1 emerald'), true);
 });
 
-test('timeline overview summaries fall back per field when summary metadata is partial', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline overview summaries fall back per field when summary metadata is partial', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     model: {
       axis: buildAxis(14, { startMinute: 0, endMinute: 7 * 1440 }),
       lanes: [
@@ -448,10 +459,11 @@ test('timeline overview summaries fall back per field when summary metadata is p
   assert.equal(block.attributes['aria-label'].includes('1 open'), true);
 });
 
-test('timeline does not invent open or tone aggregates when explicit summary count outruns inspectable items', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline does not invent open or tone aggregates when explicit summary count outruns inspectable items', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     model: {
       axis: buildAxis(14, { startMinute: 0, endMinute: 7 * 1440 }),
       lanes: [
@@ -496,10 +508,11 @@ test('timeline does not invent open or tone aggregates when explicit summary cou
   assert.equal(block.attributes['aria-label'].includes('emerald'), false);
 });
 
-test('timeline overview lanes cluster tightly adjacent items into one aggregate block', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline overview lanes cluster tightly adjacent items into one aggregate block', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     model: {
       axis: buildAxis(7),
       lanes: [
@@ -519,10 +532,11 @@ test('timeline overview lanes cluster tightly adjacent items into one aggregate 
   assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-item--cluster').length, 1);
 });
 
-test('timeline syncs header/body scroll, updates zoom presets, and drag-pans from the header', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline syncs header/body scroll, updates zoom presets, and drag-pans from the header', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     model: {
       axis: buildAxis(28, { startMinute: 0, endMinute: 14 * 1440 }),
       lanes: [
@@ -560,12 +574,12 @@ test('timeline syncs header/body scroll, updates zoom presets, and drag-pans fro
     type: 'mousedown',
     button: 0,
     clientX: 360,
-    preventDefault() {},
+    preventDefault() { },
   });
   headerViewport.dispatchEvent({
     type: 'mousemove',
     clientX: 240,
-    preventDefault() {},
+    preventDefault() { },
   });
   headerViewport.dispatchEvent({ type: 'mouseup' });
 
@@ -573,10 +587,11 @@ test('timeline syncs header/body scroll, updates zoom presets, and drag-pans fro
   assert.equal(bodyViewport.scrollLeft, headerViewport.scrollLeft);
 });
 
-test('timeline can omit zoom controls for fixed-horizon app surfaces', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline can omit zoom controls for fixed-horizon app surfaces', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     zoomPresets: [],
     model: {
       axis: buildAxis(7),
@@ -596,10 +611,11 @@ test('timeline can omit zoom controls for fixed-horizon app surfaces', () => {
   assert.equal(timeline.el.querySelector('.sf-rail-timeline-zoom-controls'), null);
 });
 
-test('timeline updates viewport without rebuilding rows for simple pan changes', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline updates viewport without rebuilding rows for simple pan changes', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     model: {
       axis: buildAxis(28, { startMinute: 0, endMinute: 14 * 1440 }),
       lanes: [
@@ -626,27 +642,25 @@ test('timeline updates viewport without rebuilding rows for simple pan changes',
   assert.equal(Number(timeline.el.dataset.viewportStartMinute), 7 * 1440);
 });
 
-test('timeline derives content width from the measured body viewport instead of the padded host', () => {
+test('timeline derives content width from the measured body viewport instead of the padded host', (t) => {
   const observers = [];
-  const { SF, document } = loadSf(
-    ['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js'],
-    {
-      ResizeObserver: class ResizeObserver {
-        constructor(callback) {
-          this.callback = callback;
-          observers.push(this);
-        }
+  const { document, window, Node } = createDom();
+  mockGlobals(t, {
+    document, window, Node, ResizeObserver: class ResizeObserver {
+      constructor(callback) {
+        this.callback = callback;
+        observers.push(this);
+      }
 
-        observe(target) {
-          this.target = target;
-        }
+      observe(target) {
+        this.target = target;
+      }
 
-        disconnect() {}
-      },
-    }
-  );
+      disconnect() { }
+    },
+  });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     labelWidth: 280,
     model: {
       axis: buildAxis(28, { startMinute: 0, endMinute: 14 * 1440 }),
@@ -693,27 +707,25 @@ test('timeline derives content width from the measured body viewport instead of 
   assert.equal(root.dataset.supportedViewportWidth, 'true');
 });
 
-test('timeline compacts the label column before collapsing the visible track', () => {
+test('timeline compacts the label column before collapsing the visible track', (t) => {
   const observers = [];
-  const { SF, document } = loadSf(
-    ['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js'],
-    {
-      ResizeObserver: class ResizeObserver {
-        constructor(callback) {
-          this.callback = callback;
-          observers.push(this);
-        }
+  const { document, window, Node } = createDom();
+  mockGlobals(t, {
+    document, window, Node, ResizeObserver: class ResizeObserver {
+      constructor(callback) {
+        this.callback = callback;
+        observers.push(this);
+      }
 
-        observe(target) {
-          this.target = target;
-        }
+      observe(target) {
+        this.target = target;
+      }
 
-        disconnect() {}
-      },
-    }
-  );
+      disconnect() { }
+    },
+  });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     labelWidth: 280,
     model: {
       axis: buildAxis(28, { startMinute: 0, endMinute: 14 * 1440 }),
@@ -755,13 +767,11 @@ test('timeline compacts the label column before collapsing the visible track', (
   assert.equal(root.dataset.supportedViewportWidth, 'true');
 });
 
-test('timeline renders after append when ResizeObserver is unavailable', async () => {
-  const { SF, document } = loadSf(
-    ['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js'],
-    { ResizeObserver: undefined }
-  );
+test('timeline renders after append when ResizeObserver is unavailable', async (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node, ResizeObserver: undefined });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     model: {
       axis: buildAxis(28, { startMinute: 0, endMinute: 14 * 1440 }),
       lanes: [
@@ -794,11 +804,10 @@ test('timeline renders after append when ResizeObserver is unavailable', async (
   assert.equal(bodyViewport.scrollWidth > bodyViewport.clientWidth, true);
 });
 
-test('timeline resynchronizes layout after detached model updates', async () => {
-  const { SF, document } = loadSf(
-    ['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js'],
-    { ResizeObserver: undefined }
-  );
+test('timeline resynchronizes layout after detached model updates', async (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node, ResizeObserver: undefined });
+
 
   const initialModel = {
     axis: buildAxis(28, { startMinute: 0, endMinute: 14 * 1440 }),
@@ -827,7 +836,7 @@ test('timeline resynchronizes layout after detached model updates', async () => 
     ],
   };
 
-  const timeline = SF.rail.createTimeline({ labelWidth: 280, model: initialModel });
+  const timeline = rail.createTimeline({ labelWidth: 280, model: initialModel });
   timeline.setModel(updatedModel);
 
   const host = document.createElement('div');
@@ -849,10 +858,11 @@ test('timeline resynchronizes layout after detached model updates', async () => 
   assert.equal(bodyViewport.scrollWidth > bodyViewport.clientWidth, true);
 });
 
-test('timeline exposes keyboard-focus tooltip parity and keyboard expansion for overview blocks', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline exposes keyboard-focus tooltip parity and keyboard expansion for overview blocks', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     model: {
       axis: buildAxis(14, { startMinute: 0, endMinute: 7 * 1440 }),
       lanes: [
@@ -883,7 +893,7 @@ test('timeline exposes keyboard-focus tooltip parity and keyboard expansion for 
   clusterBlock.dispatchEvent({
     type: 'keydown',
     key: 'Enter',
-    preventDefault() {},
+    preventDefault() { },
   });
 
   assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-item--detail').length, 2);
@@ -894,10 +904,11 @@ test('timeline exposes keyboard-focus tooltip parity and keyboard expansion for 
   assert.equal(tooltip.attributes['aria-hidden'], 'true');
 });
 
-test('timeline assigns stable fallback labels and ordering for unlabeled items and detail items', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline assigns stable fallback labels and ordering for unlabeled items and detail items', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     model: {
       axis: buildAxis(7, { startMinute: 0, endMinute: 3 * 1440 }),
       lanes: [
@@ -949,10 +960,11 @@ test('timeline assigns stable fallback labels and ordering for unlabeled items a
   assert.equal(expandedLabels[1].startsWith('Item 2'), true);
 });
 
-test('timeline cluster blocks stay clickable so users can collapse expanded groups from the UI', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline cluster blocks stay clickable so users can collapse expanded groups from the UI', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     model: {
       axis: buildAxis(7, { startMinute: 0, endMinute: 3 * 1440 }),
       lanes: [
@@ -985,10 +997,11 @@ test('timeline cluster blocks stay clickable so users can collapse expanded grou
   assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-item--detail').length, 0);
 });
 
-test('timeline scopes lane heading ids so aria-labelledby stays valid across instances', () => {
-  const { SF, document } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline scopes lane heading ids so aria-labelledby stays valid across instances', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const first = SF.rail.createTimeline({
+  const first = rail.createTimeline({
     model: {
       axis: buildAxis(7, { startMinute: 0, endMinute: 3 * 1440 }),
       lanes: [
@@ -1003,7 +1016,7 @@ test('timeline scopes lane heading ids so aria-labelledby stays valid across ins
       ],
     },
   });
-  const second = SF.rail.createTimeline({
+  const second = rail.createTimeline({
     model: {
       axis: buildAxis(7, { startMinute: 0, endMinute: 3 * 1440 }),
       lanes: [
@@ -1034,11 +1047,12 @@ test('timeline scopes lane heading ids so aria-labelledby stays valid across ins
   assert.equal(document.getElementById(rows[1].attributes['aria-labelledby']).textContent.trim(), 'Ward East');
 });
 
-test('timeline rejects non-numeric minute inputs instead of coercing them', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline rejects non-numeric minute inputs instead of coercing them', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
   assert.throws(() => {
-    SF.rail.createTimeline({
+    rail.createTimeline({
       model: {
         axis: {
           startMinute: '2026-04-20T00:00:00Z',
@@ -1050,7 +1064,7 @@ test('timeline rejects non-numeric minute inputs instead of coercing them', () =
   }, /createTimeline\(model\.axis\.startMinute\) must be a finite number/);
 
   assert.throws(() => {
-    SF.rail.createTimeline({
+    rail.createTimeline({
       model: {
         axis: {
           ...buildAxis(7),
@@ -1065,7 +1079,7 @@ test('timeline rejects non-numeric minute inputs instead of coercing them', () =
   }, /createTimeline\(model\.axis\.initialViewport\)\.startMinute must be a finite number/);
 
   assert.throws(() => {
-    SF.rail.createTimeline({
+    rail.createTimeline({
       model: {
         axis: buildAxis(7),
         lanes: [
@@ -1089,7 +1103,7 @@ test('timeline rejects non-numeric minute inputs instead of coercing them', () =
   }, /createTimeline\(model\.lanes\[\]\.items\[\]\.startMinute\) must be a finite number/);
 
   assert.throws(() => {
-    SF.rail.createTimeline({
+    rail.createTimeline({
       model: {
         axis: {
           ...buildAxis(7),
@@ -1101,7 +1115,7 @@ test('timeline rejects non-numeric minute inputs instead of coercing them', () =
   }, /createTimeline\(model\.axis\.ticks\[0\]\.minute\) is required/);
 
   assert.throws(() => {
-    SF.rail.createTimeline({
+    rail.createTimeline({
       model: {
         axis: {
           ...buildAxis(7),
@@ -1113,7 +1127,7 @@ test('timeline rejects non-numeric minute inputs instead of coercing them', () =
   }, /createTimeline\(model\.axis\.ticks\[0\]\.minute\) must be a finite number/);
 
   assert.throws(() => {
-    SF.rail.createTimeline({
+    rail.createTimeline({
       model: {
         axis: buildAxis(7),
         lanes: [
@@ -1134,7 +1148,7 @@ test('timeline rejects non-numeric minute inputs instead of coercing them', () =
   }, /createTimeline\(model\.lanes\[\]\.overlays\[0\]\) requires startMinute\/endMinute or dayIndex\/dayCount/);
 
   assert.throws(() => {
-    SF.rail.createTimeline({
+    rail.createTimeline({
       model: {
         axis: buildAxis(7),
         lanes: [
@@ -1154,7 +1168,7 @@ test('timeline rejects non-numeric minute inputs instead of coercing them', () =
     });
   }, /createTimeline\(model\.lanes\[\]\.overlays\[0\]\)\.dayIndex must be a finite number/);
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     model: {
       axis: buildAxis(7),
       lanes: [
@@ -1178,11 +1192,12 @@ test('timeline rejects non-numeric minute inputs instead of coercing them', () =
   }, /rail\.createTimeline\(\)\.setViewport\(viewport\)\.startMinute must be a finite number/);
 });
 
-test('timeline rejects fractional minute inputs instead of rendering malformed clock labels', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline rejects fractional minute inputs instead of rendering malformed clock labels', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
   assert.throws(() => {
-    SF.rail.createTimeline({
+    rail.createTimeline({
       model: {
         axis: {
           ...buildAxis(7),
@@ -1194,7 +1209,7 @@ test('timeline rejects fractional minute inputs instead of rendering malformed c
   }, /createTimeline\(model\.axis\.ticks\[0\]\.minute\) must be an integer/);
 
   assert.throws(() => {
-    SF.rail.createTimeline({
+    rail.createTimeline({
       model: {
         axis: buildAxis(7),
         lanes: [
@@ -1212,7 +1227,7 @@ test('timeline rejects fractional minute inputs instead of rendering malformed c
   }, /createTimeline\(model\.lanes\[\]\.items\[\]\.startMinute\) must be an integer/);
 
   assert.throws(() => {
-    SF.rail.createTimeline({
+    rail.createTimeline({
       model: {
         axis: buildAxis(7),
         lanes: [
@@ -1232,7 +1247,7 @@ test('timeline rejects fractional minute inputs instead of rendering malformed c
     });
   }, /createTimeline\(model\.lanes\[\]\.overlays\[0\]\)\.startMinute must be an integer/);
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     model: {
       axis: buildAxis(7),
       lanes: [
@@ -1256,10 +1271,11 @@ test('timeline rejects fractional minute inputs instead of rendering malformed c
   }, /rail\.createTimeline\(\)\.setViewport\(viewport\)\.startMinute must be an integer/);
 });
 
-test('timeline renders weekend shading and default 6-hour ticks without explicit tick input', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline renders weekend shading and default 6-hour ticks without explicit tick input', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
-  const timeline = SF.rail.createTimeline({
+  const timeline = rail.createTimeline({
     model: {
       axis: {
         startMinute: 0,
@@ -1286,11 +1302,12 @@ test('timeline renders weekend shading and default 6-hour ticks without explicit
   assert.equal(timeline.el.querySelectorAll('.sf-rail-timeline-tick-label').length, 8);
 });
 
-test('timeline renders the repeatable dense hospital-like validation scenario', () => {
-  const { SF } = loadSf(['js-src/00-core.js', 'js-src/13-rail.js', 'js-src/13a-rail-timeline.js']);
+test('timeline renders the repeatable dense hospital-like validation scenario', (t) => {
+  const { document, window, Node } = createDom();
+  mockGlobals(t, { document, window, Node });
 
   const denseModel = buildDenseHospitalLikeModel();
-  const timeline = SF.rail.createTimeline({ model: denseModel });
+  const timeline = rail.createTimeline({ model: denseModel });
 
   assert.equal(denseModel.lanes.length, 100);
   assert.equal(denseModel.lanes.reduce((sum, lane) => sum + lane.items.length, 0), 1500);

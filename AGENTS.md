@@ -9,14 +9,14 @@ Repository guidance for coding agents and maintainers working in
   contracts.
 - `WIREFRAME.md` can include shipped and planned UI, but every section must
   clearly distinguish which is which.
-- `js-src/` and `css-src/` are the editable sources. `static/sf/` contains the
+- `ts-src/` and `css-src/` are the editable sources. `static/sf/` contains the
   generated bundled assets served to consumers.
 
 ## Current Release
 
 - Crate version: `0.6.5`.
-- Versioned asset outputs are emitted as `static/sf/sf.<version>.css` and
-  `static/sf/sf.<version>.js`.
+- Versioned asset outputs are emitted as `static/sf/sf.<version>.css`,
+  `static/sf/sf.<version>.js`, and `static/sf/sf.<version>.mjs`.
 
 ## Solver Lifecycle Contract
 
@@ -72,3 +72,37 @@ Repository guidance for coding agents and maintainers working in
 - Prefer `make lint-frontend` for focused JavaScript linting, `make
   test-frontend` or `make test-browser` for focused frontend validation, and
   `make test-quick` or `make test` before release work.
+
+## Downstream Contract Gates
+
+Run downstream gates when a change touches the shipped global API, backend
+contracts, solver lifecycle behavior, dense timeline behavior, generated
+bundles, or the crate package surface used by application repos.
+
+- On the `refactor/migrate-to-typescript` integration branch, frontend tests may
+  exercise the ES module bundle, but must keep parity coverage for the freshly
+  rebuilt generated `static/sf/sf.js` global bundle. Keep this branch reliable
+  for downstream consumers, and avoid merging partial migration states directly
+  to `main`.
+
+- `solverforge-cli` is the scaffold/template gate. Its scalar and list
+  templates call `SF.createBackend({ baseUrl: '' })`, pass that adapter into
+  `SF.createSolver()`, mount `SF.rail.createTimeline()`, and depend on the
+  `solverforge-ui` crate assets. For local PR validation from the sibling CLI
+  repo, use:
+  `SF_USE_LOCAL_PATCHES=1 SF_ECOSYSTEM_ROOT=/srv/lab/dev/solverforge cargo test --test scaffold_test -- --nocapture`.
+- `solverforge-usecases` is the app-runtime gate. `uc-deliveries`, `uc-fsr`,
+  and `uc-lessons` use the omitted-type HTTP backend shape
+  `SF.createBackend({ baseUrl: '' })`; `uc-hospital` uses the explicit Axum
+  shape `SF.createBackend({ type: 'axum', baseUrl: '' })` and exercises solver
+  controller and dense timeline behavior.
+- To force the hospital frontend tests to load this local checkout instead of
+  the published crate, run them with a temporary Cargo wrapper that appends
+  `--config 'paths=["/srv/lab/dev/solverforge/solverforge-ui"]'` to
+  `cargo metadata`, then execute
+  `node --test tests/frontend/*.test.js` from
+  `/srv/lab/dev/solverforge/solverforge-usecases/uc-hospital`.
+- If the checkout root differs from `/srv/lab/dev/solverforge`, adjust the
+  paths in the commands above. The gate is the same: downstream consumers must
+  resolve the local `solverforge-ui` crate and exercise their shipped
+  `SF.createBackend()`, `SF.createSolver()`, and timeline integrations.

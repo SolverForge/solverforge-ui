@@ -15,12 +15,28 @@ let app = api::router(state)
     .fallback_service(ServeDir::new("static"));
 ```
 
+The library ships both classic (`sf.js`) and ES module (`sf.mjs`) bundles.
+
 ```html
 <link rel="stylesheet" href="/sf/vendor/fontawesome/css/fontawesome.min.css">
 <link rel="stylesheet" href="/sf/vendor/fontawesome/css/solid.min.css">
 <link rel="stylesheet" href="/sf/sf.css">
 <script src="/sf/sf.js"></script>
+<script>
+  SF.createHeader({ title: 'Planner' });
+</script>
 ```
+
+For module consumers, import the ES module bundle directly:
+
+```html
+<script type="module">
+  import { createBackend, createSolver, rail } from "/sf/sf.mjs";
+</script>
+```
+
+The ES module bundle does not create `window.SF`; use the classic `sf.js`
+bundle when you want the global `SF` API.
 
 That's it. Every asset is compiled into the binary via `include_dir!`.
 
@@ -28,14 +44,14 @@ That's it. Every asset is compiled into the binary via `include_dir!`.
 
 This repository keeps both shipped UI code and design exploration in the same tree.
 
-- Shipped features are the ones implemented in `js-src/`, or exposed as documented optional modules under `static/sf/modules/`, and described in the API reference below.
+- Shipped features are the ones implemented in `ts-src/`, or exposed as documented optional modules under `static/sf/modules/`, and described in the API reference below.
 - Planned or exploratory ideas may appear in CSS or wireframes before the public API is finished. Those should not be treated as supported integration surface until they are wired into a shipped asset and described in the README API reference.
 - When adding new surface area, update the JavaScript API, README, and runnable examples in the same change so the public contract stays explicit.
 
 For production caching, versioned bundle filenames are also emitted as
-`/sf/sf.<crate-version>.css` and `/sf/sf.<crate-version>.js`. Those versioned
-files are served with immutable caching, while the stable `sf.css` and `sf.js`
-paths remain available for compatibility.
+`/sf/sf.<crate-version>.css`, `/sf/sf.<crate-version>.js`, and `/sf/sf.<crate-version>.mjs`.
+Those versioned files are served with immutable caching, while the stable
+`sf.css`, `sf.js`, and `sf.mjs` paths remain available for compatibility.
 
 ## Screenshots
 
@@ -60,8 +76,13 @@ frontend tests for backend adapters, focused solver lifecycle suites, and core
 component rendering. Use `make test` for the full suite, `make test-quick` for
 Rust doctests, Rust unit tests, frontend Node coverage, and browser smoke
 tests, or `make test-frontend` when you only want the JavaScript suite.
-Use `make lint-frontend` for ESLint on `js-src/`, `tests/`, and `scripts/`, or
-`make lint` to run the Rust and JavaScript lint surfaces together.
+Frontend test targets rebuild the generated `static/sf/sf.js` and
+`static/sf/sf.mjs` bundles before running the Node coverage. During the
+TypeScript migration branch, tests cover the generated module surface and keep
+explicit parity checks for the shipped global bundle. Use `make lint-frontend`
+for ESLint on `ts-src/`, `tests`, and
+`scripts/` plus development-only TypeScript checking, or `make lint` to run the
+Rust and JavaScript lint surfaces together.
 
 ## Quick Start
 
@@ -173,7 +194,7 @@ Default content is always text-rendered. Use these fields only with trusted HTML
 
 | Factory | Returns | Description |
 |---------|---------|-------------|
-| `SF.createBackend(config)` | Backend adapter | HTTP or Tauri IPC transport |
+| `SF.createBackend(config)` | Backend adapter | Built-in HTTP or Tauri IPC transport, including adapter convenience methods |
 | `SF.createSolver(config)` | `{start, pause, resume, cancel, delete, getSnapshot, analyzeSnapshot, isRunning, getJobId, getLifecycleState, getSnapshotRevision}` | Shared job lifecycle orchestration around typed runtime events, exact paused snapshots, retained analysis, and terminal cleanup |
 
 Startup streams may begin with either a scored `progress` event or a scored
@@ -571,7 +592,16 @@ Expects standard SolverForge REST endpoints:
 - `GET /demo-data/{name}` — load demo dataset
 
 Backend contract expectations:
+- `SF.createBackend()` returns the fuller built-in adapter shape for HTTP and
+  Tauri transports, including convenience methods such as `getJob()`,
+  `getJobStatus()`, `getDemoData()`, and `listDemoData()`.
+- Custom backends passed directly to `SF.createSolver()` use the narrower
+  lifecycle contract below; they do not need to implement built-in adapter
+  convenience methods.
 - Custom backends passed to `SF.createSolver()` must implement `createJob()`, `streamJobEvents()`, `getSnapshot()`, `analyzeSnapshot()`, `pauseJob()`, `resumeJob()`, `cancelJob()`, and `deleteJob()`.
+- `SF.createBackend()` treats `type: 'tauri'` as the Tauri adapter and every
+  other type, including omitted type, `null`, `axum`, `fetch`, and `rails`, as
+  the HTTP adapter.
 - `createJob()` must resolve to a plain job id (non-empty string or finite number), or an object containing a scalar `id`, `jobId`, or `job_id`. Numeric `0` is a valid id and is normalized to `"0"`.
 - Non-scalar `createJob()` ids such as arrays, nested objects, booleans, `NaN`, infinities, and empty strings are rejected before the solver attaches streams or performs snapshot/analysis calls.
 - Built-in HTTP and Tauri adapters also accept `{ data: { id } }` response wrappers and normalize the id through the same scalar-only path.
@@ -677,7 +707,7 @@ SF.map.decodePolyline('_p~iF~ps|U...');  // Google polyline algorithm
 solverforge-ui/
 ├── Cargo.toml              # 2 deps: axum + include_dir
 ├── src/lib.rs              # routes() + asset serving
-├── Makefile                # bundles css-src/ + js-src/ into sf.css + sf.js
+├── Makefile                # bundles css-src/ + ts-src/ into sf.css + sf.js + sf.mjs
 ├── .github/workflows/      # CI, release, and publish automation
 ├── css-src/                # 20 CSS source files (numbered for concat order)
 │   ├── 00-tokens.css       #   design system variables
@@ -700,27 +730,37 @@ solverforge-ui/
 │   ├── 17-gantt-layout.css #   split layout, grid table, view controls
 │   ├── 18-gantt-bars.css   #   Frappe bar overrides, pinned/highlighted bars
 │   └── 19-rail-timeline.css #  canonical scheduling timeline
-├── js-src/                 # 17 JS source files
-│   ├── 00-core.js          #   SF namespace, escHtml, el()
-│   ├── 01-score.js         #   score parsing
-│   ├── 02-colors.js        #   Tango palette + project colors
-│   ├── 03-buttons.js       #   createButton()
-│   ├── 04-header.js        #   createHeader()
-│   ├── 05-statusbar.js     #   createStatusBar()
-│   ├── 06-modal.js         #   createModal()
-│   ├── 07-tabs.js          #   createTabs(), showTab()
-│   ├── 08-table.js         #   createTable()
-│   ├── 09-toast.js         #   showToast(), showError()
-│   ├── 10-backend.js       #   createBackend() — axum/tauri/fetch
-│   ├── 11-solver.js        #   createSolver() — SSE state machine
-│   ├── 12-api-guide.js     #   createApiGuide()
-│   ├── 13-rail.js          #   low-level rail header, cards, blocks, changeovers
-│   ├── 13a-rail-timeline.js #  canonical scheduling timeline
-│   ├── 14-gantt.js         #   Frappe Gantt wrapper (split pane, grid, chart)
-│   └── 15-footer.js        #   createFooter()
+├── ts-src/                 # TypeScript source files
+│   ├── index.ts            #   Entry point, SF namespace exports
+│   ├── global.d.ts         #   TypeScript type declarations
+│   ├── core/
+│   │   └── index.ts        #   SF namespace, version, escHtml, el(), assert...
+│   ├── utils/
+│   │   ├── score.ts        #   score parsing
+│   │   └── colors.ts        #   Tango palette + project colors
+│   ├── components/
+│   │   ├── buttons.ts      #   createButton()
+│   │   ├── header.ts       #   createHeader()
+│   │   ├── statusbar.ts    #   createStatusBar()
+│   │   ├── modal.ts        #   createModal()
+│   │   ├── tabs.ts         #   createTabs(), showTab()
+│   │   ├── table.ts        #   createTable()
+│   │   ├── toast.ts        #   showToast(), showError()
+│   │   ├── api-guide.ts    #   createApiGuide()
+│   │   └── footer.ts       #   createFooter()
+│   ├── rail/
+│   │   ├── index.ts        #   low-level rail header, cards, blocks, changeovers
+│   │   ├── card.ts         #   rail card factory
+│   │   └── timeline.ts     #   canonical scheduling timeline
+│   ├── gantt/
+│   │   └── gantt.ts        #   Frappe Gantt wrapper (split pane, grid, chart)
+│   └── solver/
+│       ├── backend.ts      #   createBackend() — axum/tauri/fetch
+│       └── solver.ts       #   createSolver() — SSE state machine
 └── static/sf/              # Embedded assets (include_dir!)
     ├── sf.css              # concatenated from css-src/
-    ├── sf.js               # concatenated from js-src/
+    ├── sf.js               # bundled from ts-src/
+    ├── sf.mjs              # bundled from ts-src/
     ├── img/                # SVG logo asset (ouroboros)
     ├── fonts/              # Space Grotesk + JetBrains Mono WOFF2
     ├── modules/            # optional: sf-map.js/css
@@ -753,7 +793,7 @@ ln -s vendor/solverforge-ui/static/sf public/sf
 ```bash
 # Edit source files
 vim css-src/06-buttons.css
-vim js-src/03-buttons.js
+vim ts-src/components/buttons.ts
 
 # Rebuild concatenated files
 make assets
@@ -784,11 +824,12 @@ If you are cutting a release locally, make sure Node.js with `npx` is available 
 
 Use `make package-verify` to inspect the exact crate contents that would be published.
 
-The verification step checks that required bundled assets and crate metadata are present, and that development-only sources such as `css-src/`, `js-src/`, `scripts/`, and screenshots are not shipped in the published crate.
+The verification step checks that required bundled assets and crate metadata are present, and that development-only sources such as `css-src/`, `ts-src/`, `scripts/`, and screenshots are not shipped in the published crate.
 
 Bundling writes both stable compatibility assets (`static/sf/sf.css`,
-`static/sf/sf.js`) and versioned assets (`static/sf/sf.<version>.css`,
-`static/sf/sf.<version>.js`).
+`static/sf/sf.js`, `static/sf/sf.mjs`) and versioned assets
+(`static/sf/sf.<version>.css`, `static/sf/sf.<version>.js`,
+`static/sf/sf.<version>.mjs`).
 
 ## Demo Fixtures
 

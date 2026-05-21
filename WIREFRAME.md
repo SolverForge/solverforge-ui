@@ -5,7 +5,7 @@ DOM structure, CSS classes, and how the JS factory wires them together.
 
 Sections in this document follow a simple staging rule:
 
-- Shipped: backed by the current JavaScript API in `js-src/` and safe to document as supported behavior.
+- Shipped: backed by the current JavaScript API in `ts-src/` and safe to document as supported behavior.
 - Planned: useful design or styling direction, but not part of the supported public API yet.
 
 ---
@@ -447,6 +447,38 @@ Shipped detailed/viewport rules:
   horizontal scroll and drag-pan remain synchronized with the sticky header
 - timelines created or updated before DOM attachment resynchronize layout after
   mount so label compaction and content width use real viewport dimensions
+
+---
+
+## Downstream Validation Gates (Shipped Integration)
+
+These gates are part of the shipped integration contract when a change touches
+the global `SF` API, generated bundle, backend adapter shapes, solver lifecycle,
+or dense timeline behavior.
+
+On the `refactor/migrate-to-typescript` branch, frontend tests intentionally
+exercise the rebuilt generated `static/sf/sf.js` bundle until stable
+TypeScript/source imports exist. This keeps downstream behavior tied to the
+artifact consumers actually load while the migration remains off `main`.
+
+| Downstream project | Contract exercised | Local gate |
+|---|---|---|
+| `solverforge-cli` | Generated scalar/list apps use `SF.createBackend({ baseUrl: '' })`, `SF.createSolver()`, and `SF.rail.createTimeline()` from the crate bundle. | From `/srv/lab/dev/solverforge/solverforge-cli`: `SF_USE_LOCAL_PATCHES=1 SF_ECOSYSTEM_ROOT=/srv/lab/dev/solverforge cargo test --test scaffold_test -- --nocapture` |
+| `solverforge-usecases/uc-hospital` | Explicit Axum backend config, retained solver controller behavior, terminal cleanup, dense hospital timeline rendering, and `/sf/sf.js` resolved through Cargo. | From `uc-hospital`, run `node --test tests/frontend/*.test.js` with `cargo metadata` forced through `--config 'paths=["/srv/lab/dev/solverforge/solverforge-ui"]'`. |
+| `solverforge-usecases/uc-deliveries`, `uc-fsr`, `uc-lessons` | Omitted-type HTTP backend config and stock bundle integration. | Covered by this repo's omitted-type backend contract tests plus the usecase syntax/build gates when those apps are in scope. |
+
+One local-runtime form for the hospital gate:
+
+```bash
+cd /srv/lab/dev/solverforge/solverforge-usecases/uc-hospital
+tmpdir=$(mktemp -d)
+cat > "$tmpdir/cargo" <<'SH'
+#!/bin/sh
+exec /usr/bin/cargo "$@" --config 'paths=["/srv/lab/dev/solverforge/solverforge-ui"]'
+SH
+chmod +x "$tmpdir/cargo"
+PATH="$tmpdir:$PATH" node --test tests/frontend/*.test.js
+```
 
 ---
 
