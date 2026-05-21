@@ -5,6 +5,7 @@ manifest="$(mktemp)"
 trap 'rm -f "$manifest"' EXIT
 
 cargo package --allow-dirty --list > "$manifest"
+version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)"
 
 if command -v rg >/dev/null 2>&1; then
   search_exact() {
@@ -56,6 +57,10 @@ require "CHANGELOG.md"
 require "src/lib.rs"
 require "static/sf/sf.css"
 require "static/sf/sf.js"
+require "static/sf/sf.mjs"
+require "static/sf/sf.${version}.css"
+require "static/sf/sf.${version}.js"
+require "static/sf/sf.${version}.mjs"
 require "static/sf/vendor/frappe-gantt/frappe-gantt.min.js"
 require "static/sf/vendor/split/split.min.js"
 require "static/sf/fonts/space-grotesk.woff2"

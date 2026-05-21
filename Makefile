@@ -24,7 +24,7 @@ SEMVER_RE := '^[0-9]+\.[0-9]+\.[0-9]+$$'
 
 # ============== Asset Sources ==============
 CSS_SRC := $(sort $(wildcard css-src/*.css))
-TS_SRC := $(wildcard ts-src/**/*.ts)
+TS_SRC := $(sort $(shell find ts-src -type f \( -name '*.ts' -o -name '*.d.ts' \)))
 VERSIONED_CSS := static/sf/sf.$(VERSION).css
 VERSIONED_JS := static/sf/sf.$(VERSION).js
 VERSIONED_MJS := static/sf/sf.$(VERSION).mjs
@@ -236,7 +236,7 @@ bump-version: banner
 	fi; \
 	printf "$(ARROW) Syncing version surfaces: v$$CURRENT_VERSION -> v$(VERSION)\n"; \
 	python3 scripts/sync-version.py "$$CURRENT_VERSION" "$(VERSION)"; \
-	rm -f "static/sf/sf.$$CURRENT_VERSION.css" "static/sf/sf.$$CURRENT_VERSION.js"; \
+	rm -f "static/sf/sf.$$CURRENT_VERSION.css" "static/sf/sf.$$CURRENT_VERSION.js" "static/sf/sf.$$CURRENT_VERSION.mjs"; \
 	$(MAKE) assets --no-print-directory; \
 	printf "$(GREEN)$(CHECK) Version updated to v$(VERSION)$(RESET)\n"; \
 	printf "$(GRAY)Changelog unchanged. Run 'make release-tag' separately when ready.$(RESET)\n"
@@ -321,7 +321,7 @@ publish: banner
 clean:
 	@printf "$(ARROW) Cleaning build artifacts...\n"
 	@cargo clean
-	@rm -f static/sf/sf.css static/sf/sf.js static/sf/sf.*.css static/sf/sf.*.js
+	@rm -f static/sf/sf.css static/sf/sf.js static/sf/sf.mjs static/sf/sf.*.css static/sf/sf.*.js static/sf/sf.*.mjs
 	@printf "$(GREEN)$(CHECK) Clean complete$(RESET)\n"
 
 # ============== Development ==============
