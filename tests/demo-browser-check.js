@@ -55,6 +55,8 @@ function contentTypeFor(filePath) {
       return 'text/html; charset=utf-8';
     case '.js':
       return 'application/javascript; charset=utf-8';
+    case '.mjs':
+      return 'application/javascript; charset=utf-8';
     case '.json':
       return 'application/json; charset=utf-8';
     case '.svg':
@@ -222,6 +224,31 @@ async function checkFullSurface() {
 
     const apiSections = await page.locator('.sf-api-section').count();
     assert.equal(apiSections, 2);
+
+    assertNoBrowserErrors();
+  });
+}
+
+async function checkFullSurfaceEsm() {
+  await withPage(async ({ goto, page, assertNoBrowserErrors }) => {
+    const response = await goto('/demos/full-surface-esm.html');
+    assert.equal(response.status(), 200);
+
+    await page.waitForSelector('.sf-header', { timeout: 10000 });
+    await page.waitForSelector('.sf-statusbar', { timeout: 10000 });
+    await page.waitForSelector('.sf-tabs-container', { timeout: 10000 });
+    await page.waitForSelector('.sf-table', { timeout: 10000 });
+    await page.waitForSelector('.sf-rail-timeline', { timeout: 10000 });
+    await page.waitForSelector('.sf-footer', { timeout: 10000 });
+
+    await page.getByRole('tab', { name: /gantt/i }).click({ timeout: 10000 });
+    await page.waitForSelector('.sf-gantt-split', { timeout: 10000 });
+
+    await page.getByRole('tab', { name: /api/i }).click({ timeout: 10000 });
+    await page.waitForSelector('.sf-api-guide', { timeout: 10000 });
+
+    const title = await page.locator('.sf-header-title').textContent();
+    assert.equal(title, 'Planner123');
 
     assertNoBrowserErrors();
   });
@@ -465,6 +492,7 @@ async function checkTimelineDemoWithoutResizeObserver() {
 (async function main() {
   try {
     await runCheck('full-surface demo', checkFullSurface);
+    await runCheck('full-surface ESM demo', checkFullSurfaceEsm);
     await runCheck('timeline demo', checkTimelineDemo);
     await runCheck('dense timeline demo', checkDenseTimelineDemo);
     await runCheck('timeline demo without ResizeObserver', checkTimelineDemoWithoutResizeObserver);
