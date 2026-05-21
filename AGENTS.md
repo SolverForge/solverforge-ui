@@ -15,8 +15,8 @@ Repository guidance for coding agents and maintainers working in
 ## Current Release
 
 - Crate version: `0.6.5`.
-- Versioned asset outputs are emitted as `static/sf/sf.<version>.css` and
-  `static/sf/sf.<version>.js`.
+- Versioned asset outputs are emitted as `static/sf/sf.<version>.css`,
+  `static/sf/sf.<version>.js`, and `static/sf/sf.<version>.mjs`.
 
 ## Solver Lifecycle Contract
 
@@ -79,9 +79,9 @@ Run downstream gates when a change touches the shipped global API, backend
 contracts, solver lifecycle behavior, dense timeline behavior, generated
 bundles, or the crate package surface used by application repos.
 
-- On the `refactor/migrate-to-typescript` integration branch, frontend tests
-  intentionally run through the freshly rebuilt generated `static/sf/sf.js`
-  bundle until stable TypeScript/source imports exist. Keep this branch reliable
+- On the `refactor/migrate-to-typescript` integration branch, frontend tests may
+  exercise the ES module bundle, but must keep parity coverage for the freshly
+  rebuilt generated `static/sf/sf.js` global bundle. Keep this branch reliable
   for downstream consumers, and avoid merging partial migration states directly
   to `main`.
 

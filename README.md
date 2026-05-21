@@ -22,8 +22,21 @@ The library ships both classic (`sf.js`) and ES module (`sf.mjs`) bundles.
 <link rel="stylesheet" href="/sf/vendor/fontawesome/css/solid.min.css">
 <link rel="stylesheet" href="/sf/sf.css">
 <script src="/sf/sf.js"></script>
-<!-- or ES module: <script type="module" src="/sf/sf.mjs"></script> -->
+<script>
+  SF.createHeader({ title: 'Planner' });
+</script>
 ```
+
+For module consumers, import the ES module bundle directly:
+
+```html
+<script type="module">
+  import { createBackend, createSolver, rail } from "/sf/sf.mjs";
+</script>
+```
+
+The ES module bundle does not create `window.SF`; use the classic `sf.js`
+bundle when you want the global `SF` API.
 
 That's it. Every asset is compiled into the binary via `include_dir!`.
 
@@ -63,10 +76,11 @@ frontend tests for backend adapters, focused solver lifecycle suites, and core
 component rendering. Use `make test` for the full suite, `make test-quick` for
 Rust doctests, Rust unit tests, frontend Node coverage, and browser smoke
 tests, or `make test-frontend` when you only want the JavaScript suite.
-Frontend test targets rebuild the generated `static/sf/sf.js` bundle before
-running the Node coverage. During the TypeScript migration branch, those tests
-intentionally exercise the generated global bundle until stable source imports
-exist. Use `make lint-frontend` for ESLint on `ts-src/`, `tests`, and
+Frontend test targets rebuild the generated `static/sf/sf.js` and
+`static/sf/sf.mjs` bundles before running the Node coverage. During the
+TypeScript migration branch, tests cover the generated module surface and keep
+explicit parity checks for the shipped global bundle. Use `make lint-frontend`
+for ESLint on `ts-src/`, `tests`, and
 `scripts/` plus development-only TypeScript checking, or `make lint` to run the
 Rust and JavaScript lint surfaces together.
 
@@ -739,7 +753,7 @@ solverforge-ui/
 │   │   ├── card.ts         #   rail card factory
 │   │   └── timeline.ts     #   canonical scheduling timeline
 │   ├── gantt/
-│   │   └── gant.ts         #   Frappe Gantt wrapper (split pane, grid, chart)
+│   │   └── gantt.ts        #   Frappe Gantt wrapper (split pane, grid, chart)
 │   └── solver/
 │       ├── backend.ts      #   createBackend() — axum/tauri/fetch
 │       └── solver.ts       #   createSolver() — SSE state machine
@@ -810,7 +824,7 @@ If you are cutting a release locally, make sure Node.js with `npx` is available 
 
 Use `make package-verify` to inspect the exact crate contents that would be published.
 
-The verification step checks that required bundled assets and crate metadata are present, and that development-only sources such as `css-src/`, `js-src/`, `scripts/`, and screenshots are not shipped in the published crate.
+The verification step checks that required bundled assets and crate metadata are present, and that development-only sources such as `css-src/`, `ts-src/`, `scripts/`, and screenshots are not shipped in the published crate.
 
 Bundling writes both stable compatibility assets (`static/sf/sf.css`,
 `static/sf/sf.js`, `static/sf/sf.mjs`) and versioned assets
