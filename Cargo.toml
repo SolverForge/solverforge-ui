@@ -19,8 +19,12 @@ exclude = [
 ]
 
 [dependencies]
-axum = "0.8.9"
+axum = { version = "0.8.9", optional = true }
 include_dir = "0.7.4"
+
+[features]
+default = ["axum"]
+axum = ["dep:axum"]
 
 [dev-dependencies]
 tokio = { version = "1.52.1", features = ["macros", "rt-multi-thread"] }
