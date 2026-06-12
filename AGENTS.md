@@ -12,11 +12,13 @@ Repository guidance for coding agents and maintainers working in
 - `js-src/` and `css-src/` are the editable sources. `static/sf/` contains the
   generated bundled assets served to consumers.
 
-## Current Release
+## Current Version
 
-- Crate version: `0.6.5`.
+- Crate version: `0.7.0`.
 - Versioned asset outputs are emitted as `static/sf/sf.<version>.css` and
   `static/sf/sf.<version>.js`.
+- `solverforge_ui::assets` is available without default features; the Axum
+  `routes()` adapter is available behind the default `axum` feature.
 
 ## Solver Lifecycle Contract
 
@@ -67,8 +69,13 @@ Repository guidance for coding agents and maintainers working in
 
 - Keep public API changes synchronized across code, `README.md`, runnable demos,
   and tests in the same change.
+- Do not hand-edit `CHANGELOG.md` for ordinary work; release notes are generated
+  by `commit-and-tag-version` through `make release-tag`.
 - Do not document planned or exploratory wireframe ideas as shipped behavior
   until they are wired into the generated assets and the README API reference.
 - Prefer `make lint-frontend` for focused JavaScript linting, `make
   test-frontend` or `make test-browser` for focused frontend validation, and
   `make test-quick` or `make test` before release work.
+- When the Rust crate feature surface changes, validate both default features
+  and `--no-default-features`; the latter must keep `solverforge_ui::assets`
+  available without depending on Axum.

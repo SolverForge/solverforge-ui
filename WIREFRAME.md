@@ -10,6 +10,27 @@ Sections in this document follow a simple staging rule:
 
 ---
 
+## 0. Embedded Asset API (Shipped)
+
+`solverforge-ui` owns the generated `/sf/*` asset tree. The framework-neutral
+surface is `solverforge_ui::assets`:
+
+- `assets::get(path)` accepts strict `/sf`-relative paths such as `sf.js`,
+  `sf.css`, `modules/sf-map.js`, and `vendor/leaflet/leaflet.js`.
+- `assets::get(path)` returns `Result<UiAsset, AssetError>`.
+- `UiAsset` exposes the canonical path, content type, cache-control value, and
+  embedded bytes through accessors.
+- Invalid paths such as empty strings, `./` paths, absolute paths, backslash
+  paths, duplicate slashes, and `..` traversal are rejected distinctly from
+  valid-but-missing assets.
+- `AssetError` distinguishes `InvalidPath` from `NotFound`.
+- The asset API remains available with `default-features = false`.
+- `solverforge_ui::routes()` is the optional Axum adapter over this same asset
+  API and serves `/sf/{*path}` when the default `axum` feature is enabled.
+
+This keeps Axum applications and non-Axum hosts, including Python/FastAPI
+bindings, on the same asset source of truth.
+
 ## 1. Full Page Layout
 
 ```
@@ -241,7 +262,7 @@ Shorthand: `SF.showError(title, detail)`
 
 ```
 +------------------------------------------------------------------------+
-|  SolverForge  │  Documentation  │  GitHub        v0.6.5                |
+|  SolverForge  │  Documentation  │  GitHub        v0.7.0                |
 |  ↑ links with hover emerald                      ↑ right-aligned      |
 +------------------------------------------------------------------------+
 ```

@@ -23,6 +23,11 @@ let app = api::router(state)
 ```
 
 That's it. Every asset is compiled into the binary via `include_dir!`.
+Rust/Axum apps can mount `solverforge_ui::routes()` with the default `axum`
+feature enabled. Other Rust hosts can disable default features, read the same
+embedded assets through `solverforge_ui::assets::get("sf.js")`, and serve the
+returned bytes, content type, and cache-control metadata from their own HTTP
+framework.
 
 ## Shipped vs Planned
 
@@ -675,8 +680,9 @@ SF.map.decodePolyline('_p~iF~ps|U...');  // Google polyline algorithm
 
 ```
 solverforge-ui/
-├── Cargo.toml              # 2 deps: axum + include_dir
-├── src/lib.rs              # routes() + asset serving
+├── Cargo.toml              # include_dir + optional axum adapter
+├── src/assets.rs           # framework-neutral embedded asset API
+├── src/lib.rs              # Axum routes() adapter over src/assets.rs
 ├── Makefile                # bundles css-src/ + js-src/ into sf.css + sf.js
 ├── .github/workflows/      # CI, release, and publish automation
 ├── css-src/                # 20 CSS source files (numbered for concat order)
@@ -731,10 +737,12 @@ solverforge-ui/
 
 | Project Type | How It Works |
 |---|---|
-| **Axum** | Add crate dep, call `.merge(solverforge_ui::routes())` |
+| **Axum** | Use the default `axum` feature, then call `.merge(solverforge_ui::routes())` |
+| **Python/FastAPI** | Build the native binding with `default-features = false`, call `solverforge_ui::assets::get()`, and serve `/sf/{path}` from the returned asset |
 | **Tauri** | Add crate dep, serve via Tauri's asset protocol or custom command |
 | **Rails** | Copy `static/sf/` into `public/sf/`, reference in layouts |
-| **Any HTTP server** | Copy `static/sf/`, serve as static files |
+| **Any Rust HTTP server** | Disable default features, call `solverforge_ui::assets::get(path)`, and translate the returned `UiAsset` or `AssetError` into that framework's response type |
+| **Any static HTTP server** | Copy `static/sf/`, serve as static files |
 | **`solverforge new`** | Automatic — wired into generated project |
 
 ## Non-Rust Projects
@@ -747,6 +755,52 @@ or symlink it into any project that serves static files:
 git submodule add https://github.com/solverforge/solverforge-ui vendor/solverforge-ui
 ln -s vendor/solverforge-ui/static/sf public/sf
 ```
+
+## Framework-Neutral Assets
+
+The `assets` module is the canonical non-Axum API. Paths are relative to `/sf`
+and are validated before lookup. Invalid paths and missing embedded assets are
+reported separately. Empty paths, absolute paths, `./` paths, backslashes,
+duplicate slashes, and `..` traversal are invalid.
+
+```toml
+solverforge-ui = { path = "../solverforge-ui", default-features = false }
+```
+
+```rust
+match solverforge_ui::assets::get("sf.js") {
+    Ok(asset) => {
+        assert_eq!(asset.content_type(), "application/javascript; charset=utf-8");
+        assert_eq!(asset.cache_control(), "public, max-age=3600");
+        let bytes = asset.bytes();
+    }
+    Err(_) => {
+        // Return a host-framework 404.
+    }
+}
+```
+
+`solverforge_ui::routes()` is implemented on top of this same asset API, so
+Axum and non-Axum integrations share one source of truth for bytes, MIME types,
+and cache policy.
+
+Public API:
+
+| Item | Purpose |
+|---|---|
+| `assets::get(path)` | Returns `Result<UiAsset, AssetError>` for a strict `/sf`-relative asset path |
+| `assets::paths()` | Returns all embedded `/sf`-relative asset paths in sorted order |
+| `assets::version()` | Returns the crate version that produced the embedded asset set |
+| `UiAsset` | Provides `path()`, `content_type()`, `cache_control()`, and `bytes()` accessors |
+| `AssetError` | Distinguishes `InvalidPath` from `NotFound` for host-framework mapping |
+
+## Cargo Features
+
+| Cargo setting | Effect |
+|---|---|
+| default features | Enables the `axum` feature, including `solverforge_ui::routes()` and the Axum response adapter |
+| `default-features = false` | Builds only the embedded asset API and does not depend on Axum |
+| `features = ["axum"]` | Re-enables the Axum adapter when default features are disabled |
 
 ## Development
 
@@ -769,10 +823,13 @@ cargo build
 
 Consumer integration stays npm-free. Maintainer release automation does not.
 
-- Current crate release: `0.6.5`.
-- Keep `CHANGELOG.md` current as work lands.
+- Current crate version: `0.7.0`.
+- Let `make release-tag` generate the release changelog entry through
+  `commit-and-tag-version`; do not treat version bumps as changelog edits.
 - Use `RELEASE.md` as the source of truth when preparing a public release.
 - Run `make pre-release` before tagging.
+- For changes touching Rust features or embedded asset serving, also run
+  `cargo test --no-default-features` and `cargo check --no-default-features`.
 - Runtime and application integration use only the bundled static assets and the Rust crate.
 - Version bump targets in `Makefile` currently use `npx commit-and-tag-version`.
 - The GitHub and Forgejo release workflows trigger only after the generated `v*` tag is pushed.
@@ -815,7 +872,7 @@ solverforge-ui builds on these excellent open-source projects:
 | [Leaflet](https://leafletjs.com) | Interactive maps (optional module) | BSD-2-Clause | [github](https://github.com/Leaflet/Leaflet) |
 | [Space Grotesk](https://fonts.google.com/specimen/Space+Grotesk) | Body typeface | SIL Open Font License 1.1 | [github](https://github.com/floriankarsten/space-grotesk) |
 | [JetBrains Mono](https://www.jetbrains.com/lp/mono/) | Monospace typeface | SIL Open Font License 1.1 | [github](https://github.com/JetBrains/JetBrainsMono) |
-| [Axum](https://github.com/tokio-rs/axum) | Rust web framework | MIT | [github](https://github.com/tokio-rs/axum) |
+| [Axum](https://github.com/tokio-rs/axum) | Optional Rust web framework adapter | MIT | [github](https://github.com/tokio-rs/axum) |
 | [include_dir](https://github.com/Michael-F-Bryan/include_dir) | Compile-time file embedding | MIT | [github](https://github.com/Michael-F-Bryan/include_dir) |
 
 ## License
