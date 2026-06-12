@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.7.0](///compare/v0.6.5...v0.7.0) (2026-06-12)
+
+
+### Features
+
+* **assets:** expose framework-neutral embedded assets 3994675
+
+
+### Bug Fixes
+
+* **test:** keep browser screenshots out of tracked baselines 9b5495b, closes #46 #45
+* **test:** keep browser screenshots out of tracked baselines a70d6db
+
 ## [0.6.5](///compare/v0.6.4...v0.6.5) (2026-05-03)
 
 
