@@ -16,6 +16,12 @@ The installer copies the skill into each selected harness's **own** skills
 directory. There is no symlink and no shared/central location, so every harness
 gets an independent, self-contained copy.
 
+Each installed copy includes an ownership receipt recording the copied payload.
+Updates and uninstalls proceed only when that receipt is valid and the installed
+files are unchanged. An unmanaged directory, an invalid receipt, or local
+customizations are reported and left untouched; resolve those conflicts manually
+before rerunning the command.
+
 ```sh
 # Default: user scope for opencode, Claude Code, and the Agent Skills standard
 ./scripts/install-skill

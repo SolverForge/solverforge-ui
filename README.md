@@ -91,8 +91,10 @@ directory — there is no symlink and no shared/central location. User scope
 defaults: opencode `~/.config/opencode/skills`, Claude Code `~/.claude/skills`,
 Agent Skills `~/.agents/skills`; `--project` uses each harness's project
 directory (`.opencode/skills`, `.claude/skills`, `.agents/skills`). See
-`skills/README.md` for details. Keep the skill's references synchronized with
-this README and `WIREFRAME.md` when the public API changes.
+`skills/README.md` for details. The installer updates or removes only copies with
+a valid ownership receipt and an unchanged installed payload; unknown directories
+and local customizations are left untouched. Keep the skill's references
+synchronized with this README and `WIREFRAME.md` when the public API changes.
 
 ## Quick Start
 

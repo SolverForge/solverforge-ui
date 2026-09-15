@@ -35,14 +35,24 @@ EOF
 }
 
 skill_name=solverforge-ui
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd)
+receipt_name=.solverforge-ui-install
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+repo_root=$(CDPATH='' cd -- "$script_dir/.." && pwd)
 skill_src="$repo_root/skills/$skill_name"
 
 [ -f "$skill_src/SKILL.md" ] || {
 	echo "error: skill source not found at $skill_src/SKILL.md" >&2
 	exit 1
 }
+
+if command -v sha256sum >/dev/null 2>&1; then
+	sha256_tool=sha256sum
+elif command -v shasum >/dev/null 2>&1; then
+	sha256_tool=shasum
+else
+	echo "error: sha256sum or shasum is required to verify installed copies" >&2
+	exit 1
+fi
 
 action=install
 only=""
@@ -111,60 +121,187 @@ selected() {
 	return 0
 }
 
-same_content() {
-	[ -d "$1" ] && diff -r "$skill_src" "$1" >/dev/null 2>&1
+payload_digest() {
+	root=$1
+	(
+		cd "$root"
+		find . ! -path "./$receipt_name" -print | LC_ALL=C sort | while IFS= read -r entry; do
+			if [ -d "$entry" ] && [ ! -L "$entry" ]; then
+				printf 'directory\t%s\n' "$entry"
+			elif [ -f "$entry" ] && [ ! -L "$entry" ]; then
+				printf 'file\t%s\t' "$entry"
+				sha256 "$entry"
+			else
+				printf 'other\t%s\n' "$entry"
+			fi
+		done
+	) | sha256
+}
+
+sha256() {
+	if [ "$sha256_tool" = sha256sum ]; then
+		sha256sum "$@" | awk '{ print $1 }'
+	else
+		shasum -a 256 "$@" | awk '{ print $1 }'
+	fi
+}
+
+read_receipt_digest() {
+	receipt=$1/$receipt_name
+	[ -f "$receipt" ] && [ ! -L "$receipt" ] || return 1
+	[ "$(sed -n '1p' "$receipt")" = "format=1" ] || return 1
+	[ "$(sed -n '2p' "$receipt")" = "skill=$skill_name" ] || return 1
+	digest=$(sed -n '3s/^digest=//p' "$receipt")
+	[ "${#digest}" -eq 64 ] || return 1
+	case "$digest" in *[!0-9a-f]*) return 1 ;; esac
+	[ "$(wc -l < "$receipt" | tr -d ' ')" = 3 ] || return 1
+	printf '%s' "$digest"
+}
+
+write_receipt() {
+	{
+		printf 'format=1\n'
+		printf 'skill=%s\n' "$skill_name"
+		printf 'digest=%s\n' "$2"
+	} > "$1/$receipt_name"
+}
+
+classify_destination() {
+	dest=$1
+	if [ -L "$dest" ] || { [ -e "$dest" ] && [ ! -d "$dest" ]; }; then
+		printf 'foreign-entry'
+		return 0
+	fi
+	if [ ! -d "$dest" ]; then
+		printf 'absent'
+		return 0
+	fi
+	if [ ! -e "$dest/$receipt_name" ]; then
+		printf 'unmanaged-directory'
+		return 0
+	fi
+	if ! recorded_digest=$(read_receipt_digest "$dest"); then
+		printf 'invalid-receipt'
+		return 0
+	fi
+	actual_digest=$(payload_digest "$dest")
+	if [ "$actual_digest" != "$recorded_digest" ]; then
+		printf 'managed-modified'
+	elif [ "$actual_digest" = "$source_digest" ]; then
+		printf 'managed-current'
+	else
+		printf 'managed-outdated'
+	fi
+}
+
+state_description() {
+	case "$1" in
+	absent) printf 'not installed' ;;
+	foreign-entry) printf 'foreign entry present (left untouched)' ;;
+	unmanaged-directory) printf 'unmanaged directory present (left untouched)' ;;
+	invalid-receipt) printf 'invalid ownership receipt (left untouched)' ;;
+	managed-modified) printf 'managed copy has local changes (left untouched)' ;;
+	managed-current) printf 'managed copy present (current)' ;;
+	managed-outdated) printf 'managed copy present (update available)' ;;
+	esac
+}
+
+conflict_message() {
+	label=$1
+	dest=$2
+	state=$3
+	case "$state" in
+	foreign-entry)
+		echo "error: $dest is a file or symlink not managed by this installer; left untouched" >&2
+		;;
+	unmanaged-directory)
+		echo "error: $dest has no ownership receipt; left untouched" >&2
+		;;
+	invalid-receipt)
+		echo "error: $dest has an invalid ownership receipt; left untouched" >&2
+		;;
+	managed-modified)
+		echo "error: $dest differs from its installation receipt; local changes were left untouched" >&2
+		;;
+	*) return 0 ;;
+	esac
+	printf 'conflict   %-9s %s\n' "$label" "$dest" >&2
 }
 
 install_into() {
 	label=$1
 	dir=$2
-	dest="$dir/$skill_name"
-
-	if [ "$action" = list ]; then
-		if same_content "$dest"; then
-			state="copy present (current)"
-		elif [ -d "$dest" ]; then
-			state="copy present (differs)"
-		elif [ -L "$dest" ] || [ -e "$dest" ]; then
-			state="foreign entry present (left untouched)"
-		else
-			state="not installed"
-		fi
-		printf '%-9s %s  %s\n' "$label" "$dir" "$state"
-		return 0
+	state=$3
+	install_dest="$dir/$skill_name"
+	observed_state=$(classify_destination "$install_dest")
+	if [ "$observed_state" != "$state" ]; then
+		echo "error: $install_dest changed after preflight; left untouched" >&2
+		exit 1
 	fi
 
 	if [ "$action" = uninstall ]; then
-		if [ -d "$dest" ] && [ ! -L "$dest" ]; then
-			rm -rf "$dest" && printf 'removed    %-9s %s\n' "$label" "$dest"
-		elif [ -L "$dest" ] || [ -f "$dest" ]; then
-			rm -f "$dest" && printf 'removed    %-9s %s\n' "$label" "$dest"
-		fi
+		case "$state" in
+		managed-current | managed-outdated)
+			rm -rf "$install_dest" && printf 'removed    %-9s %s\n' "$label" "$install_dest"
+			;;
+		esac
 		return 0
 	fi
 
-	if [ -e "$dest" ] || [ -L "$dest" ]; then
-		if [ -d "$dest" ] && [ ! -L "$dest" ]; then
-			if same_content "$dest"; then
-				printf 'up-to-date %-9s %s\n' "$label" "$dest"
-				return 0
-			fi
-			rm -rf "$dest"
-		else
-			echo "error: $dest exists and is not a managed copy; remove it first" >&2
-			exit 1
-		fi
+	if [ "$state" = managed-current ]; then
+		printf 'up-to-date %-9s %s\n' "$label" "$install_dest"
+		return 0
 	fi
 
 	mkdir -p "$dir"
-	cp -R "$skill_src" "$dest"
-	printf 'copied     %-9s %s\n' "$label" "$dest"
+	active_stage=$(mktemp -d "$dir/.solverforge-ui.install.XXXXXX")
+	cp -R "$skill_src/." "$active_stage/"
+	write_receipt "$active_stage" "$source_digest"
+
+	if [ "$state" = managed-outdated ]; then
+		active_backup=$(mktemp -d "$dir/.solverforge-ui.backup.XXXXXX")
+		rmdir "$active_backup"
+		active_dest=$install_dest
+		mv "$install_dest" "$active_backup"
+		if ! mv "$active_stage" "$install_dest"; then
+			mv "$active_backup" "$install_dest"
+			active_backup=
+			active_dest=
+			exit 1
+		fi
+		active_stage=
+		rm -rf "$active_backup"
+		active_backup=
+		active_dest=
+	else
+		mv "$active_stage" "$install_dest"
+		active_stage=
+	fi
+	printf 'copied     %-9s %s\n' "$label" "$install_dest"
 }
 
 # Build the destination list in a temp file so the install loop runs in the
 # current shell (an exit inside a pipeline would not stop the script).
 dest_file=$(mktemp)
-trap 'rm -f "$dest_file"' EXIT HUP INT TERM
+plan_file=$(mktemp)
+active_stage=
+active_backup=
+active_dest=
+cleanup() {
+	status=$?
+	trap - EXIT HUP INT TERM
+	if [ -n "$active_backup" ] && [ -d "$active_backup" ]; then
+		if [ -n "$active_dest" ] && [ ! -e "$active_dest" ] && [ ! -L "$active_dest" ]; then
+			mv "$active_backup" "$active_dest" || true
+		else
+			rm -rf "$active_backup"
+		fi
+	fi
+	[ -z "$active_stage" ] || rm -rf "$active_stage"
+	rm -f "$dest_file" "$plan_file"
+	exit "$status"
+}
+trap cleanup EXIT HUP INT TERM
 
 if [ -n "$explicit_dirs" ]; then
 	index=0
@@ -185,10 +322,32 @@ else
 	done
 fi
 
+source_digest=$(payload_digest "$skill_src")
+preflight_failed=0
 while IFS="$(printf '\t')" read -r label dir; do
 	[ -n "$label" ] || continue
-	install_into "$label" "$dir"
+	dest="$dir/$skill_name"
+	state=$(classify_destination "$dest")
+	printf '%s\t%s\t%s\n' "$label" "$dir" "$state" >> "$plan_file"
+	if [ "$action" = list ]; then
+		printf '%-9s %s  %s\n' "$label" "$dir" "$(state_description "$state")"
+	elif [ "$state" = foreign-entry ] || [ "$state" = unmanaged-directory ] || \
+		[ "$state" = invalid-receipt ] || [ "$state" = managed-modified ]; then
+		conflict_message "$label" "$dest" "$state"
+		preflight_failed=1
+	fi
 done < "$dest_file"
+
+[ "$action" = list ] && exit 0
+if [ "$preflight_failed" -ne 0 ]; then
+	echo "error: no destinations were changed" >&2
+	exit 1
+fi
+
+while IFS="$(printf '\t')" read -r label dir state; do
+	[ -n "$label" ] || continue
+	install_into "$label" "$dir" "$state"
+done < "$plan_file"
 
 if [ "$action" = install ]; then
 	echo "done. restart your agent so it rescans skills."
