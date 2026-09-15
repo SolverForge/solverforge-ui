@@ -73,6 +73,10 @@ Repository guidance for coding agents and maintainers working in
   by `commit-and-tag-version` through `make release-tag`.
 - Do not document planned or exploratory wireframe ideas as shipped behavior
   until they are wired into the generated assets and the README API reference.
+- Keep `skills/solverforge-ui/` synchronized with the public API. When a shipped
+  component, lifecycle rule, timeline/model contract, or integration path
+  changes, update the matching reference file and `skills/README.md` in the same
+  change. `make install-skill` installs the skill for coding agents.
 - Prefer `make lint-frontend` for focused JavaScript linting, `make
   test-frontend` or `make test-browser` for focused frontend validation, and
   `make test-quick` or `make test` before release work.

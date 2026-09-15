@@ -68,6 +68,30 @@ tests, or `make test-frontend` when you only want the JavaScript suite.
 Use `make lint-frontend` for ESLint on `js-src/`, `tests/`, and `scripts/`, or
 `make lint` to run the Rust and JavaScript lint surfaces together.
 
+## Agent Skill
+
+`skills/solverforge-ui/` is a portable, harness-agnostic
+[Agent Skill](https://opencode.ai/docs/skills/) that teaches a coding agent how
+to extend a `solverforge-cli` scaffold into a domain-faithful UI using the
+shipped components, while preserving the generated model and the
+`/sf` + `/jobs` + `/demo-data` backend contract. It is the playbook the library
+itself does not contain: mapping a planning model onto the rail timeline, Gantt,
+map, rail primitives, and tables.
+
+```bash
+make install-skill          # opencode + Agent Skills + repo scope
+scripts/install-skill --only claude      # Claude Code
+scripts/install-skill --project ../my-app  # into a scaffolded app
+scripts/install-skill --list             # show install state
+```
+
+The skill is discovered by opencode (`.opencode/skills`,
+`~/.config/opencode/skills`), Claude Code (`.claude/skills`,
+`~/.claude/skills`), and any Agent Skills harness (`.agents/skills`,
+`~/.agents/skills`). See `skills/README.md` for details. Keep the skill's
+references synchronized with this README and `WIREFRAME.md` when the public API
+changes.
+
 ## Quick Start
 
 ```html
