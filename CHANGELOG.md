@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.8.0](https://github.com/SolverForge/solverforge-ui/compare/v0.7.0...v0.8.0) (2026-09-15)
+
+
+### Features
+
+* **skill:** ship an installable agent skill for building UIs 05fab81
+
+
+### Bug Fixes
+
+* **ci:** repair Forgejo release and browser setup 1f79ad4
+* **installer:** preserve unowned skill directories c18035d
+* **skill:** guard cancelled lifecycle snapshots 23a367e
+
 ## [0.7.0](///compare/v0.6.5...v0.7.0) (2026-06-12)
 
 
