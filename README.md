@@ -79,18 +79,20 @@ itself does not contain: mapping a planning model onto the rail timeline, Gantt,
 map, rail primitives, and tables.
 
 ```bash
-make install-skill          # opencode + Agent Skills + repo scope
-scripts/install-skill --only claude      # Claude Code
-scripts/install-skill --project ../my-app  # into a scaffolded app
+make install-skill                       # opencode + Claude Code + Agent Skills
+scripts/install-skill --only claude      # one harness only
+scripts/install-skill --project ../my-app  # per-harness project directories
+scripts/install-skill --dir ~/skills      # any explicit skills directory
 scripts/install-skill --list             # show install state
 ```
 
-The skill is discovered by opencode (`.opencode/skills`,
-`~/.config/opencode/skills`), Claude Code (`.claude/skills`,
-`~/.claude/skills`), and any Agent Skills harness (`.agents/skills`,
-`~/.agents/skills`). See `skills/README.md` for details. Keep the skill's
-references synchronized with this README and `WIREFRAME.md` when the public API
-changes.
+The installer **copies** the skill into each selected harness's own skills
+directory — there is no symlink and no shared/central location. User scope
+defaults: opencode `~/.config/opencode/skills`, Claude Code `~/.claude/skills`,
+Agent Skills `~/.agents/skills`; `--project` uses each harness's project
+directory (`.opencode/skills`, `.claude/skills`, `.agents/skills`). See
+`skills/README.md` for details. Keep the skill's references synchronized with
+this README and `WIREFRAME.md` when the public API changes.
 
 ## Quick Start
 

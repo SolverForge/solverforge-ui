@@ -12,28 +12,38 @@ It is harness-agnostic: the same `SKILL.md` folder is discovered by opencode
 
 ## Install
 
+The installer copies the skill into each selected harness's **own** skills
+directory. There is no symlink and no shared/central location, so every harness
+gets an independent, self-contained copy.
+
 ```sh
-# Global: every harness that scans a user skill directory
+# Default: user scope for opencode, Claude Code, and the Agent Skills standard
 ./scripts/install-skill
 
-# Only one harness
+# Explicitly choose harnesses
 ./scripts/install-skill --only opencode
 ./scripts/install-skill --only claude
 ./scripts/install-skill --only agents
 
-# Into a specific scaffolded app (project-scoped)
+# Into a specific scaffolded app; each harness gets its own project directory
 ./scripts/install-skill --project ../my-scheduler
 
-# Copy instead of symlink, then uninstall/list
-./scripts/install-skill --copy
+# Any other skills directory you want
+./scripts/install-skill --dir ~/.config/some-harness/skills
+
+# Inspect or remove
 ./scripts/install-skill --list
 ./scripts/install-skill --uninstall
 ```
 
-The default is a symlink, so the installed skill tracks this checkout. Restart
-the agent after installing so it rescans skill directories.
+| Harness | User scope | Project scope (`--project <dir>`) |
+| --- | --- | --- |
+| opencode | `~/.config/opencode/skills` | `<dir>/.opencode/skills` |
+| Claude Code | `~/.claude/skills` | `<dir>/.claude/skills` |
+| Agent Skills | `~/.agents/skills` | `<dir>/.agents/skills` |
 
-From the repo root, `make install-skill` runs the same script.
+Restart the agent after installing so it rescans skill directories. From the
+repo root, `make install-skill` runs the same script.
 
 ## What it covers
 

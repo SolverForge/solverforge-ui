@@ -64,13 +64,20 @@ test('no orphan reference files are shipped', () => {
   }
 });
 
-test('installer exists, is executable, and repo-scope symlink resolves', () => {
+test('installer exists, is executable, and copies rather than symlinks', () => {
   const installer = path.join(repoRoot, 'scripts', 'install-skill');
   assert.ok(fs.existsSync(installer), 'scripts/install-skill must exist');
   assert.ok((fs.statSync(installer).mode & 0o111) !== 0, 'scripts/install-skill must be executable');
 
+  const script = fs.readFileSync(installer, 'utf8');
+  assert.match(script, /\bcp -R\b/, 'installer must copy with cp -R');
+  assert.doesNotMatch(script, /\bln -s/, 'installer must not create symlinks');
+  for (const harness of ['opencode', 'claude', 'agents']) {
+    assert.ok(script.includes(harness), `installer must know the ${harness} skills directory`);
+  }
+});
+
+test('no skill symlink is committed into the repository', () => {
   const link = path.join(repoRoot, '.agents', 'skills', 'solverforge-ui');
-  assert.ok(fs.existsSync(link), '.agents/skills/solverforge-ui must exist');
-  const resolved = path.resolve(path.dirname(link), fs.readlinkSync(link));
-  assert.equal(resolved, skillDir, '.agents/skills/solverforge-ui must point at skills/solverforge-ui');
+  assert.equal(fs.existsSync(link), false, 'skills must be installed per harness, not committed as a symlink');
 });
