@@ -10,5 +10,9 @@
       "filename": "Cargo.toml",
       "updater": "scripts/cargo-version.js"
     }
-  ]
+  ],
+  "tagPrefix": "v",
+  "releaseCommitMessageFormat": "chore(release): {{currentTag}}",
+  "commitUrlFormat": "https://github.com/SolverForge/solverforge-ui/commit/{{hash}}",
+  "compareUrlFormat": "https://github.com/SolverForge/solverforge-ui/compare/{{previousTag}}...{{currentTag}}"
 }
