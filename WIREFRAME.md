@@ -2,7 +2,7 @@
 
 Visual reference for every component in the library. Each section shows the
 DOM structure, CSS classes, and how the JS factory wires them together.
-This document describes the `0.8.0` shipped surface unless a section is marked
+This document describes the `0.9.0` shipped surface unless a section is marked
 **Planned**. The README is the normative API reference; this file is a visual
 and composition reference, not a promise that every CSS pattern has a factory.
 
@@ -269,7 +269,7 @@ Shorthand: `SF.showError(title, detail)`
 
 ```
 +------------------------------------------------------------------------+
-|  SolverForge  │  Documentation  │  GitHub        v0.8.0                |
+|  SolverForge  │  Documentation  │  GitHub        v0.9.0                |
 |  ↑ links with hover emerald                      ↑ right-aligned      |
 +------------------------------------------------------------------------+
 ```

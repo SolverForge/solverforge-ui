@@ -17,7 +17,7 @@ Repository guidance for coding agents and maintainers working in
 
 ## Current Version
 
-- Crate version: `0.8.0`.
+- Crate version: `0.9.0`.
 - Versioned asset outputs are emitted as `static/sf/sf.<version>.css` and
   `static/sf/sf.<version>.js`.
 - `SF.version` in the bundled JavaScript and `assets::version()` report the
@@ -111,20 +111,18 @@ Repository guidance for coding agents and maintainers working in
 ## Working Rules
 
 - Keep public API changes synchronized across code, `README.md`, runnable demos,
-  `WIREFRAME.md`, the matching skill references, and tests in the same change.
+  `WIREFRAME.md`, the matching skill in `solverforge-cli`, and tests in the same
+  change.
 - Edit `js-src/` and `css-src/`, then run `make assets`; never hand-edit stable
   or versioned files under `static/sf/`.
 - Do not hand-edit `CHANGELOG.md` for ordinary work; release notes are generated
   by `commit-and-tag-version` through `make release-tag`.
 - Do not document planned or exploratory wireframe ideas as shipped behavior
   until they are wired into the generated assets and the README API reference.
-- Keep `skills/solverforge-ui/` synchronized with the public API. When a shipped
-  component, lifecycle rule, timeline/model contract, or integration path
-  changes, update the matching reference file and `skills/README.md` in the same
-  change. `make install-skill` installs the skill for coding agents.
-- The skill installer is copy-only and per-harness. It never creates symlinks.
-  It updates or uninstalls only copies with a valid ownership receipt and an
-  unchanged payload; unmanaged or locally modified copies stay untouched.
+- The `solverforge-ui` agent skill lives in `SolverForge/solverforge-cli`
+  (`skills/solverforge-ui/`) and ships with the `solverforge-cli` package. When a
+  shipped component, lifecycle rule, timeline/model contract, or integration path
+  changes, update the skill there in the same effort.
 - Prefer `make lint-frontend` for focused JavaScript linting, `make
   test-frontend` or `make test-browser` for focused frontend validation, and
   `make test-quick` or `make test` before release work.

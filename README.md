@@ -36,7 +36,7 @@ This repository keeps both shipped UI code and design exploration in the same tr
 - **Shipped API:** implemented in `js-src/`, included in the generated `static/sf/sf.js` bundle, and described in this reference. Optional modules are shipped when they are present under `static/sf/modules/` and documented here.
 - **Shipped styling/composition:** CSS classes used by the shipped components, such as cards, badges, KPI layouts, tooltips, and constraint-analysis rows. These are not separate JavaScript factories unless an API entry says so.
 - **Planned/exploratory:** ideas that appear only in CSS or wireframes. They are not supported integration surface until they are wired into a shipped asset and described in this API reference.
-- When adding public surface area, update the JavaScript or Rust API, generated assets, README, `WIREFRAME.md`, runnable examples, tests, and the matching skill references in the same change.
+- When adding public surface area, update the JavaScript or Rust API, generated assets, README, `WIREFRAME.md`, runnable examples, tests, and the matching skill in `solverforge-cli` in the same change.
 
 For production caching, versioned bundle filenames are also emitted as
 `/sf/sf.<crate-version>.css` and `/sf/sf.<crate-version>.js`. Those versioned
@@ -73,31 +73,11 @@ Use `make lint-frontend` for ESLint on `js-src/`, `tests/`, and `scripts/`, or
 
 ## Agent Skill
 
-`skills/solverforge-ui/` is a portable, harness-agnostic
-[Agent Skill](https://opencode.ai/docs/skills/) that teaches a coding agent how
-to extend a `solverforge-cli` scaffold into a domain-faithful UI using the
-shipped components, while preserving the generated model and the
-`/sf` + `/jobs` + `/demo-data` backend contract. It is the playbook the library
-itself does not contain: mapping a planning model onto the rail timeline, Gantt,
-map, rail primitives, and tables.
-
-```bash
-make install-skill                       # opencode + Claude Code + Agent Skills
-scripts/install-skill --only claude      # one harness only
-scripts/install-skill --project ../my-app  # per-harness project directories
-scripts/install-skill --dir ~/skills      # any explicit skills directory
-scripts/install-skill --list             # show install state
-```
-
-The installer **copies** the skill into each selected harness's own skills
-directory — there is no symlink and no shared/central location. User scope
-defaults: opencode `~/.config/opencode/skills`, Claude Code `~/.claude/skills`,
-Agent Skills `~/.agents/skills`; `--project` uses each harness's project
-directory (`.opencode/skills`, `.claude/skills`, `.agents/skills`). See
-`skills/README.md` for details. The installer updates or removes only copies with
-a valid ownership receipt and an unchanged installed payload; unknown directories
-and local customizations are left untouched. Keep the skill's references
-synchronized with this README and `WIREFRAME.md` when the public API changes.
+The `solverforge-ui` agent skill lives with the other SolverForge skills in the
+[`solverforge-cli`](https://github.com/SolverForge/solverforge-cli) repository
+and ships with the `solverforge-cli` package, which owns skill placement for
+coding agents. When the public API or the generated UI shell changes, update the
+skill in that repository.
 
 ## Quick Start
 
@@ -940,7 +920,7 @@ cargo build
 
 Consumer integration stays npm-free. Maintainer release automation does not.
 
-- Current crate version: `0.8.0`.
+- Current crate version: `0.9.0`.
 - Let `make release-tag` generate the release changelog entry through
   `commit-and-tag-version`; do not treat version bumps as changelog edits.
 - Use `RELEASE.md` as the source of truth when preparing a public release.

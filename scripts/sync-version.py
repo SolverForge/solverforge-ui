@@ -61,14 +61,9 @@ def main() -> None:
         f"v{new}",
     )
     rewrite(
-        "skills/solverforge-ui/SKILL.md",
-        rf'  solverforge-ui: "{re.escape(old)}"',
-        f'  solverforge-ui: "{new}"',
-    )
-    rewrite(
-        "skills/solverforge-ui/references/app-architecture.md",
-        rf"This skill targets `{re.escape(old)}`\.",
-        f"This skill targets `{new}`.",
+        "WIREFRAME.md",
+        rf"describes the `{re.escape(old)}`",
+        rf"describes the `{new}`",
     )
     rewrite_cargo_lock(old, new)
 

@@ -66,6 +66,7 @@ reject_prefix "css-src/"
 reject_prefix "js-src/"
 reject_prefix "screenshots/"
 reject_prefix "scripts/"
+reject_prefix "skills/"
 reject_exact "WIREFRAME.md"
 reject_exact ".versionrc.json"
 

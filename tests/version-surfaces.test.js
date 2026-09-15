@@ -25,8 +25,6 @@ test('all published version surfaces agree', () => {
   assert.ok(read('README.md').includes('Current crate version: `' + version + '`'));
   assert.ok(read('AGENTS.md').includes('Crate version: `' + version + '`'));
   assert.ok(read('WIREFRAME.md').includes('describes the `' + version + '`'));
-  assert.match(read('skills/solverforge-ui/SKILL.md'), new RegExp(`solverforge-ui: "${version}"`));
-  assert.ok(read('skills/solverforge-ui/references/app-architecture.md').includes('targets `' + version + '`'));
 
   assert.equal(fs.existsSync(path.join(repoRoot, 'static/sf', 'sf.0.7.0.js')), false);
   assert.equal(fs.existsSync(path.join(repoRoot, 'static/sf', 'sf.0.7.0.css')), false);
