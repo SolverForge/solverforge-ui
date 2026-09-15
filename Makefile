@@ -211,8 +211,9 @@ ci-local: banner
 	@printf "$(GREEN)$(BOLD)╚══════════════════════════════════════════════════════════╝$(RESET)\n\n"
 
 # ============== Version Management ==============
-# Maintainer note: version bump targets require Node.js + npx because they use
-# commit-and-tag-version. The library runtime path itself remains npm-free.
+# Maintainer note: version-surface bump targets require Python 3. The release
+# tag target additionally requires Node.js + npx. The library runtime path
+# itself remains npm-free.
 
 version:
 	@printf "$(CYAN)Current version:$(RESET) $(YELLOW)$(BOLD)$(VERSION)$(RESET)\n"
@@ -258,7 +259,7 @@ bump-dry:
 
 release-tag: banner
 	@printf "$(ARROW) Generating changelog + release commit/tag for v$(VERSION)...\n"
-	@npx commit-and-tag-version --skip.bump --no-verify
+	@npx commit-and-tag-version --skip.bump
 	@printf "$(GREEN)$(CHECK) Release changelog, commit, and tag created$(RESET)\n"
 
 # ============== Pre-Release Validation ==============

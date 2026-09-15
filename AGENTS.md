@@ -11,14 +11,32 @@ Repository guidance for coding agents and maintainers working in
   clearly distinguish which is which.
 - `js-src/` and `css-src/` are the editable sources. `static/sf/` contains the
   generated bundled assets served to consumers.
+- `static/sf/sf.js` and `static/sf/sf.css` are compatibility paths. The
+  versioned `static/sf/sf.<version>.js` and `static/sf/sf.<version>.css` files
+  are generated release artifacts and must stay in step with the crate version.
 
 ## Current Version
 
 - Crate version: `0.8.0`.
 - Versioned asset outputs are emitted as `static/sf/sf.<version>.css` and
   `static/sf/sf.<version>.js`.
+- `SF.version` in the bundled JavaScript and `assets::version()` report the
+  crate version that produced the embedded asset set.
+- Stable bundles use a short cache lifetime; versioned bundles, vendor files,
+  fonts, and images use immutable caching.
 - `solverforge_ui::assets` is available without default features; the Axum
   `routes()` adapter is available behind the default `axum` feature.
+
+## Embedded Asset Contract
+
+- `assets::get(path)` accepts only strict `/sf`-relative paths and returns
+  `Result<UiAsset, AssetError>`.
+- Empty, absolute, backslash, duplicate-slash, `.` and `..` paths are invalid
+  and return `AssetError::InvalidPath`; valid missing paths return
+  `AssetError::NotFound`.
+- `assets::paths()` returns all embedded file paths in stable sorted order.
+- Axum hosts should use `solverforge_ui::routes()` rather than duplicating asset
+  lookup, MIME types, or cache policy. Non-Axum hosts should use `assets::get()`.
 
 ## Solver Lifecycle Contract
 
@@ -40,6 +58,22 @@ Repository guidance for coding agents and maintainers working in
 - Paused and terminal lifecycle events remain authoritative; `SF.createSolver()`
   synchronizes retained snapshot state before invoking the corresponding
   callbacks.
+- Snapshot callbacks must tolerate a missing snapshot. Render only when
+  `snapshot && snapshot.solution` exists, and synchronize lifecycle markers in
+  a `finally` block so cancellation or snapshot failure cannot hide terminal
+  state.
+- `onProgress(meta)`, `onPauseRequested(meta)`, and `onResumed(meta)` receive
+  metadata only. `onSolution(snapshot, meta)`, `onPaused(snapshot, meta)`,
+  `onCancelled(snapshot, meta)`, and `onComplete(snapshot, meta)` receive a
+  snapshot when one is available. `onFailure(message, meta, snapshot,
+  analysis)` may receive null snapshot and analysis values.
+- `onAnalysis(analysis, meta)` runs when terminal or paused synchronization
+  obtains analysis; `onError(message)` reports transport and synchronization
+  failures without inventing a lifecycle transition.
+- Applications should expose authoritative state on their root after every
+  callback with `data-job-id`, `data-snapshot-revision`, and
+  `data-lifecycle-state`; these markers are observability hooks, not a second
+  lifecycle implementation.
 - HTTP `EventSource.onerror` represents transport state. Reconnecting errors are
   ignored; a closed stream is surfaced through `onError` and preserves the last
   authoritative lifecycle, retained job id, score, metadata, and snapshot
@@ -64,11 +98,22 @@ Repository guidance for coding agents and maintainers working in
   header/body movement. Do not document the body scrollbar as hidden.
 - Timeline layout must resynchronize after detached `createTimeline()` or
   `setModel()` calls once the element is mounted.
+- Timeline minute fields, day indexes, day counts, ticks, and viewport bounds
+  are finite integer values. Consumer code owns timestamp and timezone
+  normalization before passing data to the timeline.
+- Overview `summary` fields are additive. Mixed summarized and raw items keep
+  derived counts and tone data where they remain knowable; explicit aggregate
+  values are required when a summary overrides the inspectable item count.
+- `clusterId` identifies one overview group per lane. Reusing it for disjoint
+  groups is invalid, and expansion must use the returned timeline API rather
+  than mutating component DOM.
 
 ## Working Rules
 
 - Keep public API changes synchronized across code, `README.md`, runnable demos,
-  and tests in the same change.
+  `WIREFRAME.md`, the matching skill references, and tests in the same change.
+- Edit `js-src/` and `css-src/`, then run `make assets`; never hand-edit stable
+  or versioned files under `static/sf/`.
 - Do not hand-edit `CHANGELOG.md` for ordinary work; release notes are generated
   by `commit-and-tag-version` through `make release-tag`.
 - Do not document planned or exploratory wireframe ideas as shipped behavior
@@ -77,9 +122,16 @@ Repository guidance for coding agents and maintainers working in
   component, lifecycle rule, timeline/model contract, or integration path
   changes, update the matching reference file and `skills/README.md` in the same
   change. `make install-skill` installs the skill for coding agents.
+- The skill installer is copy-only and per-harness. It never creates symlinks.
+  It updates or uninstalls only copies with a valid ownership receipt and an
+  unchanged payload; unmanaged or locally modified copies stay untouched.
 - Prefer `make lint-frontend` for focused JavaScript linting, `make
   test-frontend` or `make test-browser` for focused frontend validation, and
   `make test-quick` or `make test` before release work.
+- `make bump-version VERSION=x.y.z` synchronizes Cargo metadata, runtime
+  version strings, documentation, skill metadata, and generated versioned
+  bundles. Run the release tool only after the version surfaces and release
+  checks are clean.
 - When the Rust crate feature surface changes, validate both default features
   and `--no-default-features`; the latter must keep `solverforge_ui::assets`
   available without depending on Axum.

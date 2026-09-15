@@ -2,6 +2,9 @@
 
 Visual reference for every component in the library. Each section shows the
 DOM structure, CSS classes, and how the JS factory wires them together.
+This document describes the `0.8.0` shipped surface unless a section is marked
+**Planned**. The README is the normative API reference; this file is a visual
+and composition reference, not a promise that every CSS pattern has a factory.
 
 Sections in this document follow a simple staging rule:
 
@@ -27,11 +30,15 @@ surface is `solverforge_ui::assets`:
 - The asset API remains available with `default-features = false`.
 - `solverforge_ui::routes()` is the optional Axum adapter over this same asset
   API and serves `/sf/{*path}` when the default `axum` feature is enabled.
+- Stable `sf.js`/`sf.css` compatibility paths use a short cache lifetime;
+  versioned bundles, vendor files, fonts, and images use immutable caching.
+- `SF.version` and `assets::version()` identify the crate version that produced
+  the embedded asset set.
 
 This keeps Axum applications and non-Axum hosts, including Python/FastAPI
 bindings, on the same asset source of truth.
 
-## 1. Full Page Layout
+## 1. Full Page Layout (Shipped CSS)
 
 ```
 +------------------------------------------------------------------------+
@@ -60,7 +67,7 @@ sticky header, and scrollable main area.
 
 ---
 
-## 2. Header
+## 2. Header (Shipped)
 
 ```
 +------------------------------------------------------------------------+
@@ -82,7 +89,7 @@ sticky header, and scrollable main area.
 
 ---
 
-## 3. Status Bar
+## 3. Status Bar (Shipped)
 
 ```
 +------------------------------------------------------------------------+
@@ -106,7 +113,7 @@ specific header's lifecycle controls and spinner state. Without a bound header,
 
 ---
 
-## 4. Buttons
+## 4. Buttons (Shipped)
 
 ```
   Variants:
@@ -132,7 +139,7 @@ specific header's lifecycle controls and spinner state. Without a bound header,
 
 ---
 
-## 5. Modal Dialog
+## 5. Modal Dialog (Shipped)
 
 ```
   ┌────────────────────────────────────────────┐
@@ -159,7 +166,7 @@ Returns: `{ el, body, open(), close(), setBody(content) }`
 
 ---
 
-## 6. Data Table
+## 6. Data Table (Shipped)
 
 ```
   ┌────────────────────────────────────────────────────────┐
@@ -181,7 +188,7 @@ Returns: `{ el, body, open(), close(), setBody(content) }`
 
 ---
 
-## 7. Badges
+## 7. Badges (Shipped CSS)
 
 ```
   ┌────────────┐  ┌────────────┐  ┌────────────┐
@@ -200,7 +207,7 @@ Returns: `{ el, body, open(), close(), setBody(content) }`
 
 ---
 
-## 8. KPI Cards
+## 8. KPI Cards (Shipped CSS)
 
 ```
   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
@@ -217,7 +224,7 @@ Wrapped in `.sf-kpi-row` (flex, gap).
 
 ---
 
-## 9. Toast Notifications
+## 9. Toast Notifications (Shipped)
 
 ```
                                           ┌──────────────────────────┐
@@ -239,7 +246,7 @@ Shorthand: `SF.showError(title, detail)`
 
 ---
 
-## 10. Tooltip
+## 10. Tooltip (Shipped CSS)
 
 ```
              ┌─────────────────────┐
@@ -258,7 +265,7 @@ Shorthand: `SF.showError(title, detail)`
 
 ---
 
-## 11. Footer
+## 11. Footer (Shipped)
 
 ```
 +------------------------------------------------------------------------+
@@ -271,7 +278,7 @@ Shorthand: `SF.showError(title, detail)`
 
 ---
 
-## 12. API Guide Panel
+## 12. API Guide Panel (Shipped)
 
 ```
   ┌─────────────────────────────────────────────┐
@@ -345,6 +352,23 @@ Shipped runtime expectations:
   cancel commands. Activating Stop during `CANCELLING` may reattach a detached
   stream listen-only so the UI can observe the terminal event.
 
+Callback rendering rule:
+
+```
+function renderAndSync(snapshot, meta) {
+  try {
+    if (snapshot && snapshot.solution) render(snapshot.solution);
+  } finally {
+    syncMarkers(meta);
+  }
+}
+```
+
+`onProgress`, `onPauseRequested`, and `onResumed` receive metadata only.
+`onSolution`, `onPaused`, `onCancelled`, and `onComplete` receive a snapshot
+when one is available. `onFailure` may receive null snapshot and analysis
+values. A missing snapshot must not suppress lifecycle marker synchronization.
+
 ---
 
 ## 14. Rail Scheduling Timeline (Shipped Core)
@@ -372,8 +396,8 @@ Shipped runtime expectations:
   └───────────────┴─────────────────────────────────────────────────────────────┘
 
   sticky left lane labels
-  hidden native header scrollbar
-  scrollable body viewport
+  header scrollbar visually hidden; body viewport owns vertical scrolling
+  synchronized horizontal body/header viewport
   weekend shading behind the axis
 ```
 
@@ -468,10 +492,14 @@ Shipped detailed/viewport rules:
   horizontal scroll and drag-pan remain synchronized with the sticky header
 - timelines created or updated before DOM attachment resynchronize layout after
   mount so label compaction and content width use real viewport dimensions
+- minute fields, day indexes, day counts, ticks, and viewport bounds are finite
+  integer values; consumers normalize timestamps and timezones before rendering
+- each `clusterId` identifies at most one overview group per lane; expansion uses
+  `expandCluster(laneId, clusterId)` rather than DOM mutation
 
 ---
 
-## 15. Gantt Chart (Frappe Gantt)
+## 15. Gantt Chart (Frappe Gantt, Shipped)
 
 ```
   .sf-gantt-split
@@ -528,6 +556,9 @@ gantt.highlightTask('task-1');
 ```
 
 Requires: `/sf/vendor/frappe-gantt/` + `/sf/vendor/split/`
+The mount target must already have non-zero width and height. The wrapper's
+default popup escapes task strings; custom popup HTML and column renderer HTML
+are explicit unsafe surfaces and must contain trusted or escaped content.
 
 ## 16. Low-Level Rail Add-ons (Shipped)
 
@@ -540,7 +571,7 @@ Treat them as low-level add-ons, not the canonical dense scheduling entrypoint.
 
 ---
 
-## 17. Map Module (optional, requires Leaflet)
+## 17. Map Module (Optional, Shipped with Leaflet)
 
 ```
   ┌─────────────────────────────────────────────────┐
@@ -576,7 +607,7 @@ map.clearAll();
 
 ---
 
-## 18. Constraint Analysis (in Modal)
+## 18. Constraint Analysis (Shipped Composition)
 
 ```
   ┌──────────────────────────────────────────────────┐
@@ -601,7 +632,7 @@ map.clearAll();
 
 ---
 
-## Color Reference
+## Color Reference (Shipped Design Tokens)
 
 ```
   Emerald (Primary)                    Semantic

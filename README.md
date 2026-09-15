@@ -33,14 +33,17 @@ framework.
 
 This repository keeps both shipped UI code and design exploration in the same tree.
 
-- Shipped features are the ones implemented in `js-src/`, or exposed as documented optional modules under `static/sf/modules/`, and described in the API reference below.
-- Planned or exploratory ideas may appear in CSS or wireframes before the public API is finished. Those should not be treated as supported integration surface until they are wired into a shipped asset and described in the README API reference.
-- When adding new surface area, update the JavaScript API, README, and runnable examples in the same change so the public contract stays explicit.
+- **Shipped API:** implemented in `js-src/`, included in the generated `static/sf/sf.js` bundle, and described in this reference. Optional modules are shipped when they are present under `static/sf/modules/` and documented here.
+- **Shipped styling/composition:** CSS classes used by the shipped components, such as cards, badges, KPI layouts, tooltips, and constraint-analysis rows. These are not separate JavaScript factories unless an API entry says so.
+- **Planned/exploratory:** ideas that appear only in CSS or wireframes. They are not supported integration surface until they are wired into a shipped asset and described in this API reference.
+- When adding public surface area, update the JavaScript or Rust API, generated assets, README, `WIREFRAME.md`, runnable examples, tests, and the matching skill references in the same change.
 
 For production caching, versioned bundle filenames are also emitted as
 `/sf/sf.<crate-version>.css` and `/sf/sf.<crate-version>.js`. Those versioned
 files are served with immutable caching, while the stable `sf.css` and `sf.js`
 paths remain available for compatibility.
+`SF.version` in either bundle and `solverforge_ui::assets::version()` identify the
+crate version that produced the embedded asset set.
 
 ## Screenshots
 
@@ -103,8 +106,8 @@ synchronized with this README and `WIREFRAME.md` when the public API changes.
 <script>
   var tabs = SF.createTabs({
     tabs: [
-      { id: 'plan', content: '<div>Plan view</div>', active: true },
-      { id: 'gantt', content: '<div>Gantt view</div>' },
+      { id: 'plan', content: { unsafeHtml: '<div>Plan view</div>' }, active: true },
+      { id: 'gantt', content: { unsafeHtml: '<div>Gantt view</div>' } },
     ],
   });
   document.body.appendChild(tabs.el);
@@ -137,22 +140,64 @@ synchronized with this README and `WIREFRAME.md` when the public API changes.
     statusBar: bar,
     onProgress: function (meta) {
       console.log('progress', meta.currentScore, meta.bestScore, meta.telemetry && meta.telemetry.movesPerSecond);
+      syncMarkers(meta);
     },
-    onSolution: function (snapshot) {
-      render(snapshot.solution);
-    },
+    onSolution: function (snapshot, meta) { renderAndSync(snapshot, meta); },
+    onPauseRequested: function (meta) { syncMarkers(meta); },
     onPaused: function (snapshot, meta) {
       console.log('paused at snapshot', meta.snapshotRevision);
-      render(snapshot.solution);
+      renderAndSync(snapshot, meta);
+    },
+    onResumed: function (meta) {
+      syncMarkers(meta);
+    },
+    onCancelled: function (snapshot, meta) {
+      renderAndSync(snapshot, meta);
     },
     onComplete: function (snapshot, meta) {
       console.log('completed', meta.currentScore);
-      render(snapshot.solution);
+      renderAndSync(snapshot, meta);
+    },
+    onFailure: function (message, meta, snapshot, analysis) {
+      console.error(message, analysis);
+      renderAndSync(snapshot, meta);
+    },
+    onAnalysis: function (analysis, meta) {
+      console.log('analysis', meta.snapshotRevision, analysis);
+    },
+    onError: function (message) {
+      SF.showError('Solver transport error', message);
     },
   });
+
+  function renderAndSync(snapshot, meta) {
+    try {
+      if (snapshot && snapshot.solution) render(snapshot.solution);
+    } finally {
+      syncMarkers(meta);
+    }
+  }
+
+  function render(solution) {
+    // Replace this with the app's domain-specific renderer.
+    console.log('solution', solution);
+  }
+
+  function syncMarkers(meta) {
+    document.body.dataset.jobId = meta && meta.jobId || '';
+    document.body.dataset.snapshotRevision = meta && meta.snapshotRevision != null
+      ? String(meta.snapshotRevision)
+      : '';
+    document.body.dataset.lifecycleState = meta && meta.lifecycleState || 'IDLE';
+  }
 </script>
 </body>
 ```
+
+`renderAndSync` is intentionally null-safe. Cancellation, failure, or a failed
+snapshot synchronization can leave no solution snapshot; lifecycle markers must
+still be updated even if application rendering throws. Keep the rendered plan
+deep-cloned before sending it back to the solver or mutating it locally.
 
 ## API Reference
 
@@ -171,6 +216,11 @@ synchronized with this README and `WIREFRAME.md` when the public API changes.
 | `SF.showToast(config)` | `void` | Toast notification (auto-dismiss) |
 | `SF.showError(title, detail)` | `void` | Danger toast shorthand |
 | `SF.showTab(tabId, root?)` | `void` | Activate matching tab panels in every tab container, or only within `root` when provided |
+
+Factories return detached DOM nodes or APIs containing detached nodes. Append
+them to the document only after the host layout exists; `SF.gantt.create()` in
+particular requires a laid-out, non-zero-size mount target. Component content is
+text-rendered by default. The explicit unsafe HTML fields are listed below.
 
 ### Unsafe HTML APIs (opt-in)
 
@@ -208,6 +258,21 @@ Default content is always text-rendered. Use these fields only with trusted HTML
 |---------|---------|-------------|
 | `SF.createBackend(config)` | Backend adapter | HTTP or Tauri IPC transport |
 | `SF.createSolver(config)` | `{start, pause, resume, cancel, delete, getSnapshot, analyzeSnapshot, isRunning, getJobId, getLifecycleState, getSnapshotRevision}` | Shared job lifecycle orchestration around typed runtime events, exact paused snapshots, retained analysis, and terminal cleanup |
+
+Callback arguments:
+
+| Callback | Arguments | Delivery |
+|---|---|---|
+| `onProgress` | `(meta)` | Scored metadata-only progress updates |
+| `onSolution` | `(snapshot, meta)` | Live `best_solution` updates with a solution snapshot |
+| `onPauseRequested` | `(meta)` | Runtime acknowledgement that pause was requested |
+| `onPaused` | `(snapshot, meta)` | Authoritative paused state after snapshot synchronization |
+| `onResumed` | `(meta)` | Authoritative resumed state |
+| `onCancelled` | `(snapshot, meta)` | Authoritative cancellation; `snapshot` may be `null` |
+| `onComplete` | `(snapshot, meta)` | Authoritative completion after a usable snapshot is synchronized |
+| `onFailure` | `(message, meta, snapshot, analysis)` | Failed solve or synchronization; snapshot and analysis may be `null` |
+| `onAnalysis` | `(analysis, meta)` | Analysis obtained during paused or terminal synchronization |
+| `onError` | `(message)` | Transport or synchronization failure without inventing a lifecycle transition |
 
 Startup streams may begin with either a scored `progress` event or a scored
 `best_solution` event. Consumers must not require `progress` to arrive first.
@@ -271,6 +336,7 @@ Runtime rules:
 - User-facing Stop is visible during `CANCELLING`, but sends `cancelJob()` only from `SOLVING`, `PAUSE_REQUESTED`, `PAUSED`, or `RESUMING`; a cancel requested while `STARTING` queues until the job id exists. Activating Stop during `CANCELLING` may reattach a detached stream listen-only to observe the terminal event, but it must not send another backend cancel command.
 - The status bar uses `currentScore` as the live score during solving.
 - Missing or malformed typed lifecycle fields are ignored; they are not silently normalized into the contract.
+- A snapshot-bearing callback must render only when `snapshot && snapshot.solution` exists, and should synchronize application lifecycle markers in a `finally` block.
 
 ### Utilities
 
@@ -349,6 +415,11 @@ Model shape:
 - `model.lanes[]`: `id`, `label`, optional `badges`, optional `stats`, optional `overlays`, `mode`, `items[]`
 - `items[]`: `id`, `startMinute`, `endMinute`, `label`, optional `meta`, optional `summary`, `tone`, optional `clusterId`, optional `detailItems[]`
 - `overlays[]`: either numeric spans via `startMinute/endMinute` or full-day bands via `dayIndex/dayCount`
+
+Day entries may carry `label`, `subLabel` or `meta`, and `isWeekend`. Tick
+entries may be numbers or `{ minute, label? }` objects. Timeline tones are
+`emerald`, `blue`, `amber`, `rose`, `violet`, `cyan`, `red`, and `slate`; a raw
+CSS colour or `{ background, border, overlay, text }` object is also accepted.
 
 Additive overview summary contract:
 
@@ -581,6 +652,13 @@ gantt.highlightTask('task-1');
 
 View modes: `Quarter Day`, `Half Day`, `Day`, `Week`, `Month`.
 Sortable headers are opt-in per column via `sortable: true`.
+`mount(target)` accepts an element or element id, and the target must already
+have non-zero layout dimensions. Tasks may be supplied before or after mount;
+`setTasks()` rebuilds both panes. `refresh()` refreshes an existing Frappe chart,
+while `destroy()` removes the wrapper and releases Split.js/resize observers.
+The built-in popup escapes task strings. Use `unsafePopupHtml` only for trusted
+HTML; column renderers may return text, a DOM node, or the documented
+`{ unsafeHtml }` value.
 
 ## Backend Adapters
 
@@ -589,6 +667,11 @@ Sortable headers are opt-in per column via `sortable: true`.
 ```javascript
 var backend = SF.createBackend({ type: 'axum', baseUrl: '' });
 ```
+
+The HTTP adapter also accepts `type: 'fetch'` and supports `baseUrl`,
+`jobsPath` (default `/jobs`), `demoDataPath` (default `/demo-data`), and extra
+request `headers`. It sends JSON request bodies and parses JSON responses when
+their content type is JSON; other successful responses are returned as text.
 
 Expects standard SolverForge REST endpoints:
 - `POST /jobs` — create a retained job
@@ -629,6 +712,12 @@ var backend = SF.createBackend({
   eventName: 'solver-update',
 });
 ```
+
+Tauri uses `invoke` and `listen` instead of HTTP. Optional `commands` entries
+override the default command names (`create_job`, `get_job`, `get_snapshot`,
+`analyze_snapshot`, `pause_job`, `resume_job`, `cancel_job`, `delete_job`, and
+`demo_seed`). `listDemoData()` returns an empty list for this adapter because
+Tauri exposes demo loading through `getDemoData(name)`.
 
 ### Generic fetch (Rails, etc.)
 
@@ -859,11 +948,18 @@ Consumer integration stays npm-free. Maintainer release automation does not.
 - For changes touching Rust features or embedded asset serving, also run
   `cargo test --no-default-features` and `cargo check --no-default-features`.
 - Runtime and application integration use only the bundled static assets and the Rust crate.
-- Version bump targets in `Makefile` currently use `npx commit-and-tag-version`.
+- `make bump-version VERSION=x.y.z` runs `scripts/sync-version.py`, removes the
+  previous versioned bundles, updates the skill's version metadata, and rebuilds
+  the stable and versioned assets. It does not edit `CHANGELOG.md`.
+- `make release-tag` runs `commit-and-tag-version` after the version surfaces are
+  prepared and validated; repository hooks are not bypassed.
 - The GitHub and Forgejo release workflows trigger only after the generated `v*` tag is pushed.
 - Release and publish validation otherwise run through Cargo and GitHub Actions.
 
-If you are cutting a release locally, make sure Node.js with `npx` is available before using the `bump-*` targets. After the bump completes, push the release commit and tag with `git push --follow-tags` or an equivalent tag-push command so the release automation actually starts.
+If you are cutting a release locally, make sure Python is available for the
+version-surface sync and Node.js with `npx` is available for the release-tag
+step. After the release commit and tag are created, push both so the release
+automation actually starts.
 
 ## Package Verification
 

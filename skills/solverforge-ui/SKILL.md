@@ -4,7 +4,7 @@ description: Build, extend, and polish the web UI of a SolverForge constraint-op
 license: Apache-2.0
 compatibility: opencode, claude-code, codex, generic Agent Skills harnesses
 metadata:
-  solverforge-ui: "0.7.0"
+  solverforge-ui: "0.8.0"
   api-reference: README.md
 ---
 

@@ -20,7 +20,11 @@ Use this checklist for every public release of `solverforge-ui`.
 - This repository uses `commit-and-tag-version` for changelog generation plus the release commit/tag step.
 - Version bumping is separate and happens through the Makefile bump targets.
 - Run `make release-tag` only after the version bump is already in place and validated.
-- If using the bump targets locally, ensure Node.js with `npx` is available.
+- `make bump-version` uses Python 3 and `scripts/sync-version.py` to update
+  Cargo metadata, runtime version strings, documentation, skill metadata, and
+  generated versioned bundles. It does not edit `CHANGELOG.md`.
+- `make release-tag` requires Node.js with `npx` and runs
+  `commit-and-tag-version` for the changelog, release commit, and tag.
 - Push the release commit and tag to every intended release remote. The hosted
   GitHub release and crates.io publish workflows run only when the `v*` tag is
   present on GitHub.

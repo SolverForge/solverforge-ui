@@ -27,7 +27,7 @@ let app = api::router(state)
 
 Version pinning: the component API is whatever `solverforge-ui` version the app
 pins in `Cargo.toml`/`Cargo.lock`. Confirm it before using a detail; the repo's
-`README.md` at that version is the API contract. This skill targets `0.7.0`.
+`README.md` at that version is the API contract. This skill targets `0.8.0`.
 
 ## The boot contract
 
