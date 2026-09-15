@@ -47,8 +47,8 @@ def main() -> None:
     )
     rewrite(
         "README.md",
-        rf"- Current crate release: `{re.escape(old)}`\.",
-        f"- Current crate release: `{new}`.",
+        rf"- Current crate version: `{re.escape(old)}`\.",
+        f"- Current crate version: `{new}`.",
     )
     rewrite(
         "AGENTS.md",

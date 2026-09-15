@@ -851,7 +851,7 @@ cargo build
 
 Consumer integration stays npm-free. Maintainer release automation does not.
 
-- Current crate version: `0.7.0`.
+- Current crate version: `0.8.0`.
 - Let `make release-tag` generate the release changelog entry through
   `commit-and-tag-version`; do not treat version bumps as changelog edits.
 - Use `RELEASE.md` as the source of truth when preparing a public release.

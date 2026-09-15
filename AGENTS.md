@@ -14,7 +14,7 @@ Repository guidance for coding agents and maintainers working in
 
 ## Current Version
 
-- Crate version: `0.7.0`.
+- Crate version: `0.8.0`.
 - Versioned asset outputs are emitted as `static/sf/sf.<version>.css` and
   `static/sf/sf.<version>.js`.
 - `solverforge_ui::assets` is available without default features; the Axum

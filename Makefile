@@ -218,7 +218,7 @@ version:
 	@printf "$(CYAN)Current version:$(RESET) $(YELLOW)$(BOLD)$(VERSION)$(RESET)\n"
 
 bump-version: banner
-	@CURRENT_VERSION=$$(grep -m1 '^version' Cargo.toml | sed 's/version = "\(.*\)"/\1/'); \
+	@set -e; CURRENT_VERSION=$$(grep -m1 '^version' Cargo.toml | sed 's/version = "\(.*\)"/\1/'); \
 	if [ -z "$(VERSION)" ]; then \
 		printf "$(RED)$(CROSS) VERSION=x.y.z is required$(RESET)\n"; \
 		exit 1; \
