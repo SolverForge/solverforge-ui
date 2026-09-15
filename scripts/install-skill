@@ -1,0 +1,208 @@
+#!/usr/bin/env sh
+set -eu
+
+# Install the bundled solverforge-ui agent skill into the directories agents
+# scan. Default targets are opencode global (~/.config/opencode/skills), the
+# cross-harness Agent Skills location (~/.agents/skills, read by opencode, Codex
+# and other standard harnesses), and this repository's .agents/skills. The
+# default action is a symlink so the skill tracks this checkout; use --copy to
+# duplicate instead, or --project <dir> to install into a scaffolded app.
+
+usage() {
+	cat <<'EOF'
+Usage: scripts/install-skill [--copy] [--only <target>]... [--project <dir>]
+                             [--uninstall] [--list] [--help]
+
+Install skills/solverforge-ui into the skill directories agents scan.
+
+  --copy            copy instead of symlink (default: symlink; ignored for repo)
+  --only <target>   restrict to a target (repeatable): opencode, claude, agents, repo
+  --project <dir>   project-scoped install; targets map into <dir>:
+                      agents   -> <dir>/.agents/skills
+                      opencode -> <dir>/.opencode/skills
+                      claude   -> <dir>/.claude/skills
+                    with no --only, uses agents (the cross-harness location)
+  --uninstall       remove previously installed links/copies
+  --list            show target directories and their install state
+  --help            show this help
+
+Global targets:
+  opencode  ~/.config/opencode/skills   (opencode)
+  claude    ~/.claude/skills            (Claude Code)
+  agents    ~/.agents/skills            (Agent Skills standard; Codex, opencode)
+  repo      <repo>/.agents/skills       (committed; scanned inside the repo)
+EOF
+}
+
+skill_name=solverforge-ui
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd)
+skill_src="$repo_root/skills/$skill_name"
+
+[ -f "$skill_src/SKILL.md" ] || {
+	echo "error: skill source not found at $skill_src/SKILL.md" >&2
+	exit 1
+}
+
+mode=link
+action=install
+only=""
+project=""
+
+global_dir_for() {
+	case "$1" in
+	opencode) printf '%s' "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills" ;;
+	claude) printf '%s' "$HOME/.claude/skills" ;;
+	agents) printf '%s' "$HOME/.agents/skills" ;;
+	repo) printf '%s' "$repo_root/.agents/skills" ;;
+	esac
+}
+
+project_dir_for() {
+	case "$1" in
+	opencode) printf '%s' "$project/.opencode/skills" ;;
+	claude) printf '%s' "$project/.claude/skills" ;;
+	agents) printf '%s' "$project/.agents/skills" ;;
+	esac
+}
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--copy) mode=copy ;;
+	--uninstall) action=uninstall ;;
+	--list) action=list ;;
+	--project)
+		shift
+		[ -n "${1:-}" ] || { echo "error: --project expects a directory" >&2; exit 1; }
+		project=$1
+		[ -d "$project" ] || { echo "error: project directory '$project' does not exist" >&2; exit 1; }
+		;;
+	--only)
+		shift
+		case "${1:-}" in
+		opencode | claude | agents | repo) only="$only $1" ;;
+		*)
+			echo "error: --only expects opencode, claude, agents, or repo" >&2
+			exit 1
+			;;
+		esac
+		;;
+	--help | -h) usage; exit 0 ;;
+	*)
+		echo "error: unknown option '$1'" >&2
+		usage >&2
+		exit 1
+		;;
+	esac
+	shift
+done
+
+default_targets() {
+	if [ -n "$project" ]; then
+		printf '%s' "agents"
+	else
+		printf '%s' "opencode agents repo"
+	fi
+}
+
+selected() {
+	if [ -n "$only" ]; then
+		case " $only " in
+		*" $1 "*) return 0 ;;
+		*) return 1 ;;
+		esac
+	fi
+	case " $(default_targets) " in
+	*" $1 "*) return 0 ;;
+	*) return 1 ;;
+	esac
+}
+
+target_dir_for() {
+	if [ -n "$project" ] && [ "$1" != repo ]; then
+		project_dir_for "$1"
+	else
+		global_dir_for "$1"
+	fi
+}
+
+link_target_for() {
+	case "$1" in
+	repo) printf '%s' "../../skills/$skill_name" ;;
+	*) printf '%s' "$skill_src" ;;
+	esac
+}
+
+same_content() {
+	# True when dest already matches src (used for --copy freshness).
+	[ -d "$1" ] && diff -r "$skill_src" "$1" >/dev/null 2>&1
+}
+
+run_target() {
+	name=$1
+	dir=$(target_dir_for "$name")
+	dest="$dir/$skill_name"
+
+	if [ "$action" = list ]; then
+		selected "$name" || return 0
+		if [ -L "$dest" ]; then
+			state="symlink -> $(readlink "$dest")"
+		elif [ -d "$dest" ]; then
+			state="copy present"
+		elif [ -e "$dest" ]; then
+			state="foreign entry present (left untouched)"
+		else
+			state="not installed"
+		fi
+		printf '%-9s %s  %s\n' "$name" "$dir" "$state"
+		return 0
+	fi
+
+	selected "$name" || return 0
+
+	if [ "$name" = repo ] && [ "$mode" = copy ]; then
+		echo "note: repo target is always a symlink; --copy ignored"
+		mode=link
+	fi
+
+	if [ "$action" = uninstall ]; then
+		if [ -L "$dest" ] || [ -f "$dest" ]; then
+			rm -f "$dest" && printf 'uninstalled %-9s %s\n' "$name" "$dest"
+		elif [ -d "$dest" ]; then
+			rm -rf "$dest" && printf 'uninstalled %-9s %s\n' "$name" "$dest"
+		fi
+		return 0
+	fi
+
+	if [ -e "$dest" ] && { [ "$mode" = copy ] || [ ! -L "$dest" ]; }; then
+		if [ "$mode" = copy ] && same_content "$dest"; then
+			printf 'up-to-date %-9s %s\n' "$name" "$dest"
+			return 0
+		fi
+		if [ "$mode" = link ] && [ "$(readlink "$dest" 2>/dev/null)" = "$(link_target_for "$name")" ]; then
+			printf 'up-to-date %-9s %s\n' "$name" "$dest"
+			return 0
+		fi
+		echo "error: $dest exists and is not managed by this installer; remove it first" >&2
+		exit 1
+	fi
+
+	mkdir -p "$dir"
+	if [ "$mode" = copy ]; then
+		rm -rf "$dest"
+		cp -R "$skill_src" "$dest"
+		printf 'copied     %-9s %s\n' "$name" "$dest"
+	else
+		link=$(link_target_for "$name")
+		ln -sfn "$link" "$dest"
+		printf 'linked     %-9s %s -> %s\n' "$name" "$dest" "$link"
+	fi
+}
+
+for target in opencode claude agents repo; do
+	run_target "$target"
+done
+
+if [ "$action" = install ]; then
+	echo "done. restart your agent (e.g. quit and reopen opencode) so it rescans skills."
+fi

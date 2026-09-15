@@ -32,6 +32,7 @@ VERSIONED_JS := static/sf/sf.$(VERSION).js
 .PHONY: banner help assets build build-release test test-quick test-doc test-unit test-frontend test-browser test-one \
         lint lint-frontend fmt fmt-check clippy ci-local pre-release version package-verify browser-setup screenshots-update \
         bump-version bump-patch bump-minor bump-major bump-dry release-tag demo-serve \
+        install-skill install-skill-list \
         publish-dry publish clean watch
 
 # ============== Default Target ==============
@@ -330,6 +331,15 @@ demo-serve: assets
 	@printf "$(ARROW) Serving demos at http://localhost:8000/demos/\n"
 	@python3 scripts/demo_server.py
 
+# ============== Agent Skill ==============
+
+install-skill:
+	@printf "$(ARROW) Installing the solverforge-ui agent skill...\n"
+	@scripts/install-skill
+
+install-skill-list:
+	@scripts/install-skill --list
+
 # ============== Help ==============
 
 help: banner
@@ -376,6 +386,10 @@ help: banner
 	@/bin/echo -e "$(CYAN)$(BOLD)Publishing:$(RESET)"
 	@/bin/echo -e "  $(GREEN)make publish-dry$(RESET)    - Dry-run publish to crates.io"
 	@/bin/echo -e "  $(GREEN)make publish$(RESET)        - $(RED)$(BOLD)Publish to crates.io$(RESET)"
+	@/bin/echo -e ""
+	@/bin/echo -e "$(CYAN)$(BOLD)Agent Skill:$(RESET)"
+	@/bin/echo -e "  $(GREEN)make install-skill$(RESET)      - Install the solverforge-ui skill for coding agents"
+	@/bin/echo -e "  $(GREEN)make install-skill-list$(RESET) - Show skill install state per harness"
 	@/bin/echo -e ""
 	@/bin/echo -e "$(CYAN)$(BOLD)Other:$(RESET)"
 	@/bin/echo -e "  $(GREEN)make clean$(RESET)          - Clean build artifacts + bundled assets"
