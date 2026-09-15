@@ -77,6 +77,44 @@ test('installer exists, is executable, and copies rather than symlinks', () => {
   }
 });
 
+test('canonical snapshot callback keeps lifecycle markers synchronized without a snapshot', () => {
+  const source = fs.readFileSync(path.join(referencesDir, 'app-architecture.md'), 'utf8');
+  const start = source.indexOf('function renderAndSync(');
+  const end = source.indexOf('\n}\n\nvar backend', start);
+  assert.ok(start >= 0 && end > start, 'canonical shell must define renderAndSync');
+
+  const helperSource = source.slice(start, end + 2);
+  const rendered = [];
+  const synchronized = [];
+  const renderAndSync = new Function('render', 'syncMarkers',
+    `${helperSource}\nreturn renderAndSync;`)(
+    (solution) => rendered.push(solution),
+    (meta) => synchronized.push(meta),
+  );
+  const meta = { lifecycleState: 'CANCELLED' };
+
+  assert.doesNotThrow(() => renderAndSync(null, meta));
+  assert.deepEqual(rendered, []);
+  assert.deepEqual(synchronized, [meta]);
+});
+
+test('canonical snapshot callback synchronizes markers even when rendering fails', () => {
+  const source = fs.readFileSync(path.join(referencesDir, 'app-architecture.md'), 'utf8');
+  const start = source.indexOf('function renderAndSync(');
+  const end = source.indexOf('\n}\n\nvar backend', start);
+  const helperSource = source.slice(start, end + 2);
+  const synchronized = [];
+  const renderAndSync = new Function('render', 'syncMarkers',
+    `${helperSource}\nreturn renderAndSync;`)(
+    () => { throw new Error('render failed'); },
+    (meta) => synchronized.push(meta),
+  );
+  const meta = { lifecycleState: 'CANCELLED' };
+
+  assert.throws(() => renderAndSync({ solution: {} }, meta), /render failed/);
+  assert.deepEqual(synchronized, [meta]);
+});
+
 test('no skill symlink is committed into the repository', () => {
   const link = path.join(repoRoot, '.agents', 'skills', 'solverforge-ui');
   assert.equal(fs.existsSync(link), false, 'skills must be installed per harness, not committed as a symlink');

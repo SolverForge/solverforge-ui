@@ -165,17 +165,25 @@ Principles that made this work:
 ### Canonical shell skeleton (either pattern)
 
 ```js
+function renderAndSync(snapshot, meta) {
+  try {
+    if (snapshot && snapshot.solution) render(snapshot.solution);
+  } finally {
+    syncMarkers(meta);
+  }
+}
+
 var backend = SF.createBackend({ type: 'axum', baseUrl: '' });
 var statusBar = SF.createStatusBar({ constraints: typedConstraints });
 var solver = SF.createSolver({
   backend: backend,
   statusBar: statusBar,
   onProgress: function (meta) { syncMarkers(meta); },
-  onSolution: function (snapshot, meta) { render(snapshot.solution); syncMarkers(meta); },
-  onPaused:   function (snapshot, meta) { render(snapshot.solution); syncMarkers(meta); },
-  onCancelled:function (snapshot, meta) { render(snapshot.solution); syncMarkers(meta); },
-  onComplete: function (snapshot, meta) { render(snapshot.solution); syncMarkers(meta); },
-  onFailure:  function (message, meta, snapshot) { if (snapshot) render(snapshot.solution); syncMarkers(meta); },
+  onSolution: function (snapshot, meta) { renderAndSync(snapshot, meta); },
+  onPaused:   function (snapshot, meta) { renderAndSync(snapshot, meta); },
+  onCancelled:function (snapshot, meta) { renderAndSync(snapshot, meta); },
+  onComplete: function (snapshot, meta) { renderAndSync(snapshot, meta); },
+  onFailure:  function (message, meta, snapshot) { renderAndSync(snapshot, meta); },
   onAnalysis: function (analysis) { lastAnalysis = analysis; },
   onError:    function (message) { console.error(message); },
 });
