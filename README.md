@@ -728,18 +728,6 @@ map.addVisitMarker({ lat: 45.08, lng: 7.70, color: '#3b82f6', icon: 'fa-utensils
 map.addStopNumber({ lat: 45.08, lng: 7.70, number: 1, color: '#3b82f6' });
 map.drawRoute({ points: [[45.07, 7.69], [45.08, 7.70]], color: '#10b981' });
 map.drawEncodedRoute({ encoded: 'encodedPolylineString', color: '#3b82f6' });
-map.drawRouteLegs({
-  legs: [
-    { points: [[45.07, 7.69], [45.08, 7.70], [45.09, 7.71]], color: '#1d4f9c' },
-    { points: [[45.09, 7.71], [45.07, 7.69]], color: '#3b82f6' },
-  ],                 // ordered legs, travel order; coordinates [lat, lng]
-  weight: 14,        // ribbon width in screen px (casing paints weight + 4)
-  directionPaint: {
-    enabled: true,   // travel-direction arrows inside each body's mask
-    spacing: 60,     // arc distance between arrow centers, screen px
-    length: 12,      // arrow glyph length, screen px
-  },
-});
 map.fitBounds();
 map.highlight('#10b981');   // dim all routes except this color
 map.clearHighlight();
@@ -750,17 +738,6 @@ map.clearAll();
 
 SF.map.decodePolyline('_p~iF~ps|U...');  // Google polyline algorithm
 ```
-
-`drawRouteLegs` draws the ordered legs as one composite scene: a shared casing
-pass under a centered body per leg, plus travel-direction arrow paint clipped
-inside each body's own mask. Arrow positions are sampled from the same path
-string that is drawn, spaced along the full leg, so paint can never drift off
-the road geometry. Where two legs traverse the same edge in opposite
-directions, arrows paint in opposite interior half-lanes of the same ribbon,
-detected by exact coordinate identity. The paint is screen-space; it hides
-during zoom transitions and rebuilds after zoom, pan, and resize. It returns an
-opaque handle with `remove()`; `clearRoutes()` and `clearAll()` also remove
-scenes. `highlight()` continues to apply only to `drawRoute` layers.
 
 ## Design System
 

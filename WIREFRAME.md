@@ -598,7 +598,6 @@ map.addVisitMarker({ lat, lng, color, icon, assigned });
 map.addStopNumber({ lat, lng, number, color });
 map.drawRoute({ points, color });
 map.drawEncodedRoute({ encoded, color });
-map.drawRouteLegs({ legs: [{ points, color }], weight, directionPaint });  // SHIPPED ✓
 map.highlight(vehicleColor);
 map.clearRoutes();
 map.clearStops();
