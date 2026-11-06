@@ -418,6 +418,47 @@ async function checkDenseTimelineDemo() {
   });
 }
 
+async function checkMapDemo() {
+  await withPage(async ({ goto, page, assertNoBrowserErrors }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+
+    const response = await goto('/demos/map.html');
+    assert.equal(response.status(), 200);
+
+    await page.waitForSelector('.sf-map-paint', { timeout: 10000 });
+    const metrics = await page.evaluate(() => window.__mapPaintMetrics());
+    assert.equal(metrics.passes.join(','), 'all-casings,all-bodies,all-arrows');
+    assert.equal(metrics.visible, true);
+    assert.equal(metrics.arrows > 0, true);
+    // Leg two is leg one exactly reversed: both flows paint inside one ribbon.
+    assert.equal(metrics.shared > 0, true);
+
+    await captureScreenshot(page, 'map-route-legs.png');
+
+    await page.click('.leaflet-control-zoom-in');
+    await page.waitForFunction(() => {
+      const m = window.__mapPaintMetrics();
+      return m && m.visible && m.arrows > 0;
+    }, { timeout: 10000 });
+    const zoomed = await page.evaluate(() => window.__mapPaintMetrics());
+    assert.equal(zoomed.arrows >= metrics.arrows, true);
+    assert.equal(zoomed.shared > 0, true);
+
+    // remove() leaves no paint overlay; a fresh scene paints again.
+    const removed = await page.evaluate(() => {
+      window.__mapRouteHandle.remove();
+      return window.__mapPaintMetrics();
+    });
+    assert.equal(removed, null);
+    const repainted = await page.evaluate(() => {
+      window.drawDemoRoute();
+      return window.__mapPaintMetrics();
+    });
+    assert.equal(repainted.arrows > 0, true);
+    assertNoBrowserErrors();
+  });
+}
+
 async function checkTimelineDemoWithoutResizeObserver() {
   await withPage(async ({ goto, page, assertNoBrowserErrors }) => {
     await page.addInitScript(() => {
@@ -463,6 +504,7 @@ async function checkTimelineDemoWithoutResizeObserver() {
 (async function main() {
   try {
     await runCheck('full-surface demo', checkFullSurface);
+    await runCheck('map demo', checkMapDemo);
     await runCheck('timeline demo', checkTimelineDemo);
     await runCheck('dense timeline demo', checkDenseTimelineDemo);
     await runCheck('timeline demo without ResizeObserver', checkTimelineDemoWithoutResizeObserver);

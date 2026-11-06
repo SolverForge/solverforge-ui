@@ -14,6 +14,7 @@ Then open:
 
 - `http://localhost:8000/demos/`
 - `http://localhost:8000/demos/full-surface.html`
+- `http://localhost:8000/demos/map.html`
 - `http://localhost:8000/demos/timeline.html`
 - `http://localhost:8000/demos/timeline-dense.html`
 - `http://localhost:8000/demos/rail.html`

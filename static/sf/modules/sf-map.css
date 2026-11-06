@@ -75,3 +75,11 @@
   font-weight: 700;
   font-family: var(--sf-font-mono, monospace);
 }
+
+/* Road paint overlay (drawRouteLegs): screen-space arrows inside the road
+   ribbon; never intercept map interactions */
+.sf-map-paint {
+  position: absolute;
+  pointer-events: none;
+  overflow: hidden;
+}
