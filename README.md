@@ -727,6 +727,7 @@ map.addVehicleMarker({ lat: 45.07, lng: 7.69, color: '#10b981' });
 map.addVisitMarker({ lat: 45.08, lng: 7.70, color: '#3b82f6', icon: 'fa-utensils' });
 map.addStopNumber({ lat: 45.08, lng: 7.70, number: 1, color: '#3b82f6' });
 map.drawRoute({ points: [[45.07, 7.69], [45.08, 7.70]], color: '#10b981' });
+map.drawRoute({ points: [[45.08, 7.70], [45.07, 7.69]], color: '#10b981', dashArray: '6 8' }); // dashed stroke, e.g. a round trip's closing leg
 map.drawEncodedRoute({ encoded: 'encodedPolylineString', color: '#3b82f6' });
 map.fitBounds();
 map.highlight('#10b981');   // dim all routes except this color

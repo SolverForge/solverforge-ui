@@ -103,7 +103,7 @@
       var color = opts.color || '#10b981';
       var weight = opts.weight || 3;
       var opacity = opts.opacity || 0.8;
-      var line = L.polyline(points, { color: color, weight: weight, opacity: opacity });
+      var line = L.polyline(points, { color: color, weight: weight, opacity: opacity, dashArray: opts.dashArray });
       routeGroup.addLayer(line);
       return line;
     };

@@ -82,6 +82,21 @@ function createLeafletStub() {
   return { L, calls };
 }
 
+test('drawRoute forwards dashArray and omits it when absent', () => {
+  const { L } = createLeafletStub();
+  const { SF } = loadSf(['js-src/00-core.js', 'static/sf/modules/sf-map.js'], { L });
+
+  const map = SF.map.create({
+    container: 'map',
+    center: [39.9526, -75.1652],
+    zoom: 12,
+  });
+  const dashed = map.drawRoute({ points: [[45.07, 7.69], [45.08, 7.7]], color: '#10b981', dashArray: '6 8' });
+  assert.equal(dashed.options.dashArray, '6 8');
+  const solid = map.drawRoute({ points: [[45.07, 7.69], [45.08, 7.7]], color: '#10b981' });
+  assert.equal(solid.options.dashArray, undefined);
+});
+
 test('map fitBounds uses a Leaflet feature group with bounds support', () => {
   const { L, calls } = createLeafletStub();
   const { SF } = loadSf(['js-src/00-core.js', 'static/sf/modules/sf-map.js'], { L });
