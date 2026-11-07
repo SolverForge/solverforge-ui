@@ -596,7 +596,7 @@ var map = SF.map.create({ container, center, zoom });
 map.addVehicleMarker({ lat, lng, color });
 map.addVisitMarker({ lat, lng, color, icon, assigned });
 map.addStopNumber({ lat, lng, number, color });
-map.drawRoute({ points, color });
+map.drawRoute({ points, color, dashArray });   // dashArray optional, e.g. '6 8'
 map.drawEncodedRoute({ encoded, color });
 map.highlight(vehicleColor);
 map.clearRoutes();
