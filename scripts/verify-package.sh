@@ -68,6 +68,6 @@ reject_prefix "screenshots/"
 reject_prefix "scripts/"
 reject_prefix "skills/"
 reject_exact "WIREFRAME.md"
-reject_exact ".versionrc.json"
+reject_exact "csemver.toml"
 
 echo "package contents verified"

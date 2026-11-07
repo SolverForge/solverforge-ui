@@ -1,0 +1,43 @@
+# Release configuration for csemver, replacing the retired .versionrc.json
+# (commit-and-tag-version) and its scripts/cargo-version.js updater.
+#
+# Version surfaces are synchronized beforehand by `make bump-version`
+# (scripts/sync-version.py plus the regenerated versioned bundles), so
+# `make release-tag` runs csemver with --skip.bump: it reads the crate version
+# from Cargo.toml, writes the CHANGELOG.md entry, commits it as
+# `chore(release): vX.Y.Z` and creates the annotated tag.
+#
+# suppressRevertPairs drops a commit and its `Revert "..."` commit when both
+# fall in the release range, so the changelog never lists a reverted change.
+#
+# Keep every top-level key above the first [[...]] table header: TOML scopes
+# later keys into that table.
+tagPrefix = "v"
+suppressRevertPairs = true
+releaseCommitMessageFormat = "chore(release): {{currentTag}}"
+commitUrlFormat = "https://github.com/SolverForge/solverforge-ui/commit/{{hash}}"
+compareUrlFormat = "https://github.com/SolverForge/solverforge-ui/compare/{{previousTag}}...{{currentTag}}"
+issueUrlFormat = "https://github.com/SolverForge/solverforge-ui/issues/{{id}}"
+
+types = [
+  { type = "feat", section = "Features" },
+  { type = "fix", section = "Bug Fixes" },
+  { type = "refactor", section = "Code Refactoring" },
+  { type = "chore", effect = "hidden" },
+  { type = "docs", effect = "hidden" },
+  { type = "style", effect = "hidden" },
+  { type = "perf", effect = "hidden" },
+  { type = "test", effect = "hidden" },
+  { type = "build", effect = "hidden" },
+  { type = "ci", effect = "hidden" },
+]
+
+packageFiles = [
+  { filename = "Cargo.toml", type = "regex", pattern = '^version = "([0-9]+\.[0-9]+\.[0-9]+)"', versionGroup = 1 },
+]
+
+[[bumpFiles]]
+filename = "Cargo.toml"
+type = "regex"
+pattern = '^version = "([0-9]+\.[0-9]+\.[0-9]+)"'
+versionGroup = 1

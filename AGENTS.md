@@ -116,7 +116,7 @@ Repository guidance for coding agents and maintainers working in
 - Edit `js-src/` and `css-src/`, then run `make assets`; never hand-edit stable
   or versioned files under `static/sf/`.
 - Do not hand-edit `CHANGELOG.md` for ordinary work; release notes are generated
-  by `commit-and-tag-version` through `make release-tag`.
+  by csemver (`csemver.toml`) through `make release-tag`.
 - Do not document planned or exploratory wireframe ideas as shipped behavior
   until they are wired into the generated assets and the README API reference.
 - The `solverforge-ui` agent skill lives in `SolverForge/solverforge-cli`

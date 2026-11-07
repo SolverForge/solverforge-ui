@@ -919,27 +919,26 @@ cargo build
 
 ## Release Workflow
 
-Consumer integration stays npm-free. Maintainer release automation does not.
+Consumer integration stays npm-free. Maintainer test tooling (ESLint, Playwright) uses npm.
 
 - Current crate version: `0.9.0`.
 - Let `make release-tag` generate the release changelog entry through
-  `commit-and-tag-version`; do not treat version bumps as changelog edits.
+  csemver; do not treat version bumps as changelog edits.
 - Use `RELEASE.md` as the source of truth when preparing a public release.
 - Run `make pre-release` before tagging.
 - For changes touching Rust features or embedded asset serving, also run
   `cargo test --no-default-features` and `cargo check --no-default-features`.
 - Runtime and application integration use only the bundled static assets and the Rust crate.
 - `make bump-version VERSION=x.y.z` runs `scripts/sync-version.py`, removes the
-  previous versioned bundles, updates the skill's version metadata, and rebuilds
-  the stable and versioned assets. It does not edit `CHANGELOG.md`.
-- `make release-tag` runs `commit-and-tag-version` after the version surfaces are
+  previous versioned bundles, and rebuilds the stable and versioned assets. It
+  does not edit `CHANGELOG.md`.
+- `make release-tag` runs `csemver --skip.bump` after the version surfaces are
   prepared and validated; repository hooks are not bypassed.
 - The GitHub and Forgejo release workflows trigger only after the generated `v*` tag is pushed.
 - Release and publish validation otherwise run through Cargo and GitHub Actions.
 
 If you are cutting a release locally, make sure Python is available for the
-version-surface sync and Node.js with `npx` is available for the release-tag
-step. After the release commit and tag are created, push both so the release
+version-surface sync and csemver is on `PATH` for the release-tag step. After the release commit and tag are created, push both so the release
 automation actually starts.
 
 ## Package Verification

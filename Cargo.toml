@@ -16,7 +16,7 @@ exclude = [
   "WIREFRAME.md",
   "scripts/",
   "skills/",
-  ".versionrc.json",
+  "csemver.toml",
 ]
 
 [dependencies]

@@ -2,7 +2,7 @@
   "name": "solverforge-ui",
   "private": true,
   "scripts": {
-    "lint:frontend": "eslint js-src tests scripts",
+    "lint:frontend": "eslint js-src tests",
     "test:browser": "node tests/demo-browser-check.js"
   },
   "devDependencies": {

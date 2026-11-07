@@ -211,8 +211,8 @@ ci-local: banner
 
 # ============== Version Management ==============
 # Maintainer note: version-surface bump targets require Python 3. The release
-# tag target additionally requires Node.js + npx. The library runtime path
-# itself remains npm-free.
+# tag target requires csemver (native, reads csemver.toml). The library runtime
+# path itself remains npm-free.
 
 version:
 	@printf "$(CYAN)Current version:$(RESET) $(YELLOW)$(BOLD)$(VERSION)$(RESET)\n"
@@ -258,7 +258,7 @@ bump-dry:
 
 release-tag: banner
 	@printf "$(ARROW) Generating changelog + release commit/tag for v$(VERSION)...\n"
-	@npx commit-and-tag-version --skip.bump
+	@csemver --skip.bump
 	@printf "$(GREEN)$(CHECK) Release changelog, commit, and tag created$(RESET)\n"
 
 # ============== Pre-Release Validation ==============
@@ -372,7 +372,7 @@ help: banner
 	@/bin/echo -e "  $(GREEN)make bump-minor$(RESET)     - Bump minor version (0.$(YELLOW)x$(RESET).0)"
 	@/bin/echo -e "  $(GREEN)make bump-major$(RESET)     - Bump major version ($(YELLOW)x$(RESET).0.0)"
 	@/bin/echo -e "  $(GREEN)make bump-dry$(RESET)       - Preview next patch/minor/major versions"
-	@/bin/echo -e "  $(GREEN)make release-tag$(RESET)    - Generate changelog + release commit/tag with commit-and-tag-version"
+	@/bin/echo -e "  $(GREEN)make release-tag$(RESET)    - Generate changelog + release commit/tag with csemver"
 	@/bin/echo -e ""
 	@/bin/echo -e "$(CYAN)$(BOLD)Publishing:$(RESET)"
 	@/bin/echo -e "  $(GREEN)make publish-dry$(RESET)    - Dry-run publish to crates.io"
