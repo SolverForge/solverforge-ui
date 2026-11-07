@@ -921,7 +921,7 @@ cargo build
 
 Consumer integration stays npm-free. Maintainer test tooling (ESLint, Playwright) uses npm.
 
-- Current crate version: `0.9.0`.
+- Current crate version: `0.9.1`.
 - Let `make release-tag` generate the release changelog entry through
   csemver; do not treat version bumps as changelog edits.
 - Use `RELEASE.md` as the source of truth when preparing a public release.
